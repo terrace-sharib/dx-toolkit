@@ -34,51 +34,21 @@ import sys
 from dxpy import DXHTTPRequest
 '''
 
-class_method_template = '''def {legacy_wrapper_method_name}(*args, **kwargs):
-    """
-
-    .. deprecated:: 0.42.0
-       Use :func:`{wrapper_method_name}()` instead.
-
-    """
-    print("dxpy.{legacy_wrapper_method_name} is deprecated; please use {wrapper_method_name} instead.", file=sys.stderr)
-    return {wrapper_method_name}(*args, **kwargs)
-
-def {wrapper_method_name}(input_params={{}}, always_retry={retry}, **kwargs):
+class_method_template = '''def {wrapper_method_name}(input_params={{}}, always_retry={retry}, **kwargs):
     """
     Invokes the {route} API method.{wiki_ref}
     """
     return DXHTTPRequest('{route}', input_params, always_retry=always_retry, **kwargs)
 '''
 
-object_method_template = '''def {legacy_wrapper_method_name}(*args, **kwargs):
-    """
-
-    .. deprecated:: 0.42.0
-       Use :func:`{wrapper_method_name}()` instead.
-
-    """
-    print("dxpy.{legacy_wrapper_method_name} is deprecated; please use {wrapper_method_name} instead.", file=sys.stderr)
-    return {wrapper_method_name}(*args, **kwargs)
-
-def {wrapper_method_name}(object_id, input_params={{}}, always_retry={retry}, **kwargs):
+object_method_template = '''def {wrapper_method_name}(object_id, input_params={{}}, always_retry={retry}, **kwargs):
     """
     Invokes the {route} API method.{wiki_ref}
     """
     return DXHTTPRequest('/%s/{api_method_name}' % object_id, input_params, always_retry=always_retry, **kwargs)
 '''
 
-app_object_method_template = '''def {legacy_wrapper_method_name}(*args, **kwargs):
-    """
-
-    .. deprecated:: 0.42.0
-       Use :func:`{wrapper_method_name}()` instead.
-
-    """
-    print("dxpy.{legacy_wrapper_method_name} is deprecated; please use {wrapper_method_name} instead.", file=sys.stderr)
-    return {wrapper_method_name}(*args, **kwargs)
-
-def {wrapper_method_name}(app_name_or_id, alias=None, input_params={{}}, always_retry={retry}, **kwargs):
+app_object_method_template = '''def {wrapper_method_name}(app_name_or_id, alias=None, input_params={{}}, always_retry={retry}, **kwargs):
     """
     Invokes the /app-xxxx/{api_method_name} API method.{wiki_ref}
     """
@@ -86,17 +56,35 @@ def {wrapper_method_name}(app_name_or_id, alias=None, input_params={{}}, always_
     return DXHTTPRequest('/%s/{api_method_name}' % fully_qualified_version, input_params, always_retry=always_retry, **kwargs)
 '''
 
+
 def make_wiki_ref(url):
     return ("\n\n    For more info, see: " + url) if url else ""
 
+
 def make_class_method(wrapper_method_name, legacy_wrapper_method_name, route, retry=False, url=None):
-    return class_method_template.format(wrapper_method_name=wrapper_method_name, legacy_wrapper_method_name=legacy_wrapper_method_name, route=route, retry=retry, wiki_ref=make_wiki_ref(url))
+    return class_method_template.format(wrapper_method_name=wrapper_method_name,
+                                        legacy_wrapper_method_name=legacy_wrapper_method_name,
+                                        route=route,
+                                        retry=retry,
+                                        wiki_ref=make_wiki_ref(url))
+
 
 def make_object_method(wrapper_method_name, legacy_wrapper_method_name, api_method_name, route, retry=False, url=None):
-    return object_method_template.format(wrapper_method_name=wrapper_method_name, legacy_wrapper_method_name=legacy_wrapper_method_name, api_method_name=api_method_name, route=route, retry=retry, wiki_ref=make_wiki_ref(url))
+    return object_method_template.format(wrapper_method_name=wrapper_method_name,
+                                         legacy_wrapper_method_name=legacy_wrapper_method_name,
+                                         api_method_name=api_method_name,
+                                         route=route,
+                                         retry=retry,
+                                         wiki_ref=make_wiki_ref(url))
+
 
 def make_app_object_method(wrapper_method_name, legacy_wrapper_method_name, api_method_name, retry=False, url=None):
-    return app_object_method_template.format(wrapper_method_name=wrapper_method_name, legacy_wrapper_method_name=legacy_wrapper_method_name, api_method_name=api_method_name, retry=retry, wiki_ref=make_wiki_ref(url))
+    return app_object_method_template.format(wrapper_method_name=wrapper_method_name,
+                                             legacy_wrapper_method_name=legacy_wrapper_method_name,
+                                             api_method_name=api_method_name,
+                                             retry=retry,
+                                             wiki_ref=make_wiki_ref(url))
+
 
 def camel_case_to_underscore(name):
     """
