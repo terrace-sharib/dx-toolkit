@@ -1720,41 +1720,47 @@ def download(args):
         except:
             err_exit()
 
-    def download_one_folder(path, dest):
-        if not args.recursive:
-            parser.exit("Error: {path} is a folder but the -r/--recursive option was not given".format(path=args.path))
+    def download_one_folder(project, folder, strip_prefix, destdir):
+        # TODO: control visibility=hidden
+        for f in dxpy.search.find_data_objects(classname='file', state='closed', project=project, folder=folder,
+                                               recurse=True, describe=True):
+            file_desc = f['describe']
+            dest_filename = os.path.join(destdir, file_desc['folder'][len(strip_prefix):], file_desc['name'])
+            download_one_file(project, file_desc['id'], dest_filename)
 
-    def download_files():
+    def download_files(project, folders, destdir, strip_prefix=os.environ.get('DX_CLI_WD', '/')):
         pass
 
-    def download_folders():
-        pass
+    def download_folders(project, folders, destdir, strip_prefix=os.environ.get('DX_CLI_WD', '/')):
+        for folder in folders:
+            assert(folder.startswith(strip_prefix))
+            rel_folder = folder[len(strip_prefix):]
+            if not args.recursive:
+                parser.exit("Error: {path} is a folder but the -r/--recursive option was not given".format(path=folder))
+            os.makedirs(os.path.join(destdir, rel_folder))
+            download_one_folder(project, folder, strip_prefix, destdir)
 
     def is_glob(path):
         return get_first_pos_of_char('*', path) > -1 or get_first_pos_of_char('?', path) > -1
 
-    def expand_glob():
-        return
-
     import fnmatch
 
-    folders_to_get, files_to_get, cached_folder_lists = [], [], {}
+    folders_to_get, files_to_get = [], []
     for path in args.paths:
         # Attempt to resolve name. If --all is given or the path looks like a glob, download all matches.
         # Otherwise, the resolver will display a picker (or error out if there is no tty to display to).
+        # TODO: support folder+object globbing (e.g. /run*/*.bam)
         resolver_kwargs = {'allow_empty_string': False}
         if args.all or is_glob(path):
             resolver_kwargs.update({'allow_mult': True, 'all_mult': True})
         project, folderpath, matching_files = try_call(resolve_existing_path, path, **resolver_kwargs)
+        if matching_files is None:
+            matching_files = []
 
-        if project not in cached_folder_lists:
-            cached_folder_lists[project] = dxpy.describe(project, input_params={'folders': True})['folders']
-
-        folder_listing = dxproj.list_folder(folder=folderpath, describe={}) # includeHidden=
-        print json.dumps(folder_listing, indent=4)
-
-#        full_path_to_get = os.path.join(os.environ.get('DX_CLI_WD', '/'), path)
-        matching_folders = fnmatch.filter(cached_folder_lists[project], full_path_to_get)
+        abs_path = os.path.join(os.environ.get('DX_CLI_WD', '/'), path)
+        parent_folder = os.path.dirname(abs_path.rstrip('/'))
+        folder_listing = dxpy.DXProject(project).list_folder(folder=parent_folder, only='folders')['folders'] # includeHidden=
+        matching_folders = fnmatch.filter(folder_listing, path)
 
         if len(matching_files) == 0 and len(matching_folders) == 0:
             err_exit(fill('Error: {path} is neither a file nor a folder name'.format(path=path)))
@@ -1762,14 +1768,22 @@ def download(args):
         files_to_get.extend(matching_files)
         folders_to_get.extend(matching_folders)
 
-        print path, len(matching_files), len(matching_folders)
+    destdir = args.output if args.output is not None else os.getcwd()
+
+    print "Will download folders:", folders_to_get
+    print "Will download files:", [os.path.join(f['describe']['folder'],f['describe']['name']) for f in files_to_get]
+
+    download_folders(folders_to_get, destdir)
+    download_files(files_to_get, destdir)
+
+        #if project not in cached_folder_lists:
+            #cached_project_handlers[project] = 
+            #cached_folder_lists[project] = cached_project_handlers[project].describe(input_params={'folders': True})['folders']
 
 
 #        if args.recursive or entity_results is None:
 #        print project, folderpath, json.dumps(matching_files, indent=4)
 
-    print "Will download folders:", folders_to_get
-    print "Will download files:", [(f['describe']['folder'], f['describe']['name']) for f in files_to_get]
 
     return
     if False:
@@ -1781,25 +1795,8 @@ def download(args):
 
 
 
-        destdir = args.output if args.output is not None else os.getcwd()
 
-        for folder in folders:
-            if not folder.startswith(folderpath):
-                continue
-            dir_path = destdir
-            for part in folder.split('/'):
-                if part == '':
-                    continue
-                dir_path = os.path.join(dir_path, part)
-                if not os.path.exists(dir_path):
-                    os.mkdir(dir_path)
 
-        # TODO: control visibility=hidden
-        for f in dxpy.search.find_data_objects(classname='file', state='closed', project=project, folder=folderpath,
-                                               recurse=True, describe=True):
-            file_desc = f['describe']
-            dest_filename = os.path.join(destdir, file_desc['folder'].lstrip('/'), file_desc['name'])
-            download_one_file(project, file_desc['id'], dest_filename)
     else:
         if len(entity_result) > 0 and args.output:
             err_exit(fill("Error: --output cannot be used when downloading multiple objects"))
