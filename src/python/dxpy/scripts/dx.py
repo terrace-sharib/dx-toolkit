@@ -1708,6 +1708,12 @@ def download(args):
         cat(parser.parse_args(['cat'] + args.paths))
         return
 
+    import fnmatch
+
+    def ensure_local_dir(dir):
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+
     def download_one_file(project, id, dest_filename):
         if not args.overwrite and os.path.exists(dest_filename):
             err_exit(fill('Error: path "' + dest_filename + '" already exists but -f/--overwrite was not set'))
@@ -1725,27 +1731,32 @@ def download(args):
         for f in dxpy.search.find_data_objects(classname='file', state='closed', project=project, folder=folder,
                                                recurse=True, describe=True):
             file_desc = f['describe']
-            dest_filename = os.path.join(destdir, file_desc['folder'][len(strip_prefix):], file_desc['name'])
+            dest_filename = file_desc['folder'][len(strip_prefix)+1:]
+            dest_filename = os.path.join(destdir, dest_filename, file_desc['name'])
+            print "Downloading into", dest_filename
             download_one_file(project, file_desc['id'], dest_filename)
 
-    def download_files(project, folders, destdir, strip_prefix=os.environ.get('DX_CLI_WD', '/')):
-        pass
+    def download_files(files, destdir, strip_prefix=os.environ.get('DX_CLI_WD', '/')):
+        for project in files:
+            for f in files[project]:
+                file_desc = f['describe']
+                dest_filename = os.path.join(destdir, file_desc['folder'][len(strip_prefix)+1:], file_desc['name'])
+                download_one_file(project, file_desc['id'], dest_filename)
 
-    def download_folders(project, folders, destdir, strip_prefix=os.environ.get('DX_CLI_WD', '/')):
-        for folder in folders:
-            assert(folder.startswith(strip_prefix))
-            rel_folder = folder[len(strip_prefix):]
-            if not args.recursive:
-                parser.exit("Error: {path} is a folder but the -r/--recursive option was not given".format(path=folder))
-            os.makedirs(os.path.join(destdir, rel_folder))
-            download_one_folder(project, folder, strip_prefix, destdir)
+    def download_folders(folders, destdir, strip_prefix=os.environ.get('DX_CLI_WD', '/')):
+        for project in folders:
+            for folder in folders[project]:
+                assert(folder.startswith(strip_prefix))
+                rel_folder = folder[len(strip_prefix)+1:]
+                if not args.recursive:
+                    parser.exit("Error: {path} is a folder but the -r/--recursive option was not given".format(path=folder))
+                ensure_local_dir(os.path.join(destdir, rel_folder.lstrip('/')))
+                download_one_folder(project, folder, strip_prefix, destdir)
 
     def is_glob(path):
         return get_first_pos_of_char('*', path) > -1 or get_first_pos_of_char('?', path) > -1
 
-    import fnmatch
-
-    folders_to_get, files_to_get = [], []
+    folders_to_get, files_to_get = collections.defaultdict(list), collections.defaultdict(list)
     for path in args.paths:
         # Attempt to resolve name. If --all is given or the path looks like a glob, download all matches.
         # Otherwise, the resolver will display a picker (or error out if there is no tty to display to).
@@ -1757,7 +1768,8 @@ def download(args):
         if matching_files is None:
             matching_files = []
 
-        abs_path = os.path.join(os.environ.get('DX_CLI_WD', '/'), path)
+        if not path.startswith('/'):
+            abs_path = os.path.join(os.environ.get('DX_CLI_WD', '/'), path)
         parent_folder = os.path.dirname(abs_path.rstrip('/'))
         folder_listing = dxpy.DXProject(project).list_folder(folder=parent_folder, only='folders')['folders'] # includeHidden=
         matching_folders = fnmatch.filter(folder_listing, path)
@@ -1765,13 +1777,15 @@ def download(args):
         if len(matching_files) == 0 and len(matching_folders) == 0:
             err_exit(fill('Error: {path} is neither a file nor a folder name'.format(path=path)))
 
-        files_to_get.extend(matching_files)
-        folders_to_get.extend(matching_folders)
+        files_to_get[project].extend(matching_files)
+        folders_to_get[project].extend(matching_folders)
 
     destdir = args.output if args.output is not None else os.getcwd()
 
+    print "Downloading into", destdir
     print "Will download folders:", folders_to_get
-    print "Will download files:", [os.path.join(f['describe']['folder'],f['describe']['name']) for f in files_to_get]
+    for project in files_to_get:
+        print "Will download files:", project, [os.path.join(f['describe']['folder'],f['describe']['name']) for f in files_to_get[project]]
 
     download_folders(folders_to_get, destdir)
     download_files(files_to_get, destdir)
@@ -1784,20 +1798,6 @@ def download(args):
 #        if args.recursive or entity_results is None:
 #        print project, folderpath, json.dumps(matching_files, indent=4)
 
-
-    return
-    if False:
-        if not isinstance(entity_results, list):
-            entity_results = [entity_results]
-
-        if entity_result is None:
-            pass
-
-
-
-
-
-    else:
         if len(entity_result) > 0 and args.output:
             err_exit(fill("Error: --output cannot be used when downloading multiple objects"))
 
