@@ -1710,12 +1710,11 @@ def download(args):
 
     import fnmatch
 
-    def ensure_local_dir(dir):
-        print "ensuring", dir
-        if not os.path.isdir(dir):
-            if os.path.exists(dir):
-                err_exit('Error: path {p} already exists and is not a directory'.format(p=dir))
-            os.makedirs(dir)
+    def ensure_local_dir(d):
+        if not os.path.isdir(d):
+            if os.path.exists(d):
+                err_exit(fill('Error: path "' + d + '" already exists and is not a directory'))
+            os.makedirs(d)
 
     def download_one_file(project, id, dest_filename):
         if not args.overwrite:
@@ -1733,7 +1732,7 @@ def download(args):
     def download_one_folder(project, folder, strip_prefix, destdir):
         assert(folder.startswith(strip_prefix))
         if not args.recursive:
-            parser.exit("Error: {path} is a folder but the -r/--recursive option was not given".format(path=folder))
+            err_exit('Error: "' + folder + '" is a folder but the -r/--recursive option was not given')
         
         for subfolder in list_subfolders(project, folder, recurse=True):
             ensure_local_dir(os.path.join(destdir, subfolder[len(strip_prefix)+1:]))
@@ -1743,7 +1742,6 @@ def download(args):
                                                recurse=True, describe=True):
             file_desc = f['describe']
             dest_filename = os.path.join(destdir, file_desc['folder'][len(strip_prefix)+1:], file_desc['name'])
-            print "Downloading", file_desc['folder']+'/'+file_desc['name'], "into", dest_filename
             download_one_file(project, file_desc['id'], dest_filename)
 
     def download_files(files, destdir, dest_filename=None):
@@ -1773,14 +1771,12 @@ def download(args):
     def list_subfolders(project, path, recurse=True):
         if project not in cached_folder_lists:
             cached_folder_lists[project] = dxpy.DXProject(project).describe(input_params={'folders': True})['folders']
-        print "Listing subfolders of", project, ":", path
-        print "Full list:", cached_folder_lists[project]
         # TODO: support shell-style path globbing (i.e. /a*/c matches /ab/c but not /a/b/c)
         # return fnmatch.filter(cached_folder_lists[project], os.path.join(path, '*'))
         if recurse:
-            return [f for f in cached_folder_lists[project] if f.startswith(path) and '/' not in f[len(path)+1:]]
-        else:
             return [f for f in cached_folder_lists[project] if f.startswith(path)]
+        else:
+            return [f for f in cached_folder_lists[project] if f.startswith(path) and '/' not in f[len(path)+1:]]
 
     folders_to_get, files_to_get, count = collections.defaultdict(list), collections.defaultdict(list), 0
     for path in args.paths:
@@ -1809,10 +1805,6 @@ def download(args):
         folders_to_get[project].extend(((f, strip_prefix) for f in matching_folders))
         count += len(matching_files) + len(matching_folders)
 
-    print "Will download folders:", folders_to_get
-    for project in files_to_get:
-        print "Will download files:", project, [os.path.join(f['describe']['folder'],f['describe']['name']) for f in files_to_get[project]]
-
     if args.output is None:
         destdir, dest_filename = os.getcwd(), None
     elif count > 1:
@@ -1822,19 +1814,8 @@ def download(args):
     else:
         destdir, dest_filename = os.getcwd(), args.output
 
-    print "Downloading into", destdir, dest_filename
-
     download_folders(folders_to_get, destdir)
     download_files(files_to_get, destdir, dest_filename=dest_filename)
-
-
-#         if entity_result['describe']['class'] != 'file':
-#             err_exit(fill('Error: {path} is neither a file nor a folder name'.format(path=args.path)))
-#         filename = args.output
-#         if filename is None:
-#             filename = entity_result['describe']['name'].replace('/', '%2F')
-#         elif os.path.isdir(filename):
-#             filename += entity_result['describe']['name'].replace('/', '%2F')
 
 def get(args):
     # Attempt to resolve name
