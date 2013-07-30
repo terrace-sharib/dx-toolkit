@@ -1703,6 +1703,19 @@ def make_download_url(args):
     except:
         err_exit()
 
+def download_one_file(project, file_id, dest_filename, args):
+    if not args.overwrite:
+        if os.path.exists(dest_filename):
+            err_exit(fill('Error: path "' + dest_filename + '" already exists but -f/--overwrite was not set'))
+    try:
+        show_progress = args.show_progress
+    except AttributeError:
+        show_progress = False
+    try:
+        dxpy.download_dxfile(file_id, dest_filename, show_progress=show_progress, project=project)
+    except:
+        err_exit()
+
 def download(args):
     if args.output == '-':
         cat(parser.parse_args(['cat'] + args.paths))
@@ -1715,19 +1728,6 @@ def download(args):
             if os.path.exists(d):
                 err_exit(fill('Error: path "' + d + '" already exists and is not a directory'))
             os.makedirs(d)
-
-    def download_one_file(project, id, dest_filename):
-        if not args.overwrite:
-            if os.path.exists(dest_filename):
-                err_exit(fill('Error: path "' + dest_filename + '" already exists but -f/--overwrite was not set'))
-        try:
-            show_progress = args.show_progress
-        except AttributeError:
-            show_progress = False
-        try:
-            dxpy.download_dxfile(id, dest_filename, show_progress=show_progress, project=project)
-        except:
-            err_exit()
 
     def download_one_folder(project, folder, strip_prefix, destdir):
         assert(folder.startswith(strip_prefix))
@@ -1742,14 +1742,14 @@ def download(args):
                                                recurse=True, describe=True):
             file_desc = f['describe']
             dest_filename = os.path.join(destdir, file_desc['folder'][len(strip_prefix)+1:], file_desc['name'])
-            download_one_file(project, file_desc['id'], dest_filename)
+            download_one_file(project, file_desc['id'], dest_filename, args)
 
     def download_files(files, destdir, dest_filename=None):
         for project in files:
             for f in files[project]:
                 file_desc = f['describe']
                 dest = dest_filename or os.path.join(destdir, file_desc['name'].replace('/', '%2F'))
-                download_one_file(project, file_desc['id'], dest)
+                download_one_file(project, file_desc['id'], dest, args)
 
     def download_folders(folders, destdir):
         for project in folders:
@@ -1826,7 +1826,7 @@ def get(args):
         parser.exit(1, fill('Could not resolve ' + args.path + ' to a data object') + '\n')
 
     if entity_result['describe']['class'] == 'file':
-        download_one(args, True, project, folderpath, entity_result)
+        download_one_file(project, entity_result['describe']['id'], entity_result['describe']['name'], args)
         return
 
     if entity_result['describe']['class'] not in ['record', 'applet']:
