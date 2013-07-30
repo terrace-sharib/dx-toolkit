@@ -1756,6 +1756,14 @@ def download(args):
     def is_glob(path):
         return get_first_pos_of_char('*', path) > -1 or get_first_pos_of_char('?', path) > -1
 
+    def rel2abs(path, project):
+        if path.startswith('/') or dxpy.WORKSPACE_ID != project:
+            abs_path, strip_prefix = path, ''
+        else:
+            wd = os.environ.get('DX_CLI_WD', '/')
+            abs_path, strip_prefix = os.path.join(wd, path), wd
+        return abs_path, strip_prefix
+
     folders_to_get, files_to_get = collections.defaultdict(list), collections.defaultdict(list)
     for path in args.paths:
         # Attempt to resolve name. If --all is given or the path looks like a glob, download all matches.
@@ -1768,11 +1776,11 @@ def download(args):
         if matching_files is None:
             matching_files = []
 
-        if not path.startswith('/'):
-            abs_path = os.path.join(os.environ.get('DX_CLI_WD', '/'), path)
+        abs_path, strip_prefix = rel2abs(path, project)
+
         parent_folder = os.path.dirname(abs_path.rstrip('/'))
         folder_listing = dxpy.DXProject(project).list_folder(folder=parent_folder, only='folders')['folders'] # includeHidden=
-        matching_folders = fnmatch.filter(folder_listing, path)
+        matching_folders = fnmatch.filter(folder_listing, abs_path)
 
         if len(matching_files) == 0 and len(matching_folders) == 0:
             err_exit(fill('Error: {path} is neither a file nor a folder name'.format(path=path)))
@@ -1798,6 +1806,7 @@ def download(args):
 #        if args.recursive or entity_results is None:
 #        print project, folderpath, json.dumps(matching_files, indent=4)
 
+    if False:
         if len(entity_result) > 0 and args.output:
             err_exit(fill("Error: --output cannot be used when downloading multiple objects"))
 
@@ -1809,8 +1818,6 @@ def download(args):
             filename = entity_result['describe']['name'].replace('/', '%2F')
         elif os.path.isdir(filename):
             filename += entity_result['describe']['name'].replace('/', '%2F')
-
-        download_one_file(project, entity_result['id'], filename)
 
 def get(args):
     # Attempt to resolve name
