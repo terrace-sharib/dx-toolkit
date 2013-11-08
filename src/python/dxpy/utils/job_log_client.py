@@ -29,11 +29,15 @@ from .describe import get_find_jobs_string
 from ..exceptions import err_exit
 
 class DXJobLogStreamingException(Exception):
-    pass
+    def __init__(self, message, code=None, reason=None):
+        self.message, self.code, self.reason = message, code, reason
+
+    def __str__(self):
+        return self.message
 
 class DXJobLogStreamClient(WebSocketBaseClient):
     def __init__(self, job_id, input_params={}, msg_output_format="{job} {level} {msg}", msg_callback=None,
-                 print_job_info=True):
+                 print_job_info=True, last_seen_timestamp=0):
         self.job_id = job_id
         self.seen_jobs = {}
         self.input_params = input_params
@@ -41,6 +45,7 @@ class DXJobLogStreamClient(WebSocketBaseClient):
         self.msg_callback = msg_callback
         self.print_job_info = print_job_info
         self.closed_code, self.closed_reason = None, None
+        self.last_seen_timestamp = last_seen_timestamp
         ws_proto = 'wss' if dxpy.APISERVER_PROTOCOL == 'https' else 'ws'
         url = "{protocol}://{host}:{port}/{job_id}/streamLog/websocket".format(protocol=ws_proto,
                                                                         host=dxpy.APISERVER_HOST,
@@ -63,11 +68,12 @@ class DXJobLogStreamClient(WebSocketBaseClient):
         if self.closed_code != 1000:
             try:
                 error = json.loads(self.closed_reason)
-                raise DXJobLogStreamingException("Error while streaming job logs: {type}: {message}\n".format(**error))
+                raise DXJobLogStreamingException("Error while streaming job logs: {type}: {message}\n".format(**error),
+                                                 code=code, reason=reason)
             except (KeyError, ValueError):
                 error = "Error while streaming job logs: {code} {reason}\n".format(code=self.closed_code,
                                                                                    reason=self.closed_reason)
-                raise DXJobLogStreamingException(error)
+                raise DXJobLogStreamingException(error, code=code, reason=reason)
         elif self.print_job_info:
             if self.job_id not in self.seen_jobs:
                 self.seen_jobs[self.job_id] = {}
@@ -86,6 +92,12 @@ class DXJobLogStreamClient(WebSocketBaseClient):
         if self.print_job_info and 'job' in message and message['job'] not in self.seen_jobs:
             self.seen_jobs[message['job']] = dxpy.describe(message['job'])
             print get_find_jobs_string(self.seen_jobs[message['job']], has_children=False, show_outputs=False)
+
+        if 'timestamp' in message:
+            if int(message['timestamp']) < self.last_seen_timestamp:
+                return
+            else:
+                self.last_seen_timestamp = int(message['timestamp'])
 
         if message.get('source') == 'SYSTEM' and message.get('msg') == 'END_LOG':
             self.close()

@@ -3246,7 +3246,7 @@ def watch(args):
             message['job_name'] = log_client.seen_jobs[message['job']]['name'] if message['job'] in log_client.seen_jobs else message['job']
             print args.format.format(**message)
 
-    from dxpy.utils.job_log_client import DXJobLogStreamClient
+    from dxpy.utils.job_log_client import DXJobLogStreamClient, DXJobLogStreamingException
 
     input_params = {"numRecentMessages": args.num_recent_messages,
                     "recurseJobs": args.tree,
@@ -3258,17 +3258,24 @@ def watch(args):
     if not re.match("^job-[0-9a-zA-Z]{24}$", args.jobid):
         err_exit(args.jobid + " does not look like a DNAnexus job ID")
 
-    log_client = DXJobLogStreamClient(args.jobid, input_params=input_params, msg_callback=msg_callback,
-                                      msg_output_format=args.format, print_job_info=args.job_info)
+    last_seen_timestamp = 0
+    while True:
+        log_client = DXJobLogStreamClient(args.jobid, input_params=input_params, msg_callback=msg_callback,
+                                          msg_output_format=args.format, print_job_info=args.job_info,
+                                          last_seen_timestamp=last_seen_timestamp)
 
-    # Note: currently, the client is synchronous and blocks until the socket is closed.
-    # If this changes, some refactoring may be needed below
-    try:
-        if not args.quiet:
-            print >>sys.stderr, "Watching job %s%s. Press Ctrl+C to stop." % (args.jobid, (" and sub-jobs" if args.tree else ""))
-        log_client.connect()
-    except Exception as details:
-        parser.exit(3, fill(unicode(details)) + '\n')
+        # Note: currently, the client is synchronous and blocks until the socket is closed.
+        # If this changes, some refactoring may be needed below
+        try:
+            if not args.quiet:
+                print >>sys.stderr, "Watching job %s%s. Press Ctrl+C to stop." % (args.jobid, (" and sub-jobs" if args.tree else ""))
+            log_client.connect()
+        except Exception as e:
+            if isinstance(e, DXJobLogStreamingException) and e.code == 1001 and 'reconnect later' in e.reason:
+                last_seen_timestamp = log_client.last_seen_timestamp
+                continue
+            else:
+                parser.exit(3, fill(unicode(e)) + '\n')
 
 def upgrade(args):
     if len(args.args) == 0:
