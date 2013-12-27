@@ -428,7 +428,42 @@ class DXWorkflow(DXDataObject, DXExecutable):
             effective_input[input_name] = workflow_input[key]
         return effective_input
 
-    def run(self, workflow_input, instance_type=None, extra_args=None, *args, **kwargs):
+    def _get_super_run_input(self, workflow_input, *args, **kwargs):
+        '''
+        Translates the input values to a tuple of (workflow_input, args, kwargs)
+        '''
+
+        effective_input = self._get_effective_input(workflow_input)
+        # inject instance type requests into extra_args since the
+        # syntax isn't supported by the superclass
+        if kwargs.get('instance_type') is not None:
+            extra_args = kwargs.get('extra_args', {})
+            extra_args = extra_args.copy()
+            if isinstance(kwargs['instance_type'], basestring):
+                extra_args['systemRequirements'] = {
+                    '*': self._inst_type_to_sys_reqs(kwargs['instance_type'])
+                }
+            elif isinstance(kwargs['instance_type'], dict):
+                extra_args['systemRequirements'] = {}
+                for stage, value in kwargs['instance_type'].iteritems():
+                    if stage != '*':
+                        stage = self._get_stage_id(stage)
+                    extra_args['systemRequirements'] = {stage: self._inst_type_to_sys_reqs(value)}
+            del kwargs['instance_type']
+            kwargs['extra_args'] = extra_args
+        return (effective_input, args, kwargs)
+
+    def _get_run_input(self, workflow_input, *args, **kwargs):
+        '''
+        Expects the same arguments as the run method
+        '''
+
+        super_run_input = self._get_super_run_input(workflow_input, *args, **kwargs)
+        return super(DXWorkflow, self)._get_run_input(super_run_input[0],
+                                                      *super_run_input[1],
+                                                      **super_run_input[2])
+
+    def run(self, workflow_input, *args, **kwargs):
         '''
         :param workflow_input: Dictionary of the workflow's input arguments; see below for more details
         :type workflow_input: dict
@@ -458,22 +493,7 @@ class DXWorkflow(DXDataObject, DXExecutable):
 
         See :meth:`dxpy.bindings.dxapplet.DXExecutable.run` for the available args.
         '''
-
-        effective_input = self._get_effective_input(workflow_input)
-        # inject instance type requests into extra_args since the
-        # syntax isn't supported by the superclass
-        if instance_type is not None:
-            if extra_args is None:
-                extra_args = {}
-            else:
-                extra_args = extra_args.copy()
-            if isinstance(instance_type, basestring):
-                extra_args['systemRequirements'] = {'*': self._inst_type_to_sys_reqs(instance_type)}
-            elif isinstance(instance_type, dict):
-                extra_args['systemRequirements'] = {}
-                for stage, value in instance_type.iteritems():
-                    if stage != '*':
-                        stage = self._get_stage_id(stage)
-                    extra_args['systemRequirements'] = {stage: self._inst_type_to_sys_reqs(value)}
-        return super(DXWorkflow, self).run(effective_input, extra_args=extra_args, *args,
-                                           **kwargs)
+        super_run_input = self._get_super_run_input(workflow_input, *args, **kwargs)
+        return super(DXWorkflow, self).run(super_run_input[0],
+                                           *super_run_input[1],
+                                           **super_run_input[2])
