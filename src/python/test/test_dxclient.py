@@ -880,6 +880,21 @@ class TestDXClientWorkflow(DXTestCase):
         self.assertIn("Tags bar\n", analysis_desc)
         self.assertIn("Properties foo=bar\n", analysis_desc)
 
+        # Test dx run --clone
+        new_analysis_id = run("dx run --clone " + analysis_id + " --brief -y").strip()
+        new_analysis_desc = dxpy.describe(new_analysis_id)
+        orig_analysis_desc = dxpy.describe(analysis_id)
+        # expect a reused job
+        self.assertEqual(new_analysis_desc['stages'][0]['execution']['id'],
+                         orig_analysis_desc['stages'][0]['execution']['id'])
+
+        # Override some options
+        new_analysis_id = run("dx run --clone " + analysis_id + " -i0.number=52 --brief -y").strip()
+        new_analysis_desc = dxpy.describe(new_analysis_id)
+        time.sleep(2) # May need to wait for job to be created in the system
+        new_job_desc = dxpy.describe(new_analysis_desc['stages'][0]['execution']['id'])
+        self.assertEqual(new_job_desc['input']['number'], 52)
+
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would attempt to run a job')
     def test_inaccessible_stage(self):
         applet_id = dxpy.api.applet_new({"name": "myapplet",
