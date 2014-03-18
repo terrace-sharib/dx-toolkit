@@ -18,8 +18,10 @@ package com.dnanexus;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 
@@ -893,4 +895,125 @@ public class DXSearchTest {
                         .nameMatchesExactly("javaFindExecutionsPagingTest").execute(4),
                 jobs.toArray(new DXJob[0]));
     }
+
+    /**
+     * Tests a variety of findProjects features.
+     */
+    @Test
+    public void testFindProjects() {
+        String prefix = "DXSearch.findProjects test project " + Long.toString(new Date().getTime());
+        String projectName = prefix + " " + Integer.toString(new Random().nextInt() % 1000000);
+        DXProject sampleProject = DXProject.newProject().setName(projectName).build();
+        try {
+            assertEqualsAnyOrder(DXSearch.findProjects().nameMatchesExactly(projectName).execute(),
+                    sampleProject);
+            assertEqualsAnyOrder(DXSearch.findProjects().nameMatchesExactly(projectName + "x")
+                    .execute());
+            assertEqualsAnyOrder(DXSearch.findProjects().nameMatchesGlob(prefix + "*").execute(),
+                    sampleProject);
+            assertEqualsAnyOrder(DXSearch.findProjects().nameMatchesRegexp(prefix + " [0-9]+$")
+                    .execute(), sampleProject);
+            assertEqualsAnyOrder(
+                    DXSearch.findProjects().nameMatchesExactly(projectName).isPublic(false)
+                            .execute(), sampleProject);
+            assertEqualsAnyOrder(DXSearch.findProjects().nameMatchesExactly(projectName)
+                    .isPublic(true).execute());
+            assertEqualsAnyOrder(DXSearch.findProjects().nameMatchesExactly(projectName)
+                    .withExplicitPermission(true).execute(), sampleProject);
+            assertEqualsAnyOrder(DXSearch.findProjects().nameMatchesExactly(projectName)
+                    .withExplicitPermission(false).execute());
+            assertEqualsAnyOrder(
+                    DXSearch.findProjects().nameMatchesExactly(projectName)
+                            .withLevel(AccessLevel.CONTRIBUTE).execute(), sampleProject);
+
+            // TODO: test properties and tags
+        } finally {
+            sampleProject.destroy();
+        }
+    }
+
+    /**
+     * Tests formulating findProjects queries without actually executing them.
+     *
+     * @throws IOException if a test case contains malformed JSON
+     */
+    @Test
+    public void testFindProjectsQuerySerialization() throws IOException {
+        Assert.assertEquals(
+                DXJSON.parseJson("{\"name\": \"dnanexus\"}"),
+                mapper.valueToTree(DXSearch.findProjects().nameMatchesExactly("dnanexus")
+                        .buildRequestHash()));
+        Assert.assertEquals(
+                DXJSON.parseJson("{\"name\": {\"regexp\": \"(DNA|dna)nexus\"}}"),
+                mapper.valueToTree(DXSearch.findProjects().nameMatchesRegexp("(DNA|dna)nexus")
+                        .buildRequestHash()));
+        Assert.assertEquals(
+                DXJSON.parseJson("{\"name\": {\"regexp\": \"[dr]nanexus\"}}"),
+                mapper.valueToTree(DXSearch.findProjects().nameMatchesRegexp("[dr]nanexus", false)
+                        .buildRequestHash()));
+        Assert.assertEquals(
+                DXJSON.parseJson("{\"name\": {\"regexp\": \"[dr]nanexus\", \"flags\": \"i\"}}"),
+                mapper.valueToTree(DXSearch.findProjects().nameMatchesRegexp("[dr]nanexus", true)
+                        .buildRequestHash()));
+
+        Assert.assertEquals(
+                DXJSON.parseJson("{\"billTo\": \"user-dnanexus\"}"),
+                mapper.valueToTree(DXSearch.findProjects().withBillTo("user-dnanexus")
+                        .buildRequestHash()));
+        Assert.assertEquals(DXJSON.parseJson("{\"public\": true}"),
+                mapper.valueToTree(DXSearch.findProjects().isPublic(true).buildRequestHash()));
+        Assert.assertEquals(
+                DXJSON.parseJson("{\"explicitPermission\": true}"),
+                mapper.valueToTree(DXSearch.findProjects().withExplicitPermission(true)
+                        .buildRequestHash()));
+        Assert.assertEquals(
+                DXJSON.parseJson("{\"level\": \"CONTRIBUTE\"}"),
+                mapper.valueToTree(DXSearch.findProjects().withLevel(AccessLevel.CONTRIBUTE)
+                        .buildRequestHash()));
+    }
+
+    /**
+     * Tests deserialization of findProjects results without making real API calls.
+     *
+     * @throws IOException if a test case contains malformed JSON
+     */
+    @Test
+    public void testFindProjectsResponseSerialization() throws IOException {
+        DXJSON.safeTreeToValue(
+                DXJSON.parseJson("{\"results\":[{\"id\": \"project-000000000000000000000000\"}]}"),
+                DXSearch.FindProjectsResponse.class);
+
+        // Extra fields in the response should not cause us to choke (for API
+        // forward compatibility)
+        DXJSON.safeTreeToValue(DXJSON.parseJson("{\"notAField\": true, \"results\":[]}"),
+                DXSearch.FindProjectsResponse.class);
+    }
+
+    /**
+     * Tests paging through results.
+     */
+    @Test
+    public void testFindProjectsWithPaging() {
+        List<DXProject> projects = Lists.newArrayList();
+        String prefix = "DXSearch.findProjects paging test " + Long.toString(new Date().getTime());
+
+        try {
+            for (int i = 0; i < 8; ++i) {
+                projects.add(DXProject.newProject().setName(prefix + Integer.toString(i) + "/8")
+                        .build());
+            }
+
+            // Set a small page size
+            assertEqualsAnyOrder(DXSearch.findProjects().nameMatchesGlob(prefix + "*").execute(3),
+                    projects.toArray(new DXProject[0]));
+            // Page size is a multiple of the number of results
+            assertEqualsAnyOrder(DXSearch.findProjects().nameMatchesGlob(prefix + "*").execute(4),
+                    projects.toArray(new DXProject[0]));
+        } finally {
+            for (DXProject project : projects) {
+                project.destroy();
+            }
+        }
+    }
+
 }

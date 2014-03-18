@@ -1789,6 +1789,494 @@ public final class DXSearch {
     }
 
     /**
+     * A request to the /system/findProjects route.
+     */
+    @JsonInclude(Include.NON_NULL)
+    private static class FindProjectsRequest {
+        @JsonProperty
+        private final NameQuery name;
+        @JsonProperty
+        private final String billTo;
+        @JsonProperty
+        private final TagsQuery tags;
+        @JsonProperty
+        private final PropertiesQuery properties;
+        @JsonProperty
+        private final AccessLevel level;
+        @JsonProperty
+        private final Boolean explicitPermission;
+        @JsonProperty("public")
+        private final Boolean isPublic;
+
+        @SuppressWarnings("unused")
+        @JsonProperty
+        private final String starting;
+        @SuppressWarnings("unused")
+        @JsonProperty
+        private final Integer limit;
+
+        /**
+         * Creates a new {@code FindProjectsRequest} that clones the specified request, but changes
+         * the starting value and limit.
+         *
+         * @param previousQuery previous query to clone
+         * @param next starting value for subsequent results
+         * @param limit maximum number of results to return, or null to use the default
+         *        (server-provided) limit
+         */
+        private FindProjectsRequest(FindProjectsRequest previousQuery, String next, Integer limit) {
+            this.name = previousQuery.name;
+            this.billTo = previousQuery.billTo;
+            this.tags = previousQuery.tags;
+            this.properties = previousQuery.properties;
+            this.level = previousQuery.level;
+            this.explicitPermission = previousQuery.explicitPermission;
+            this.isPublic = previousQuery.isPublic;
+
+            this.starting = next;
+            this.limit = limit;
+        }
+
+        /**
+         * Creates a new {@code FindProjectsRequest} from the query parameters set in the specified
+         * builder.
+         *
+         * @param builder builder object to initialize this query with
+         */
+        private FindProjectsRequest(FindProjectsRequestBuilder builder) {
+            this.name = builder.nameQuery;
+            this.billTo = builder.billTo;
+            this.tags = builder.tags;
+            this.properties = builder.properties;
+            this.level = builder.level;
+            this.explicitPermission = builder.explicitPermission;
+            this.isPublic = builder.isPublic;
+
+            this.starting = null;
+            this.limit = null;
+        }
+
+    }
+
+    /**
+     * Builder class for formulating {@code findProjects} queries and executing them.
+     *
+     * <p>
+     * Obtain an instance of this class via {@link #findProjects()}.
+     * </p>
+     */
+    public static class FindProjectsRequestBuilder {
+        private NameQuery nameQuery;
+        private String billTo;
+        private TagsQuery tags;
+        private PropertiesQuery properties;
+        private AccessLevel level;
+        private Boolean explicitPermission;
+        private Boolean isPublic;
+
+        // TODO: describe
+
+        private final DXEnvironment env;
+
+        private FindProjectsRequestBuilder() {
+            this.env = DXEnvironment.create();
+        }
+
+        private FindProjectsRequestBuilder(DXEnvironment env) {
+            this.env = env;
+        }
+
+        @VisibleForTesting
+        FindProjectsRequest buildRequestHash() {
+            // Use this method to test the JSON hash created by a particular
+            // builder call without actually executing the request.
+            return new FindProjectsRequest(this);
+        }
+
+        /**
+         * Executes the query.
+         *
+         * @return object encapsulating the result set
+         */
+        public FindProjectsResult execute() {
+            return new FindProjectsResult(this.buildRequestHash(), this.env);
+        }
+
+        /**
+         * Executes the query with the specified page size.
+         *
+         * @param pageSize number of results to obtain on each request
+         *
+         * @return object encapsulating the result set
+         */
+        public FindProjectsResult execute(int pageSize) {
+            return new FindProjectsResult(this.buildRequestHash(), this.env, pageSize);
+        }
+
+        /**
+         * Only returns projects based on whether they are public.
+         *
+         * @param isPublic if true, only returns projects that are public; if false, does not return
+         *        any projects that are public
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder isPublic(boolean isPublic) {
+            Preconditions.checkState(this.isPublic == null,
+                    "Cannot specify isPublic more than once");
+            this.isPublic = isPublic;
+            return this;
+        }
+
+        /**
+         * Only returns projects whose names exactly equal the specified string.
+         *
+         * <p>
+         * This method may only be called once during the construction of a query, and is mutually
+         * exclusive with {@link #nameMatchesGlob(String)}, {@link #nameMatchesRegexp(String)}, and
+         * {@link #nameMatchesRegexp(String, boolean)}.
+         * </p>
+         *
+         * @param name name of project
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder nameMatchesExactly(String name) {
+            Preconditions.checkState(this.nameQuery == null,
+                    "Cannot specify nameMatches* methods more than once");
+            this.nameQuery =
+                    new NameQuery.ExactNameQuery(Preconditions.checkNotNull(name,
+                            "name may not be null"));
+            return this;
+        }
+
+        /**
+         * Only returns projects whose name match the specified glob.
+         *
+         * <p>
+         * This method may only be called once during the construction of a query, and is mutually
+         * exclusive with {@link #nameMatchesExactly(String)}, {@link #nameMatchesRegexp(String)},
+         * and {@link #nameMatchesRegexp(String, boolean)}.
+         * </p>
+         *
+         * @param glob shell-like pattern to be matched against project name
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder nameMatchesGlob(String glob) {
+            Preconditions.checkState(this.nameQuery == null,
+                    "Cannot specify nameMatches* methods more than once");
+            this.nameQuery =
+                    new NameQuery.GlobNameQuery(Preconditions.checkNotNull(glob,
+                            "glob may not be null"));
+            return this;
+        }
+
+
+        /**
+         * Only returns projects whose names match the specified regexp.
+         *
+         * <p>
+         * This method may only be called once during the construction of a query, and is mutually
+         * exclusive with {@link #nameMatchesExactly(String)}, {@link #nameMatchesGlob(String)}, and
+         * {@link #nameMatchesRegexp(String, boolean)}.
+         * </p>
+         *
+         * @param regexp regexp to be matched against project name
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder nameMatchesRegexp(String regexp) {
+            Preconditions.checkState(this.nameQuery == null,
+                    "Cannot specify nameMatches* methods more than once");
+            this.nameQuery =
+                    new NameQuery.RegexpNameQuery(Preconditions.checkNotNull(regexp,
+                            "regexp may not be null"));
+            return this;
+        }
+
+        /**
+         * Only returns projects whose names match the specified regexp (optionally allowing the
+         * match to be case insensitive).
+         *
+         * <p>
+         * This method may only be called once during the construction of a query, and is mutually
+         * exclusive with {@link #nameMatchesExactly(String)}, {@link #nameMatchesGlob(String)}, and
+         * {@link #nameMatchesRegexp(String)}.
+         * </p>
+         *
+         * @param regexp regexp to be matched against project name
+         * @param caseInsensitive if true, the regexp is matched case-insensitively
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder nameMatchesRegexp(String regexp, boolean caseInsensitive) {
+            Preconditions.checkState(this.nameQuery == null,
+                    "Cannot specify nameMatches* methods more than once");
+            this.nameQuery =
+                    new NameQuery.RegexpNameQuery(Preconditions.checkNotNull(regexp,
+                            "regexp may not be null"), caseInsensitive ? "i" : null);
+            return this;
+        }
+
+        /**
+         * Only returns projects billed to the specified entity.
+         *
+         * @param billTo user or org ID
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder withBillTo(String billTo) {
+            Preconditions.checkState(this.billTo == null,
+                    "Cannot specify withBillTo more than once");
+            this.billTo = Preconditions.checkNotNull(billTo, "billTo may not be null");
+            return this;
+        }
+
+        /**
+         * Only returns projects based on whether the requesting user has an explicitly granted
+         * permission (the project has been shared with the user directly or with an org of which
+         * the user is a member).
+         *
+         * @param explicitPermission if true, only returns projects with at least one explicit
+         *        permission; if false, only returns accessible projects with no explicit permission
+         *        (such projects will necessarily be public)
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder withExplicitPermission(boolean explicitPermission) {
+            Preconditions.checkState(this.explicitPermission == null,
+                    "Cannot specify withExplicitPermission more than once");
+            this.explicitPermission = explicitPermission;
+            return this;
+        }
+
+        /**
+         * Only returns projects where the requesting user has at least the specified access level
+         * to the project.
+         *
+         * @param level minimum access level
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder withLevel(AccessLevel level) {
+            Preconditions.checkState(this.level == null, "Cannot specify withLevel more than once");
+            this.level = Preconditions.checkNotNull(level, "level may not be null");
+            return this;
+        }
+
+        /**
+         * Only returns projects matching the specified properties query.
+         *
+         * @param propertiesQuery properties query
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder withProperties(PropertiesQuery propertiesQuery) {
+            // Multiple calls to withProperty are NOT allowed here (unlike findDataObjects and
+            // findExecutions) since findProjects never had the old-style functionality.
+            Preconditions.checkState(this.properties == null,
+                    "Cannot specify withProperty/withProperties more than once");
+            this.properties = Preconditions.checkNotNull(propertiesQuery);
+            return this;
+        }
+
+        /**
+         * Only returns projects where the specified property is present.
+         *
+         * <p>
+         * To specify a complex query on the properties, use
+         * {@link #withProperties(PropertiesQuery)}.
+         * </p>
+         *
+         * @param propertyKey property key that must be present
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder withProperty(String propertyKey) {
+            return withProperties(PropertiesQuery.withKey(propertyKey));
+        }
+
+        /**
+         * Only returns projects where the specified property has the specified value.
+         *
+         * <p>
+         * To specify a complex query on the properties, use
+         * {@link #withProperties(PropertiesQuery)}.
+         * </p>
+         *
+         * @param propertyKey property key
+         * @param propertyValue property value
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder withProperty(String propertyKey, String propertyValue) {
+            return withProperties(PropertiesQuery.withKeyAndValue(propertyKey, propertyValue));
+        }
+
+        /**
+         * Only returns projects with the specified tag.
+         *
+         * <p>
+         * To specify a complex query on the tags, use {@link #withTags(TagsQuery)}.
+         * </p>
+         *
+         * @param tag String containing a tag
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder withTag(String tag) {
+            Preconditions.checkState(this.tags == null, "Cannot specify withTag* more than once");
+            this.tags = TagsQuery.of(Preconditions.checkNotNull(tag, "tag may not be null"));
+            return this;
+        }
+
+        /**
+         * Only returns projects matching the specified tags query.
+         *
+         * @param tagsQuery tags query
+         *
+         * @return the same builder object
+         */
+        public FindProjectsRequestBuilder withTags(TagsQuery tagsQuery) {
+            Preconditions.checkState(this.tags == null, "Cannot specify withTag* more than once");
+            this.tags = Preconditions.checkNotNull(tagsQuery, "tagsQuery may not be null");
+            return this;
+        }
+
+    }
+
+    /**
+     * Deserialized output from the /system/findProjects route.
+     */
+    @VisibleForTesting
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class FindProjectsResponse {
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        private static class Entry {
+            @JsonProperty
+            private String id;
+
+            // TODO: level
+            // @JsonProperty
+            // private AccessLevel level;
+
+            // TODO: public
+            // @JsonProperty("public")
+            // private boolean isPublic;
+
+            // TODO: permissionSources
+
+            // TODO: describe
+            // @JsonProperty
+            // private JsonNode describe;
+        }
+
+        @JsonProperty
+        private List<Entry> results;
+
+        @JsonProperty
+        private String next;
+    }
+
+    /**
+     * The set of data objects that matched a {@code findProjects} query.
+     *
+     * <p>
+     * This class paginates through the results as necessary to return the full result set.
+     * </p>
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class FindProjectsResult extends ObjectProducerImpl<DXProject> {
+
+        /**
+         * Wrapper from the findProjects result page class to the high-level interface
+         * FindResultPage.
+         */
+        private class FindProjectsResultPage implements FindResultPage<DXProject> {
+
+            private final FindProjectsResponse response;
+
+            public FindProjectsResultPage(FindProjectsResponse response) {
+                this.response = response;
+            }
+
+            @Override
+            public DXProject get(int index) {
+                return DXProject.getInstanceWithEnvironment(response.results.get(index).id, env);
+            }
+
+            @Override
+            public boolean hasNextPage() {
+                return response.next != null;
+            }
+
+            @Override
+            public int size() {
+                return response.results.size();
+            }
+
+        }
+
+        /**
+         * Iterator implementation for findProjects results.
+         */
+        private class ResultIterator
+                extends
+                PaginatingFindResultIterator<DXProject, FindProjectsRequest, FindProjectsResultPage> {
+
+            public ResultIterator() {
+                super(baseQuery);
+            }
+
+            @Override
+            public FindProjectsRequest getNextQuery(FindProjectsRequest query,
+                    FindProjectsResultPage currentResultPage) {
+                return new FindProjectsRequest(query, currentResultPage.response.next, pageSize);
+            }
+
+            @Override
+            public FindProjectsResultPage issueQuery(FindProjectsRequest query) {
+                return new FindProjectsResultPage(DXAPI.systemFindProjects(query,
+                        FindProjectsResponse.class, env));
+            }
+        }
+
+        private final FindProjectsRequest baseQuery;
+        private final DXEnvironment env;
+
+        // Number of results to fetch with each API call, or null to use the default
+        private final Integer pageSize;
+
+        /**
+         * Initializes this result set object with the default (API server-provided) page size.
+         */
+        private FindProjectsResult(FindProjectsRequest requestHash, DXEnvironment env) {
+            this.baseQuery = requestHash;
+            this.env = env;
+
+            this.pageSize = null;
+        }
+
+        /**
+         * Initializes this result set object with the specified page size.
+         */
+        private FindProjectsResult(FindProjectsRequest requestHash, DXEnvironment env, int pageSize) {
+            this.baseQuery = requestHash;
+            this.env = env;
+
+            this.pageSize = pageSize;
+        }
+
+        @Override
+        public Iterator<DXProject> iterator() {
+            return new ResultIterator();
+        }
+
+    }
+
+    /**
      * Encapsulates a single result page (of generic type) for a find route.
      *
      * @param <T> Type of result to be returned e.g. DXDataObject for findDataObjects
@@ -2450,6 +2938,28 @@ public final class DXSearch {
     @Deprecated
     public static FindExecutionsRequestBuilder<DXJob> findJobsWithEnvironment(DXEnvironment env) {
         return new FindExecutionsRequestBuilder<DXExecution>(env).withClassJob();
+    }
+
+    /**
+     * Returns a builder object for finding projects that match certain criteria.
+     *
+     * @return a newly initialized builder object
+     */
+    public static FindProjectsRequestBuilder findProjects() {
+        return new FindProjectsRequestBuilder();
+    }
+
+    /**
+     * Returns a builder object for finding projects that match certain criteria, using the
+     * specified environment.
+     *
+     * @param env environment specifying API server parameters for issuing the query; the
+     *        environment will be propagated into objects that are subsequently returned
+     *
+     * @return a newly initialized builder object
+     */
+    public static FindProjectsRequestBuilder findProjectsWithEnvironment(DXEnvironment env) {
+        return new FindProjectsRequestBuilder(env);
     }
 
     // Prevent this utility class from being instantiated.
