@@ -65,10 +65,15 @@ git_submodules:
 	    "`which git-retry || which git`" submodule update; \
 	fi)
 
+install_git_hooks:
+	if [[ -d "$(DNANEXUS_HOME)/.git" ]]; then \
+	    cp -af "$(DNANEXUS_HOME)/build/pre-commit-hook.py" "$(DNANEXUS_HOME)/.git/hooks/pre-commit"; \
+	fi
+
 # Client bindings and wrappers
 # ============================
 
-toolkit_version:
+toolkit_version: install_git_hooks
 	(if [ ! -e "$(DNANEXUS_HOME)/src/python/dxpy/toolkit_version.py" ]; then \
 	    echo "version = 'UNKNOWN_VERSION'" > "$(DNANEXUS_HOME)/src/python/dxpy/toolkit_version.py"; \
 	    echo -e "module DX\n  VERSION = \"0.0.0\"\nend\n" > "$(DNANEXUS_HOME)/src/ruby/lib/dxruby/version.rb"; \
