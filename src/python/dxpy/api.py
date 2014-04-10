@@ -2074,6 +2074,24 @@ def record_new(input_params={}, always_retry=False, **kwargs):
     """
     return DXHTTPRequest('/record/new', input_params, always_retry=always_retry, **kwargs)
 
+def systemDescribeDataObjects(*args, **kwargs):
+    """
+
+    .. deprecated:: 0.42.0
+       Use :func:`system_describe_data_objects()` instead.
+
+    """
+    print("dxpy.systemDescribeDataObjects is deprecated; please use system_describe_data_objects instead.", file=sys.stderr)
+    return system_describe_data_objects(*args, **kwargs)
+
+def system_describe_data_objects(input_params={}, always_retry=True, **kwargs):
+    """
+    Invokes the /system/describeDataObjects API method.
+
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/System-Methods#API-method%3A-%2Fsystem%2FdescribeDataObjects
+    """
+    return DXHTTPRequest('/system/describeDataObjects', input_params, always_retry=always_retry, **kwargs)
+
 def systemFindAffiliates(*args, **kwargs):
     """
 

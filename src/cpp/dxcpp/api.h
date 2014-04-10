@@ -403,6 +403,9 @@ namespace dx {
   JSON recordNew(const std::string &input_params="{}", const bool retry=false);
   JSON recordNew(const dx::JSON &input_params, const bool retry=false);
 
+  JSON systemDescribeDataObjects(const std::string &input_params="{}", const bool retry=true);
+  JSON systemDescribeDataObjects(const dx::JSON &input_params, const bool retry=true);
+
   JSON systemFindAffiliates(const std::string &input_params="{}", const bool retry=true);
   JSON systemFindAffiliates(const dx::JSON &input_params, const bool retry=true);
 

@@ -1070,6 +1070,14 @@ namespace dx {
     return recordNew(input_params.toString(), retry);
   }
 
+  JSON systemDescribeDataObjects(const std::string &input_params, const bool retry) {
+    return DXHTTPRequest("/system/describeDataObjects", input_params, retry);
+  }
+
+  JSON systemDescribeDataObjects(const JSON &input_params, const bool retry) {
+    return systemDescribeDataObjects(input_params.toString(), retry);
+  }
+
   JSON systemFindAffiliates(const std::string &input_params, const bool retry) {
     return DXHTTPRequest("/system/findAffiliates", input_params, retry);
   }

@@ -652,6 +652,11 @@ exports.recordNew = function(input_params) {
 };
 
 
+exports.systemDescribeDataObjects = function(input_params) {
+  return dx.DXHTTPRequest('/system/describeDataObjects', input_params);
+};
+
+
 exports.systemFindAffiliates = function(input_params) {
   return dx.DXHTTPRequest('/system/findAffiliates', input_params);
 };
