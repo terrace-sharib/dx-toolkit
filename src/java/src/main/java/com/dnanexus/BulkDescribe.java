@@ -1,0 +1,70 @@
+// Copyright (C) 2014 DNAnexus, Inc.
+//
+// This file is part of dx-toolkit (DNAnexus platform client libraries).
+//
+//   Licensed under the Apache License, Version 2.0 (the "License"); you may
+//   not use this file except in compliance with the License. You may obtain a
+//   copy of the License at
+//
+//       http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+//   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+//   License for the specific language governing permissions and limitations
+//   under the License.
+
+package com.dnanexus;
+
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+
+public class BulkDescribe {
+
+    /**
+     * Request to /system/describeDataObjects
+     */
+    @JsonInclude(Include.NON_NULL)
+    private static class DescribeDataObjectsRequest {
+        @JsonProperty
+        private List<DescribeDataObjectsRequestObject> objects;
+    }
+
+    @JsonInclude(Include.NON_NULL)
+    private static class DescribeDataObjectsRequestObject {
+        @JsonProperty
+        private String id;
+        @JsonProperty
+        private DXDataObject.DescribeOptions describe;
+    }
+
+    /**
+     * Response from /system/describeDataObjects
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static class DescribeDataObjectsResponse {
+        @JsonProperty
+        private List<DescribeDataObjectsResponseObject> results;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static class DescribeDataObjectsResponseObject {
+        @JsonProperty
+        private JsonNode describe;
+        @JsonProperty
+        private JsonNode error;
+        @JsonProperty
+        private Integer statusCode;
+    }
+
+    public void describeDataObjects() {
+        DescribeDataObjectsRequest request = null;
+        DescribeDataObjectsResponse response =
+                DXAPI.systemDescribeDataObjects(request, DescribeDataObjectsResponse.class);
+    }
+}

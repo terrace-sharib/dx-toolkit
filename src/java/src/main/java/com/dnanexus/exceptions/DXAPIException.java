@@ -18,6 +18,7 @@ package com.dnanexus.exceptions;
 
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
@@ -115,6 +116,11 @@ public class DXAPIException extends RuntimeException {
         System.err.println("Received an API error of unknown type " + errorType
                 + "; deserializing it as a generic DXAPIException.");
         return new DXAPIException(errorMessageOrDefault, statusCode);
+    }
+
+    public static DXAPIException getInstance(JsonNode errorHash, int statusCode) {
+        // TODO: fill this in
+        return null;
     }
 
     /**
