@@ -17,7 +17,7 @@ if platform.python_implementation() != "PyPy":
 
 import logging, stat, argparse, json, threading
 
-from errno import ENOENT, ENOTDIR
+from errno import ENOENT, ENOTDIR, EEXIST
 from time import time
 
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
@@ -222,7 +222,11 @@ class DXFS(LoggingMixIn, Operations):
         debug("Populating data objects...")
 
         for i in dxpy.search.find_data_objects(project=self.project_id, describe=True):
-            self._new_dataobject(i["describe"])
+            try:
+                self._new_dataobject(i["describe"])
+            except BaseException as e:
+                print("error creating new node %r in %r" % (i["describe"]["name"], i["describe"]["folder"]), file=sys.stderr)
+                print(e, file=sys.stderr)
 
         debug('Finished init')
 
@@ -308,6 +312,9 @@ class DXFS(LoggingMixIn, Operations):
 
         if not parent.type == DXInode.DIR:
             raise FuseOSError(ENOTDIR)
+
+        if filename in parent.child_nodes:
+            raise FuseOSError(EEXIST)
 
         if dxid is None:
             f = dxpy.new_dxfile(name=filename, folder=dirname)
