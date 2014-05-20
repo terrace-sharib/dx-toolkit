@@ -176,6 +176,12 @@ class DXFS(LoggingMixIn, Operations):
         self.project_mtime = 0
         self.refresh_interval = refresh_interval
         self.initialized_once = threading.Event()
+        # reentrant lock to simplify update procedure (the thread in
+        # init() reading from the apiserver can update the data
+        # structures, without allowing reads elsewhere to see an
+        # inconsistent state, but both threads can call the same helper
+        # methods).
+        self.root_lock = threading.RLock()
 
     def wait_until_initialized(self):
         # Run a less expensive check that doesn't need to acquire a
@@ -200,6 +206,14 @@ class DXFS(LoggingMixIn, Operations):
         # where only the 'foo' method calls wait_until_initialized, and
         # init() only calls the '_foo' (non-waiting) version.
 
+        # The lock root_lock is used to synchronize access to self.root.
+        # This prevents the user from seeing the filesystem in a
+        # half-initialized state when the tree is being periodically
+        # refreshed. At each refresh we replace the filesystem tree with
+        # an entirely new tree, so each tree is immutable. Therefore,
+        # readers have to acquire root_lock to dereference self.root,
+        # but they do not have to
+
         if self.project_id.startswith('project-'):
             self.project = dxpy.DXProject(self.project_id)
         elif self.project_id.startswith('container-'):
@@ -214,19 +228,20 @@ class DXFS(LoggingMixIn, Operations):
         folders.sort(key=lambda item: (len(item), item))
         debug("Found", len(folders), "folders")
 
-        # This is where the old tree gets blown away (when reloading).
-        self.root = DXInode(DXInode.DIR, 'root', 0755 | stat.S_IFDIR, self.uid, self.gid)
+        with self.root_lock:
+            # Blow away the old tree (if reloading).
+            self.root = DXInode(DXInode.DIR, 'root', 0755 | stat.S_IFDIR, self.uid, self.gid)
 
-        for path in folders:
-            if path == '/':
-                continue
-            self._mkdir(str(path), 0755 | stat.S_IFDIR, make_remote=False)
+            for path in folders:
+                if path == '/':
+                    continue
+                self._mkdir(str(path), 0755 | stat.S_IFDIR, make_remote=False)
 
-        debug("Populated", len(folders), "folders")
-        debug("Populating data objects...")
+            debug("Populated", len(folders), "folders")
+            debug("Populating data objects...")
 
-        for i in dxpy.search.find_data_objects(project=self.project_id, describe=True):
-            self._new_dataobject(i["describe"])
+            for i in dxpy.search.find_data_objects(project=self.project_id, describe=True):
+                self._new_dataobject(i["describe"])
 
         debug('Finished init')
 
@@ -595,10 +610,12 @@ class DXFS(LoggingMixIn, Operations):
 
     # --- Tree Helpers
     def _node(self, path):
+        with self.root_lock:
+            r = self.root
         if path == '/':
-            return self.root
+            return r
         else:
-            return self.root.child(path[1:])
+            return r.child(path[1:])
 
     def _parent(self, path):
         parent_path = os.path.dirname(path)
