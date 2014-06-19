@@ -1,0 +1,24 @@
+{
+  "name": "test-jobutil",
+  "title": "test-jobutil",
+  "summary": "test-jobutil",
+  "dxapi": "1.0.0",
+  "version": "0.0.1",
+  "categories": [],
+  "inputSpec": [],
+  "outputSpec": [],
+  "runSpec": {
+    "interpreter": "bash",
+    "file": "src/test-jobutil.sh",
+    "execDepends": [
+        {"name": "virtualenv",
+         "package_manager": "pip"}
+    ]
+  },
+  "access": {
+    "network": [
+      "*"
+    ]
+  },
+  "authorizedUsers": []
+}
