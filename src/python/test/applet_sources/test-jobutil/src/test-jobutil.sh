@@ -34,10 +34,11 @@ main() {
 
     git clone https://github.com/dnanexus/dx-toolkit.git
     cd dx-toolkit
-    git checkout stable
+    git checkout test-jobutil
     make python
     source environment
 
     dx --version
 
+    dx-jobutil-dxlink -h
 }
