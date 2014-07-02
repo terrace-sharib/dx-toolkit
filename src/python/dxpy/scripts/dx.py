@@ -3608,7 +3608,7 @@ parser_upload = subparsers.add_parser('upload', help='Upload file(s) or director
                                       prog="dx upload")
 upload_filename_action = parser_upload.add_argument('filename', nargs='+',
                                                     help='Local file or directory to upload ("-" indicates stdin input); provide multiple times to upload multiple files or directories')
-#upload_filename_action.completer = LocalCompleter()
+upload_filename_action.completer = LocalCompleter()
 parser_upload.add_argument('-o', '--output', help=argparse.SUPPRESS) # deprecated; equivalent to --path/--destination
 parser_upload.add_argument('--path', '--destination',
                            help=fill('DNAnexus path to upload file(s) to (default uses current project and folder if not provided)', width_adjustment=-24),
