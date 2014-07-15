@@ -25,6 +25,7 @@ from __future__ import (print_function, unicode_literals)
 
 import os, sys, logging, traceback, hashlib, copy, time
 import concurrent.futures
+from base64 import b64encode
 
 import dxpy
 from . import DXDataObject
@@ -454,11 +455,6 @@ class DXFile(DXDataObject):
         if index is not None:
             req_input["index"] = int(index)
 
-        resp = dxpy.api.file_upload(self._dxid, req_input, **kwargs)
-        url = resp["url"]
-        headers = resp.get("headers", {})
-        headers['Content-Length'] = str(len(data))
-
         md5 = hashlib.md5()
         if hasattr(data, 'seek') and hasattr(data, 'tell'):
             # data is a buffer
@@ -474,9 +470,15 @@ class DXFile(DXDataObject):
         else:
             md5.update(data)
 
-        headers['Content-MD5'] = md5.hexdigest()
+        req_input["md5"] = md5.hexdigest()
+        resp = dxpy.api.file_upload(self._dxid, req_input, **kwargs)
+        url = resp["url"]
+        headers = resp.get("headers", {})
+        headers['Content-Length'] = str(len(data))
 
-        dxpy.DXHTTPRequest(url, data, headers=headers, jsonify_data=False, prepend_srv=False, always_retry=True, auth=None)
+        # TODO: remove method=PUT
+        dxpy.DXHTTPRequest(url, data, headers=headers, jsonify_data=False, prepend_srv=False, always_retry=True,
+                           auth=None, method='PUT')
 
         self._num_uploaded_parts += 1
 
