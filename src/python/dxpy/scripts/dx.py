@@ -1788,7 +1788,7 @@ def download(args):
         matching_folders = []
         if project is not None:
             # project may be none if path is an ID and there is no project context
-            abs_path, strip_prefix = rel2abs(path, project)
+            abs_path, strip_prefix = rel2abs(folderpath, project)
 
             parent_folder = os.path.dirname(abs_path)
             #folder_listing = dxpy.get_handler(project).list_folder(folder=parent_folder, only='folders')['folders'] # includeHidden=
