@@ -216,6 +216,13 @@ class TestDXClient(DXTestCase):
         with self.assertSubprocessFailure(stderr_regexp="Could not resolve", exit_code=1):
             run("dx remove_types ΨΨ Ψ")
 
+    def test_dx_set_details(self):
+        record_id = run("dx new record Ψ1 --brief").strip()
+        run("dx set_details Ψ1 '{ \"foo\":\"bar\" }'")
+        dxrecord = dxpy.DXRecord(record_id)
+        details = dxrecord.get_details()
+        self.assertEqual({"foo":"bar"},details,msg="dx set_details with valid CL JSON input failed.")
+
     def test_dx_shell(self):
         shell = pexpect.spawn("bash")
         shell.logfile = sys.stdout
