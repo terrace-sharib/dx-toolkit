@@ -223,6 +223,47 @@ class TestDXClient(DXTestCase):
         details = dxrecord.get_details()
         self.assertEqual({"foo":"bar"},details,msg="dx set_details with valid CL JSON input failed.")
 
+    def test_dx_set_details_with_file(self):
+        ##Create temporary JSON file with valid JSON.
+        tmp_file = tempfile.NamedTemporaryFile()
+        tmp_file.write( '{ \"foo\":\"bar\" }' )
+        tmp_file.close()
+
+        ##Test -f with valid JSON file.
+        record_id = run("dx new record Ψ2 --brief").strip()
+        run("dx set_details Ψ2 -f " + tmp_file.name )
+        dxrecord = dxpy.DXRecord(record_id)
+        details = dxrecord.get_details()
+        self.assertEqual({"foo":"bar"},details,msg="dx set_details -f with valid JSON input file failed.")
+
+        ##Test --details-file with valid JSON file.
+        record_id = run("dx new record Ψ3 --brief").strip()
+        run("dx set_details Ψ3 --details-file " + tmp_file.name )
+        dxrecord = dxpy.DXRecord(record_id)
+        details = dxrecord.get_details()
+        self.assertEqual({"foo":"bar"},details,msg="dx set_details --details-file with valid JSON input file failed.")
+
+        ##Create temporary JSON file with invalid JSON.
+        tmp_invalid_file = tempfile.NamedTemporaryFile()
+        tmp_invalid_file.write( '{ \"foo\":\"bar\" ' )
+        tmp_invalid_file.close()
+
+        ##Test above with invalid JSON file.
+        record_id = run("dx new record Ψ4 --brief").strip()
+        with self.assertSubprocessFailure(stderr_regexp="JSON", exit_code=1):
+            run("dx set_details Ψ4 -f " + tmp_invalid_file.name )
+
+        ##Test command with (-f or --details-file) and CL JSON.
+        with self.assertSubprocessFailure(stderr_regexp="-f/--details-file and CL JSON cannot be simultaneously specified.", exit_code=1):
+            run("dx set_details Ψ4 '{ \"foo\":\"bar\" }' -f " + tmp_file.name )
+
+        ##Test piping JSON from STDIN.
+        record_id = run("dx new record Ψ5 --brief").strip()
+        run("cat " + tmp_file.name + " | dx set_details Ψ5 -f -")
+        dxrecord = dxpy.DXRecord(record_id)
+        details = dxrecord.get_details()
+        self.assertEqual({"foo":"bar"},details,msg="dx set_details -f - with valid JSON input failed.")
+
     def test_dx_shell(self):
         shell = pexpect.spawn("bash")
         shell.logfile = sys.stdout
