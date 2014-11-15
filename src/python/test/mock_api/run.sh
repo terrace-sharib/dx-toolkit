@@ -2,7 +2,13 @@
 
 set -e
 
-./api.py --port $1 > /dev/null 2>&1 &
+if [[ $1 == "" ]]; then
+    PORT=5000
+else
+    PORT=$((5000+$1))
+fi
+
+./api.py --port $PORT > /dev/null 2>&1 &
 MOCK_SERVER_PID=$!
 
 cleanup() {
@@ -15,7 +21,7 @@ sleep 5
 
 export DX_APISERVER_PROTOCOL=http
 export DX_APISERVER_HOST=localhost
-export DX_APISERVER_PORT=$((5000+$1))
+export DX_APISERVER_PORT=$PORT
 #export _DX_DEBUG=1
 
 for i in {1..1024}; do
