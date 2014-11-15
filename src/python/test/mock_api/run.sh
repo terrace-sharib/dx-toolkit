@@ -11,7 +11,7 @@ cleanup() {
 
 trap cleanup EXIT
 
-while ! echo exit | nc localhost $1; do sleep 1; done
+sleep 5
 
 export DX_APISERVER_PROTOCOL=http
 export DX_APISERVER_HOST=localhost
