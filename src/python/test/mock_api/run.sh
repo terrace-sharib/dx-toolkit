@@ -29,7 +29,7 @@ for i in {1..1024}; do
     desc_md5=$(dx api file-test describe | jq --raw-output .md5)
     echo $desc_md5
     if ! [[ $wire_md5 == $desc_md5 ]]; then
-        echo $i $wire_md5 $desc_md5
+        echo $i $wire_md5 $desc_md5 >> ERR_LOG
 #        exit 1
     fi
 done
