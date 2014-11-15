@@ -27,8 +27,9 @@ export DX_APISERVER_PORT=$PORT
 for i in {1..1024}; do
     wire_md5=$(dx download test --output - 2>/dev/null | md5sum | cut -f 1 -d " ")
     desc_md5=$(dx api file-test describe | jq --raw-output .md5)
-    echo $i $wire_md5 $desc_md5
+    echo $desc_md5
     if ! [[ $wire_md5 == $desc_md5 ]]; then
-        exit 1
+        echo $i $wire_md5 $desc_md5
+#        exit 1
     fi
 done
