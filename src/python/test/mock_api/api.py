@@ -2,8 +2,13 @@
 
 from __future__ import print_function, unicode_literals
 
-import os, random, hashlib
+import os, sys, random, hashlib, argparse
 from flask import Flask, request, jsonify
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("-p", "--port", help="TCP port to serve on", type=int)
+args = parser.parse_args()
+
 app = Flask(__name__)
 random.seed(1)
 
@@ -54,4 +59,4 @@ def serve_download():
     return payload[start:stop+1]
 
 if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True, use_reloader=False, port=args.port)
