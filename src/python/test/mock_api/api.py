@@ -55,8 +55,6 @@ def describe(resource):
 
 @app.route("/file-<id>/download", methods=["POST"])
 def download(id):
-    set_payload()
-
     url = request.url_root + "F/D"
     return jsonify(dict(url=url))
 
