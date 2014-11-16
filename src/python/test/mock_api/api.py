@@ -52,6 +52,8 @@ def describe(resource):
         return jsonify(file_desc)
     elif resource.startswith("job-"):
         return jsonify(dict(app="app-0123456789ABCDEF01234567"))
+    else:
+        return jsonify(dict())
 
 @app.route("/file-<id>/download", methods=["POST"])
 def download(id):
