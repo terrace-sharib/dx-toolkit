@@ -19,6 +19,17 @@ file_desc = {
     "state": "closed"
 }
 
+def set_payload():
+    payload = io.BytesIO()
+    for i in range(8):
+        r = random.getrandbits(1024*1024*1024)
+        payload.write(r.to_bytes((r.bit_length() // 8) + 1, 'little'))
+    app.payload = payload.getvalue()
+    file_desc["md5"] = hashlib.md5(app.payload).hexdigest()
+    file_desc["size"] = len(app.payload)
+
+set_payload()
+
 @app.route("/system/findDataObjects", methods=["POST"])
 def find_data_objects():
     results=[]
@@ -44,13 +55,7 @@ def describe(subject):
 
 @app.route("/file-<id>/download", methods=["POST"])
 def download(id):
-    app.payload = io.BytesIO()
-    for i in range(8):
-        r = random.getrandbits(1024*1024*1024)
-        app.payload.write(r.to_bytes((r.bit_length() // 8) + 1, 'little'))
-    app.payload = app.payload.getvalue()
-    file_desc["md5"] = hashlib.md5(app.payload).hexdigest()
-    file_desc["size"] = len(payload)
+    set_payload()
 
     url = request.url_root + "F/D"
     return jsonify(dict(url=url))
