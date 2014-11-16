@@ -22,7 +22,7 @@ file_desc = {
 @app.route("/system/setPayload", methods=["POST"])
 def set_payload():
     payload = io.BytesIO()
-    for i in range(8):
+    for i in range(4):
         r = random.getrandbits(1024*1024*1024)
         payload.write(r.to_bytes((r.bit_length() // 8) + 1, 'little'))
     app.payload = payload.getvalue()
