@@ -16,8 +16,7 @@ file_desc = {
     "id": "file-0123456789ABCDEF01234567",
     "class": "file",
     "name": "test",
-    "state": "closed",
-    "size": len(payload),
+    "state": "closed"
 }
 
 @app.route("/system/findDataObjects", methods=["POST"])
@@ -51,6 +50,7 @@ def download(id):
         app.payload.write(r.to_bytes((r.bit_length() // 8) + 1, 'little'))
     app.payload = app.payload.getvalue()
     file_desc["md5"] = hashlib.md5(app.payload).hexdigest()
+    file_desc["size"] = len(payload)
 
     url = request.url_root + "F/D"
     return jsonify(dict(url=url))
