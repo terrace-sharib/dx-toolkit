@@ -30,10 +30,14 @@ export DX_CLI_WD=/
 
 for i in {1..8192}; do
     dx api system setPayload >/dev/null
-    wire_md5=$(dx download test --output - 2>/dev/null | md5sum | cut -f 1 -d " ")
+    dx download test --output $PORT -f 2>/dev/null
+    wire_md5=$(md5sum $PORT | cut -f 1 -d " ")
     desc_md5=$(dx api file-test describe | jq --raw-output .md5)
     echo $wire_md5 $desc_md5
     if [[ $wire_md5 != $desc_md5 ]]; then
         echo $(date) $i $wire_md5 $desc_md5 >> ERR_LOG
+        mv -f $PORT ${PORT}.$i
+        dx download test --output ${PORT}.${i}.retry -f
+        cmp ${PORT}.$i ${PORT}.${i}.retry
     fi
 done
