@@ -46,7 +46,7 @@ def list_folder(resource):
 
 @app.route("/<resource>/describe", methods=["POST"])
 def describe(resource):
-    if resource.startswith("project-"):
+    if resource.startswith("project-") or resource.startswith("container-"):
         return jsonify(dict(folders=[]))
     elif resource.startswith("file-"):
         return jsonify(file_desc)
