@@ -19,6 +19,7 @@ file_desc = {
     "state": "closed"
 }
 
+@app.route("/setPayload", methods=["POST"])
 def set_payload():
     payload = io.BytesIO()
     for i in range(8):
@@ -27,8 +28,7 @@ def set_payload():
     app.payload = payload.getvalue()
     file_desc["md5"] = hashlib.md5(app.payload).hexdigest()
     file_desc["size"] = len(app.payload)
-
-set_payload()
+    return jsonify(dict())
 
 @app.route("/system/findDataObjects", methods=["POST"])
 def find_data_objects():
