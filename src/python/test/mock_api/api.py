@@ -13,7 +13,7 @@ app = Flask(__name__)
 random.seed(1)
 
 payload = b""
-for i in range(4):
+for i in range(1):
     r = random.getrandbits(1024*1024*1024)
     payload += r.to_bytes((r.bit_length() // 8) + 1, 'little')
 
