@@ -46,6 +46,8 @@ def describe(subject):
         return jsonify(dict(folders=[]))
     elif subject.startswith("file-"):
         return jsonify(file_desc)
+    elif subject.startswith("job-"):
+        return jsonify(dict())
 
 @app.route("/file-<id>/download", methods=["POST"])
 def download(id):
