@@ -34,6 +34,6 @@ for i in {1..8192}; do
     desc_md5=$(dx api file-test describe | jq --raw-output .md5)
     echo $wire_md5 $desc_md5
     if [[ $wire_md5 != $desc_md5 ]]; then
-        echo $i $wire_md5 $desc_md5 >> ERR_LOG
+        echo $(date) $i $wire_md5 $desc_md5 >> ERR_LOG
     fi
 done
