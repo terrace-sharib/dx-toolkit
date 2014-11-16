@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2.7
 
 from __future__ import print_function, unicode_literals
 
-import os, sys, random, hashlib, argparse, io
+import os, sys, random, hashlib, argparse, io, struct
 from flask import Flask, request, jsonify
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -22,9 +22,8 @@ file_desc = {
 @app.route("/system/setPayload", methods=["POST"])
 def set_payload():
     payload = io.BytesIO()
-    for i in range(4):
-        r = random.getrandbits(1024*1024*1024)
-        payload.write(r.to_bytes((r.bit_length() // 8) + 1, 'little'))
+    for i in range(1024*1024*4):
+        payload.write(struct.pack("L", random.getrandbits(64))*16)
     app.payload = payload.getvalue()
     file_desc["md5"] = hashlib.md5(app.payload).hexdigest()
     file_desc["size"] = len(app.payload)
