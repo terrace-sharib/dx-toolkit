@@ -8,6 +8,12 @@ else
     PORT=$((5000+$1))
 fi
 
+if [[ $2 == "" ]]; then
+    SCRATCH_DIR=.
+else
+    SCRATCH_DIR=$2
+fi
+
 ./api.py --port $PORT > /dev/null 2>&1 &
 MOCK_SERVER_PID=$!
 
@@ -30,14 +36,14 @@ export DX_CLI_WD=/
 
 for i in {1..8192}; do
     dx api system setPayload >/dev/null
-    dx download test --output $PORT -f 2>/dev/null
-    wire_md5=$(md5sum $PORT | cut -f 1 -d " ")
+    dx download test --output ${SCRATCH_DIR}/$PORT -f 2>/dev/null
+    wire_md5=$(md5sum ${SCRATCH_DIR}/$PORT | cut -f 1 -d " ")
     desc_md5=$(dx api file-test describe | jq --raw-output .md5)
     echo $wire_md5 $desc_md5
     if [[ $wire_md5 != $desc_md5 ]]; then
         echo $(date) $i $wire_md5 $desc_md5 >> ERR_LOG
-        mv -f $PORT dl_corruption.${PORT}.$i
-        dx download test --output dl_corruption.${PORT}.${i}.retry -f
+        mv -f ${SCRATCH_DIR}/$PORT ${SCRATCH_DIR}/dl_corruption.${PORT}.$i
+        dx download test --output ${SCRATCH_DIR}/dl_corruption.${PORT}.${i}.retry -f
         #cmp dl_corruption.${PORT}.$i dl_corruption.${PORT}.${i}.retry
     fi
 done
