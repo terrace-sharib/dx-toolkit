@@ -47,7 +47,7 @@ def describe(subject):
     elif subject.startswith("file-"):
         return jsonify(file_desc)
     elif subject.startswith("job-"):
-        return jsonify(dict())
+        return jsonify(dict(app="app-0123456789ABCDEF01234567"))
 
 @app.route("/file-<id>/download", methods=["POST"])
 def download(id):
