@@ -38,5 +38,6 @@ for i in {1..8192}; do
         echo $(date) $i $wire_md5 $desc_md5 >> ERR_LOG
         mv -f $PORT dl_corruption.${PORT}.$i
         dx download test --output dl_corruption.${PORT}.${i}.retry -f
+        #cmp dl_corruption.${PORT}.$i dl_corruption.${PORT}.${i}.retry
     fi
 done
