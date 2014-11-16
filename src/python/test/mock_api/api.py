@@ -19,7 +19,7 @@ file_desc = {
     "state": "closed"
 }
 
-@app.route("/setPayload", methods=["POST"])
+@app.route("/system/setPayload", methods=["POST"])
 def set_payload():
     payload = io.BytesIO()
     for i in range(8):
@@ -38,19 +38,19 @@ def find_data_objects():
                         describe=file_desc))
     return jsonify(dict(results=results, next=None))
 
-@app.route("/<subject>/listFolder", methods=["POST"])
-def list_folder(subject):
+@app.route("/<resource>/listFolder", methods=["POST"])
+def list_folder(resource):
     folders=[]
     objects=[]
     return jsonify(dict(folders=folders, objects=objects))
 
-@app.route("/<subject>/describe", methods=["POST"])
-def describe(subject):
-    if subject.startswith("project-"):
+@app.route("/<resource>/describe", methods=["POST"])
+def describe(resource):
+    if resource.startswith("project-"):
         return jsonify(dict(folders=[]))
-    elif subject.startswith("file-"):
+    elif resource.startswith("file-"):
         return jsonify(file_desc)
-    elif subject.startswith("job-"):
+    elif resource.startswith("job-"):
         return jsonify(dict(app="app-0123456789ABCDEF01234567"))
 
 @app.route("/file-<id>/download", methods=["POST"])
