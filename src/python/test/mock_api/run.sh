@@ -22,6 +22,7 @@ sleep 5
 export DX_APISERVER_PROTOCOL=http
 export DX_APISERVER_HOST=localhost
 export DX_APISERVER_PORT=$PORT
+export DX_JOB_ID=job-0123456789ABCDEF01234567
 #export _DX_DEBUG=1
 
 for i in {1..1024}; do
