@@ -36,8 +36,7 @@ for i in {1..8192}; do
     echo $wire_md5 $desc_md5
     if [[ $wire_md5 != $desc_md5 ]]; then
         echo $(date) $i $wire_md5 $desc_md5 >> ERR_LOG
-        mv -f $PORT ${PORT}.$i
-        dx download test --output ${PORT}.${i}.retry -f
-        cmp ${PORT}.$i ${PORT}.${i}.retry
+        mv -f $PORT dl_corruption.${PORT}.$i
+        dx download test --output dl_corruption.${PORT}.${i}.retry -f
     fi
 done
