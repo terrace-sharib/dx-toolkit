@@ -23,7 +23,7 @@ file_desc = {
 def set_payload():
     payload = io.BytesIO()
     for i in range(1024*1024*4):
-        payload.write(struct.pack("L", random.getrandbits(64))*16)
+        payload.write(struct.pack(b"L", random.getrandbits(64))*16)
     app.payload = payload.getvalue()
     file_desc["md5"] = hashlib.md5(app.payload).hexdigest()
     file_desc["size"] = len(app.payload)
