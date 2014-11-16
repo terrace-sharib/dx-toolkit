@@ -29,6 +29,7 @@ export DX_CLI_WD=/
 #export _DX_DEBUG=1
 
 for i in {1..8192}; do
+    dx api setPayload
     wire_md5=$(dx download test --output - 2>/dev/null | md5sum | cut -f 1 -d " ")
     desc_md5=$(dx api file-test describe | jq --raw-output .md5)
     echo $wire_md5 $desc_md5
