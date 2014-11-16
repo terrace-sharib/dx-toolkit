@@ -2,7 +2,7 @@
 
 from __future__ import print_function, unicode_literals
 
-import os, sys, random, hashlib, argparse
+import os, sys, random, hashlib, argparse, io
 from flask import Flask, request, jsonify
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -10,12 +10,7 @@ parser.add_argument("-p", "--port", help="TCP port to serve on", type=int)
 args = parser.parse_args()
 
 app = Flask(__name__)
-random.seed(1)
-
-payload = b""
-for i in range(8):
-    r = random.getrandbits(1024*1024*1024)
-    payload += r.to_bytes((r.bit_length() // 8) + 1, 'little')
+#random.seed(1)
 
 file_desc = {
     "id": "file-0123456789ABCDEF01234567",
@@ -23,7 +18,6 @@ file_desc = {
     "name": "test",
     "state": "closed",
     "size": len(payload),
-    "md5": hashlib.md5(payload).hexdigest()
 }
 
 @app.route("/system/findDataObjects", methods=["POST"])
@@ -51,6 +45,13 @@ def describe(subject):
 
 @app.route("/file-<id>/download", methods=["POST"])
 def download(id):
+    app.payload = io.BytesIO()
+    for i in range(8):
+        r = random.getrandbits(1024*1024*1024)
+        app.payload.write(r.to_bytes((r.bit_length() // 8) + 1, 'little'))
+    app.payload = app.payload.getvalue()
+    file_desc["md5"] = hashlib.md5(app.payload).hexdigest()
+
     url = request.url_root + "F/D"
     return jsonify(dict(url=url))
 
