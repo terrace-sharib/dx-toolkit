@@ -22,8 +22,8 @@ file_desc = {
 @app.route("/system/setPayload", methods=["POST"])
 def set_payload():
     payload = io.BytesIO()
-    for i in range(1024*1024*4):
-        payload.write(struct.pack(b"L", random.getrandbits(64))*16)
+    for i in range(1024):
+        payload.write(struct.pack(b"L", random.getrandbits(64))*64*1024)
     app.payload = payload.getvalue()
     file_desc["md5"] = hashlib.md5(app.payload).hexdigest()
     file_desc["size"] = len(app.payload)
