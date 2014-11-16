@@ -23,8 +23,6 @@ cleanup() {
 
 trap cleanup EXIT
 
-sleep 5
-
 export DX_APISERVER_PROTOCOL=http
 export DX_APISERVER_HOST=localhost
 export DX_APISERVER_PORT=$PORT
