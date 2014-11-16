@@ -59,7 +59,7 @@ def download(id):
 def serve_download():
     start, stop = (int(x) for x in request.headers["range"].split("=")[1].split("-"))
     #print("SERVING", request.url, start, stop, request.headers)
-    return payload[start:stop+1]
+    return app.payload[start:stop+1]
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=False, port=args.port)
