@@ -14,19 +14,19 @@ else
     SCRATCH_DIR=$2
 fi
 
-./api.py --port $PORT > /dev/null 2>&1 &
-MOCK_SERVER_PID=$!
+#./api.py --port $PORT > /dev/null 2>&1 &
+#MOCK_SERVER_PID=$!
 
-cleanup() {
-    kill $MOCK_SERVER_PID
-}
+#cleanup() {
+#    kill $MOCK_SERVER_PID
+#}
 
-trap cleanup EXIT
+#trap cleanup EXIT
 
-export DX_APISERVER_PROTOCOL=http
 #export DX_APISERVER_HOST=localhost
 export DX_APISERVER_HOST=10.0.3.1
 export DX_APISERVER_PORT=$PORT
+export DX_APISERVER_PROTOCOL=http
 export DX_JOB_ID=job-0123456789ABCDEF01234567
 export DX_PROJECT_CONTEXT_ID=project-0123456789ABCDEF01234567
 export DX_WORKSPACE_ID=container-0123456789ABCDEF01234567
