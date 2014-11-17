@@ -6,7 +6,8 @@ import os, sys, random, hashlib, argparse, io, struct
 from flask import Flask, request, jsonify
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("-p", "--port", help="TCP port to serve on", type=int)
+parser.add_argument("--host", help="Hostname to serve on", default="localhost")
+parser.add_argument("--port", help="TCP port to serve on", type=int, default=5000)
 args = parser.parse_args()
 
 app = Flask(__name__)
@@ -66,4 +67,4 @@ def serve_download():
     return app.payload[start:stop+1]
 
 if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False, port=args.port)
+    app.run(debug=True, use_reloader=False, host=args.host, port=args.port)
