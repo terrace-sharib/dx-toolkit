@@ -37,3 +37,4 @@ for i in range(8196):
         dxpy.download_dxfile("file-0123456789ABCDEF01234567", "dl_corruption.{}.retry".format(i))
     else:
         print(i, cs)
+    sys.stdout.flush()
