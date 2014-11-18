@@ -27,7 +27,7 @@ def get_pseudo_random_MB(seed):
   # 2^18 4-byte random numbers for a total of 1MB
   # getting 4 random bytes at a time instead of 1 byte to make things faster
   for i in xrange(2**18):
-    b.extend(struct.pack('>i',r.randint(byte4min, byte4max)))
+    b.extend(struct.pack(b'>i',r.randint(byte4min, byte4max)))
   return b
 
 for i in range(8196):
