@@ -1343,7 +1343,10 @@ def describe(args):
 def new_project(args):
     if args.name == None:
         if INTERACTIVE_CLI:
-            args.name = input("Enter name for new project: ")
+            try:
+                args.name = input("Enter name for new project: ")
+            except:
+                err_exit()
         else:
             parser.exit(1, parser_new_project.format_help() +
                            fill("No project name supplied, and input is not interactive") + '\n')
