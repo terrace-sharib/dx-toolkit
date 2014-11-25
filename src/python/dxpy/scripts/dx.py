@@ -4516,6 +4516,8 @@ def main():
                     print("Broken pipe", file=sys.stderr)
             else:
                 raise
+        except:
+            err_exit()
     else:
         parser.print_help()
         sys.exit(1)
