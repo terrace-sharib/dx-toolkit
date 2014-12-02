@@ -4510,12 +4510,6 @@ def main():
             args.func(args)
             # Flush buffered data in stdout before interpreter shutdown to ignore broken pipes
             sys.stdout.flush()
-        except IOError as e:
-            if e.errno == errno.EPIPE:
-                if dxpy._DEBUG > 0:
-                    print("Broken pipe", file=sys.stderr)
-            else:
-                raise
         except:
             err_exit()
     else:
