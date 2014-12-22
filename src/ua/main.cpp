@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <iostream>
 #include <queue>
+#include <sstream>
 
 #include <curl/curl.h>
 
@@ -24,6 +25,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/version.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+
+#include <sys/stat.h>
 
 #include "dxcpp/dxcpp.h"
 #include "dxcpp/bqueue.h"
@@ -50,6 +53,8 @@
 
 using namespace std;
 using namespace dx;
+
+namespace fs = boost::filesystem;
 
 // Definition of forceRefresh global variables (used in round_robin_dns.cpp)
 bool forceRefreshDNS = true;
@@ -455,15 +460,31 @@ void markFileAsFailed(vector<File> &files, const string &fileID) {
  * a <project, size, last_write_time, filename> tuple, like we use to
  * detect resumable uploads.
  */
-void disallowDuplicateFiles(const vector<string> &files, const vector<string> &projects) {
+void disallowDuplicateFiles(const vector<string> &files, const vector<string> &projects, bool followDirectories) {
   map<string, int> hashTable; // a map for hash string to index in files vector
   for (unsigned i = 0; i < files.size(); ++i) {
     string hash = resolveProject(projects[i]) + " ";
 
-    boost::filesystem::path p(files[i]);
-
-    hash += boost::lexical_cast<string>(boost::filesystem::file_size(p)) + " ";
-    hash += boost::lexical_cast<string>(boost::filesystem::last_write_time(p)) + " ";
+    fs::path p(files[i]);
+    // If this is a directory, then we may need to check the files in that directory
+    // to see if they are duplicates, but checking to see if the directory itself
+    // is a duplicate does not make sense.
+    if(fs::is_directory(p)) {
+      if(followDirectories) {
+        fs::directory_iterator end_itr;
+        vector<string> filesInDir, newProjects;
+        for(fs::directory_iterator itr(p); itr != end_itr; ++itr) {
+          filesInDir.push_back(itr->path().string());
+          // For files in a directory, we assume they use the project that goes with
+          // the directory itself.
+          newProjects.push_back(projects[i]);
+        }
+        disallowDuplicateFiles(filesInDir, newProjects, opt.recursive);
+      }
+      continue;
+    }
+    hash += boost::lexical_cast<string>(fs::file_size(p)) + " ";
+    hash += boost::lexical_cast<string>(fs::last_write_time(p)) + " ";
     hash += p.filename().string();
     if (hashTable.count(hash) > 0) {
       throw runtime_error("File \"" + files[i] + "\" and \"" + files[hashTable[hash]] + "\" have same Signature. You cannot upload"
@@ -529,6 +550,51 @@ void printEnvironmentInfo() {
   }
 }
 
+void get_file_info(string &fileName, string &mimeType, bool &toCompress) {
+    DXLOG(logINFO) << "Getting MIME type for local file " << fileName << "...";
+    mimeType = getMimeType(fileName);
+    DXLOG(logINFO) << "MIME type for local file " << fileName << " is '" << mimeType << "'.";
+
+    if (!opt.doNotCompress) {
+        bool is_compressed = isCompressed(mimeType);
+        toCompress = !is_compressed;
+        if (is_compressed)
+            DXLOG(logINFO) << "File " << fileName << " is already compressed, so won't try to compress it any further.";
+        else
+            DXLOG(logINFO) << "File " << fileName << " is not compressed, will compress it before uploading.";
+    } else {
+        toCompress = false;
+    }
+    if (toCompress) {
+        mimeType = "application/x-gzip";
+    }
+}
+
+void getFileListFromDirectory(fs::path currDirectory, string &currProject, string &currFolder, vector<File> &fileList, bool recursive) {
+    fs::directory_iterator end_itr;
+
+    for(fs::directory_iterator itr(currDirectory); itr != end_itr; ++itr) {
+        if( fs::is_directory(itr->path()) && recursive) {
+            std::ostringstream os;
+            os << currFolder << "/" << itr->path().filename().string();
+            string newFolder = os.str();
+            getFileListFromDirectory(itr->path(), currProject, newFolder, fileList, recursive);
+        }
+        else if(!fs::is_directory(itr->path())){
+            string mimeType;
+            bool toCompress;
+
+            fs::path currPath = itr->path();
+            string pathAndFileName = currPath.string();
+            string fileName = currPath.filename().string();
+            get_file_info(fileName, mimeType, toCompress);
+            fileList.push_back(File(pathAndFileName, currProject, currFolder, fileName, toCompress, !opt.doNotResume, mimeType, opt.chunkSize, fileList.size()));
+            totalChunks += fileList.back().createChunks(chunksToRead, opt.tries);
+            cerr << endl;
+        }
+    }
+}
+
 int main(int argc, char * argv[]) {
   try {
     // Note: Verbose mode logging is enabled (if requested) by options parse()
@@ -582,7 +648,7 @@ int main(int argc, char * argv[]) {
       return 3;
     }
     if (!opt.doNotResume) {
-      disallowDuplicateFiles(opt.files, opt.projects);
+      disallowDuplicateFiles(opt.files, opt.projects, true);
     }
   } catch (exception &e) {
     cerr << endl << "ERROR: " << e.what() << endl;
@@ -600,28 +666,20 @@ int main(int argc, char * argv[]) {
     NUMTRIES_g = opt.tries;
 
     vector<File> files;
-
     for (unsigned int i = 0; i < opt.files.size(); ++i) {
-      DXLOG(logINFO) << "Getting MIME type for local file " << opt.files[i] << "...";
-      string mimeType = getMimeType(opt.files[i]);
-      DXLOG(logINFO) << "MIME type for local file " << opt.files[i] << " is '" << mimeType << "'.";
-      bool toCompress;
-      if (!opt.doNotCompress) {
-        bool is_compressed = isCompressed(mimeType);
-        toCompress = !is_compressed;
-        if (is_compressed)
-          DXLOG(logINFO) << "File " << opt.files[i] << " is already compressed, so won't try to compress it any further.";
-        else
-          DXLOG(logINFO) << "File " << opt.files[i] << " is not compressed, will compress it before uploading.";
-      } else {
-        toCompress = false;
+      fs::path currPath(opt.files[i]);
+      if(fs::is_directory(currPath)) {
+        getFileListFromDirectory(currPath, opt.projects[i], opt.folders[i], files, opt.recursive);
       }
-      if (toCompress) {
-        mimeType = "application/x-gzip";
+      else {
+        string mimeType;
+        bool toCompress;
+        get_file_info(opt.files[i], mimeType, toCompress);
+
+        files.push_back(File(opt.files[i], opt.projects[i], opt.folders[i], opt.names[i], toCompress, !opt.doNotResume, mimeType, opt.chunkSize, i));
+        totalChunks += files[i].createChunks(chunksToRead, opt.tries);
+        cerr << endl;
       }
-      files.push_back(File(opt.files[i], opt.projects[i], opt.folders[i], opt.names[i], toCompress, !opt.doNotResume, mimeType, opt.chunkSize, i));
-      totalChunks += files[i].createChunks(chunksToRead, opt.tries);
-      cerr << endl;
     }
 
     if (opt.waitOnClose) {

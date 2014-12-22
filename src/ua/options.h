@@ -61,6 +61,7 @@ public:
   bool doNotResume;
   bool progress;
   bool verbose;
+  bool recursive;
   bool waitOnClose;
 
   // Import flags

@@ -73,6 +73,7 @@ Options::Options() {
     ("do-not-compress", po::bool_switch(&doNotCompress), "Do not compress file(s) before upload")
     ("progress,g", po::bool_switch(&progress), "Report upload progress")
     ("verbose,v", po::bool_switch(&verbose), "Verbose logging")
+    ("recursive,R", po::bool_switch(&recursive), "Upload directories recursively")
     ("wait-on-close", po::bool_switch(&waitOnClose), "Wait for file objects to be closed before exiting")
     ("do-not-resume", po::bool_switch(&doNotResume), "Do not attempt to resume any incomplete uploads")
     ;
@@ -333,7 +334,7 @@ void Options::validate() {
         files[i] = p.string();
       }
       if (fs::is_directory(p)) {
-        throw runtime_error("Argument " + files[i] + " is a directory; recursive directory upload is not currently supported.");
+        //throw runtime_error("Argument " + files[i] + " is a directory; recursive directory upload is not currently supported.");
       } else if (!fs::is_regular_file(p)) {
         throw runtime_error("Argument " + files[i] + " is not a regular file.");
       }
@@ -509,6 +510,7 @@ ostream &operator<<(ostream &out, const Options &opt) {
         << "  do-not-compress: " << opt.doNotCompress << endl
         << "  progress: " << opt.progress << endl
         << "  verbose: " << opt.verbose << endl
+        << "  recursive: " << opt.recursive << endl
         << "  wait on close: " << opt.waitOnClose << endl
         << "  do-not-resume: " << opt.doNotResume << endl
         << "  reads: " << opt.reads << endl
