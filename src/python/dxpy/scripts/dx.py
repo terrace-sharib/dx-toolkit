@@ -2115,7 +2115,7 @@ def find_executions(args):
 
     try:
         num_processed_results = 0
-        roots = collections.OrderedDict()
+        roots, descriptions = collections.OrderedDict(), {}
         for execution_result in dxpy.find_executions(**query):
             if args.trees:
                 if args.classname == 'job':
@@ -2139,6 +2139,7 @@ def find_executions(args):
                     # Analyses in trees with jobs at their root found in "dx find analyses" are displayed unrooted,
                     # and only the last analysis found is displayed.
                     roots[root] = execution_result['describe']['id']
+                    descriptions[roots[root]] = execution_result['describe']
             elif args.brief:
                 print(execution_result['id'])
             elif not args.trees:
@@ -2147,7 +2148,7 @@ def find_executions(args):
                                                                  single_result=True,
                                                                  show_outputs=args.show_outputs)))
         if args.trees:
-            executions_by_parent, descriptions = collections.defaultdict(list), {}
+            executions_by_parent = collections.defaultdict(list)
             root_field = 'origin_job' if args.classname == 'job' else 'root_execution'
             parent_field = 'masterJob' if args.no_subjobs else 'parentJob'
             query = {'classname': args.classname,
