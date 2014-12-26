@@ -24,7 +24,7 @@ file_desc = {
 def set_payload():
     payload = io.BytesIO()
     # NB: In Python 3, use random.getrandbits().to_bytes((x.bit_length() // 8) + 1, byteorder='little')
-    for i in range(1024):
+    for i in range(512):
         payload.write(struct.pack(b"L", random.getrandbits(64))*64*1024)
     app.payload = payload.getvalue()
     file_desc["md5"] = hashlib.md5(app.payload).hexdigest()
