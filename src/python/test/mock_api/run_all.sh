@@ -5,3 +5,4 @@
 for i in {1..2}; do
     ./run.sh $i >> $i.log &
 done
+wait
