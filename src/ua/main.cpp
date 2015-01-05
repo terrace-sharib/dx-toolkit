@@ -676,7 +676,7 @@ int main(int argc, char * argv[]) {
         bool toCompress;
         get_file_info(opt.files[i], mimeType, toCompress);
 
-        files.push_back(File(opt.files[i], opt.projects[i], opt.folders[i], opt.names[i], toCompress, !opt.doNotResume, mimeType, opt.chunkSize, i));
+        files.push_back(File(opt.files[i], opt.projects[i], opt.folders[i], opt.names[i], toCompress, !opt.doNotResume, mimeType, opt.chunkSize, files.size()));
         totalChunks += files[i].createChunks(chunksToRead, opt.tries);
         cerr << endl;
       }
