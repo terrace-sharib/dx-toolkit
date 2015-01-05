@@ -20,10 +20,11 @@
 from __future__ import print_function, unicode_literals
 
 import os, unittest, tempfile, filecmp, time, json, sys
+import requests
 
 import dxpy
 import dxpy_testutil as testutil
-from dxpy.exceptions import DXAPIError, DXFileError, DXError, DXJobFailureError
+from dxpy.exceptions import DXAPIError, DXFileError, DXError, DXJobFailureError, ServiceUnavailable
 from dxpy.utils import pretty_print, warn
 
 def get_objects_from_listf(listf):
@@ -1850,6 +1851,7 @@ class TestHTTPResponses(unittest.TestCase):
     def test_content_type_no_sniff(self):
         resp = dxpy.api.system_find_projects({'limit': 1}, want_full_response=True)
         self.assertEqual(resp.headers['x-content-type-options'], 'nosniff')
+
     def test_retry_after(self):
         # Do this weird dance here in case there is clock skew between
         # client and server
@@ -1860,6 +1862,7 @@ class TestHTTPResponses(unittest.TestCase):
         time_elapsed = end_time - start_time
         self.assertTrue(8000 <= time_elapsed)
         self.assertTrue(time_elapsed <= 16000)
+
     def test_retry_after_exceeding_max_retries(self):
         start_time = int(time.time() * 1000)
         server_time = dxpy.DXHTTPRequest('/system/comeBackLater', {})['currentTime']
@@ -1868,6 +1871,7 @@ class TestHTTPResponses(unittest.TestCase):
         time_elapsed = end_time - start_time
         self.assertTrue(20000 <= time_elapsed)
         self.assertTrue(time_elapsed <= 30000)
+
     def test_retry_after_without_header_set(self):
         start_time = int(time.time() * 1000)
         server_time = dxpy.DXHTTPRequest('/system/comeBackLater', {})['currentTime']
@@ -1876,6 +1880,36 @@ class TestHTTPResponses(unittest.TestCase):
         time_elapsed = end_time - start_time
         self.assertTrue(50000 <= time_elapsed)
         self.assertTrue(time_elapsed <= 70000)
+
+    def test_dxhttprequest_timeout(self):
+        start_time = int(time.time() * 1000)
+        server_time = dxpy.DXHTTPRequest('/system/comeBackLater', {})['currentTime']
+        with self.assertRaises(ServiceUnavailable):
+            dxpy.DXHTTPRequest('/system/comeBackLater', {'waitUntil': server_time + 20000}, timeout=8)
+        end_time = int(time.time() * 1000)
+        time_elapsed = end_time - start_time
+        self.assertTrue(8000 <= time_elapsed)
+        self.assertTrue(time_elapsed <= 15000)
+
+    def test_generic_exception_not_retryable(self):
+        self.assertFalse(dxpy._is_retryable_exception(KeyError('oops')))
+
+    def test_bad_host(self):
+        # Verify that the exception raised is one that dxpy would
+        # consider to be retryable, but truncate the actual retry loop
+        with self.assertRaises(requests.exceptions.ConnectionError) as exception_cm:
+            dxpy.DXHTTPRequest('http://doesnotresolve.dnanexus.com/', {}, prepend_srv=False, always_retry=False,
+                               max_retries=1)
+        self.assertTrue(dxpy._is_retryable_exception(exception_cm.exception))
+
+    def test_connection_refused(self):
+        # Verify that the exception raised is one that dxpy would
+        # consider to be retryable, but truncate the actual retry loop
+        with self.assertRaises(requests.exceptions.ConnectionError) as exception_cm:
+            # Connecting to a port on which there is no server running
+            dxpy.DXHTTPRequest('http://localhost:20406', {}, prepend_srv=False, always_retry=False, max_retries=1)
+        self.assertTrue(dxpy._is_retryable_exception(exception_cm.exception))
+
 
 class TestDataobjectFunctions(unittest.TestCase):
     def setUp(self):

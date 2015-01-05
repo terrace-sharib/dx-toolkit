@@ -126,9 +126,12 @@ environment variables:
 from __future__ import (print_function, unicode_literals)
 
 import os, sys, json, time, logging, platform, collections, ssl, traceback
-from .packages import requests
-from .packages.requests.exceptions import ConnectionError, HTTPError, Timeout
-from .packages.requests.auth import AuthBase
+import errno
+import requests
+import socket
+
+from requests.exceptions import ConnectionError, HTTPError, Timeout
+from requests.auth import AuthBase
 from .compat import USING_PYTHON2, expanduser
 
 logger = logging.getLogger(__name__)
@@ -188,7 +191,43 @@ def _process_method_url_headers(method, url, headers):
     else:
         return method, _url, _headers
 
-def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeout=600,
+
+# When any of the following errors are indicated, we are sure that the
+# server never received our request and therefore the request can be
+# retried (even if the request is not idempotent).
+_RETRYABLE_SOCKET_ERRORS = {
+    errno.ENETDOWN,     # The network was down
+    errno.ENETUNREACH,  # The subnet containing the remote host was unreachable
+    errno.ECONNREFUSED  # A remote host refused to allow the network connection
+}
+
+
+def _is_retryable_exception(e):
+    """Returns True if the exception is always safe to retry.
+
+    This is True if the client was never able to establish a connection
+    to the server (for example, name resolution failed or the connection
+    could otherwise not be initialized).
+
+    Conservatively, if we can't tell whether a network connection could
+    have been established, we return False.
+
+    """
+    try:
+        if isinstance(e, ConnectionError):
+            # Unfortunately requests doesn't seem to provide a sensible
+            # API to retrieve the cause
+            cause = e.args[0].args[1]
+            if isinstance(cause, (socket.gaierror, socket.herror)):
+                return True
+            if isinstance(cause, socket.error) and cause.errno in _RETRYABLE_SOCKET_ERRORS:
+                return True
+        return False
+    except (AttributeError, TypeError, IndexError):
+        return False
+
+
+def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeout=None,
                   use_compression=None, jsonify_data=True, want_full_response=False,
                   decode_response_body=True, prepend_srv=True, session_handler=None,
                   max_retries=DEFAULT_RETRIES, always_retry=False, **kwargs):
@@ -288,13 +327,15 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
         rewind_input_buffer_offset = data.tell()
 
     last_exc_type, last_error, last_traceback = None, None, None
+    time_started = time.time() if timeout else None
     try_index = 0
     while True:
         success, streaming_response_truncated = True, False
         response = None
         try:
             _method, _url, _headers = _process_method_url_headers(method, url, headers)
-            response = session_handler.request(_method, _url, headers=_headers, data=data, timeout=timeout, auth=auth,
+            _timeout = timeout or 600
+            response = session_handler.request(_method, _url, headers=_headers, data=data, timeout=_timeout, auth=auth,
                                                **kwargs)
 
             if _UPGRADE_NOTIFY and response.headers.get('x-upgrade-info', '').startswith('A recommended update is available') and not os.environ.has_key('_ARGCOMPLETE'):
@@ -358,7 +399,9 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
             raise AssertionError('Should never reach this line: expected a result to have been returned by now')
         except Exception as e:
             success = False
-            if isinstance(e, _expected_exceptions):
+            if timeout and time.time() - time_started > timeout:
+                logger.error("{} {}: Timeout exceeded".format(method, url))
+            elif isinstance(e, _expected_exceptions):
                 last_exc_type, last_error, last_traceback = sys.exc_info()
                 exception_msg = traceback.format_exc().splitlines()[-1].strip()
 
@@ -372,6 +415,9 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
                         # parse that, but the apiserver doesn't generate
                         # such responses anyway.
                         seconds_to_wait = DEFAULT_RETRY_AFTER_INTERVAL
+                    if timeout:
+                        time_left = int(max(1, time_started + timeout - time.time()))
+                        seconds_to_wait = min(seconds_to_wait, time_left)
                     logger.warn("%s %s: %s. Waiting %d seconds due to server unavailability..."
                                 % (method, url, exception_msg, seconds_to_wait))
                     time.sleep(seconds_to_wait)
@@ -381,13 +427,6 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
                     # permitted retries.
                     continue
 
-                # TODO: if the socket was dropped mid-request,
-                # ConnectionError or httplib.IncompleteRead is raised, but
-                # non-idempotent requests can be unsafe to retry. We should
-                # distinguish between connection initiation errors and
-                # dropped socket errors. Currently the former are not
-                # retried even if it might be safe to do so.
-
                 # Total number of allowed tries is the initial try + up to
                 # (max_retries) subsequent retries.
                 total_allowed_tries = max_retries + 1
@@ -396,8 +435,9 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
                 # tries that have failed so far, minus one. Test whether we
                 # have exhausted all retries.
                 if try_index + 1 < total_allowed_tries:
-                    if response is None or isinstance(e, exceptions.ContentLengthError) or streaming_response_truncated:
-                        ok_to_retry = always_retry or (method == 'GET')
+                    if response is None or isinstance(e, exceptions.ContentLengthError) or \
+                       streaming_response_truncated:
+                        ok_to_retry = always_retry or (method == 'GET') or _is_retryable_exception(e)
                     else:
                         ok_to_retry = 500 <= response.status_code < 600
 
