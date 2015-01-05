@@ -130,7 +130,7 @@ import errno
 import requests
 import socket
 
-from requests.exceptions import ConnectionError, HTTPError, Timeout
+from requests.exceptions import ConnectionError, ContentDecodingError
 from requests.auth import AuthBase
 from .compat import USING_PYTHON2, expanduser
 
@@ -330,8 +330,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
     time_started = time.time() if timeout else None
     try_index = 0
     while True:
-        success, streaming_response_truncated = True, False
-        response = None
+        response, success = None, True
         try:
             _method, _url, _headers = _process_method_url_headers(method, url, headers)
             _timeout = timeout or 600
@@ -387,14 +386,16 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
                                 print(method, url, "<=", response.status_code, "(%dms)"%t, Repr().repr(content), file=sys.stderr)
                             return content
                         except ValueError:
-                            # If a streaming API call (no content-length
-                            # set) encounters an error it may just halt the
-                            # response because it has no other way to
-                            # indicate an error. Under these circumstances
-                            # the client sees unparseable JSON, and we
-                            # should be able to recover.
-                            streaming_response_truncated = 'content-length' not in response.headers
-                            raise HTTPError("Invalid JSON received from server")
+                            if 'content-length' in response.headers:
+                                raise ContentDecodingError("Invalid JSON received from server")
+                            else:
+                                # If a streaming API call (no content-length
+                                # set) encounters an error it may just halt the
+                                # response because it has no other way to
+                                # indicate an error. Under these circumstances
+                                # the client sees unparseable JSON, and we
+                                # should be able to recover.
+                                raise exceptions.StreamingContentDecodingError("Invalid JSON received from server")
                 return content
             raise AssertionError('Should never reach this line: expected a result to have been returned by now')
         except Exception as e:
@@ -435,8 +436,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
                 # tries that have failed so far, minus one. Test whether we
                 # have exhausted all retries.
                 if try_index + 1 < total_allowed_tries:
-                    if response is None or isinstance(e, exceptions.ContentLengthError) or \
-                       streaming_response_truncated:
+                    if response is None or isinstance(e, (exceptions.ContentLengthError, exceptions.StreamingContentDecodingError)):
                         ok_to_retry = always_retry or (method == 'GET') or _is_retryable_exception(e)
                     else:
                         ok_to_retry = 500 <= response.status_code < 600

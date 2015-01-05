@@ -155,10 +155,15 @@ class DXCLIError(DXError):
     '''
     pass
 
-class ContentLengthError(requests.HTTPError):
-    '''Will be raised when actual content length received from server does not match the "Content-Length" header'''
-    pass
+class ContentLengthError(requests.exceptions.HTTPError):
+    '''
+    Will be raised when actual content length received from server does not match the "Content-Length" header
+    '''
 
+class StreamingContentDecodingError(requests.exceptions.ContentDecodingError):
+    '''
+    Will be raised when response decoding fails and the "Content-Length" header is absent, indicating streaming
+    '''
 
 def format_exception(e):
     """Returns a string containing the type and text of the exception.
@@ -202,7 +207,8 @@ network_exceptions = (requests.ConnectionError,
                       requests.exceptions.ContentDecodingError,
                       requests.HTTPError,
                       requests.Timeout,
-                      requests.packages.urllib3.connectionpool.HTTPException)
+                      requests.packages.urllib3.connectionpool.HTTPException,
+                      StreamingContentDecodingError)
 
 default_expected_exceptions = network_exceptions + (DXAPIError,
                                                     DXCLIError,
