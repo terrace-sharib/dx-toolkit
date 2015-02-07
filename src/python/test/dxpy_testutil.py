@@ -22,7 +22,7 @@ import os, sys, unittest, subprocess, re, platform
 from contextlib import contextmanager
 
 import dxpy
-from dxpy.compat import str
+from dxpy.compat import str, USING_PYTHON2
 
 _run_all_tests = 'DXTEST_FULL' in os.environ
 TEST_CREATE_APPS = _run_all_tests or 'DXTEST_CREATE_APPS' in os.environ

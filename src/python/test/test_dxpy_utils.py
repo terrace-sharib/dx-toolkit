@@ -194,7 +194,7 @@ class TestDXExecDependsUtils(unittest.TestCase):
         edi = get_edi({"execDepends": [{"name": "w00t", "stages": ["foo", "bar"]},
                                        {"name": "f1", "id": {"$dnanexus_link": "file-123"}, "stages": ["xyzzt"]}]})
         edi.install()
-        self.assertNotRegexpMatches("\n".join(edi.command_log), "w00t")
+        self.assertNotIn("w00t", "\n".join(edi.command_log))
         for name in "w00t", "f1":
             assert_log_contains(edi,
                                 "Skipping dependency {} because it is inactive in stage \(function\) main".format(name))
