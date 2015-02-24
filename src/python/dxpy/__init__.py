@@ -128,6 +128,7 @@ from __future__ import (print_function, unicode_literals)
 import os, sys, json, time, logging, platform, collections, ssl, traceback
 import errno
 import requests
+from requests.packages import urllib3
 import socket
 
 from requests.exceptions import ConnectionError, HTTPError, Timeout
@@ -163,7 +164,12 @@ APISERVER_PROTOCOL = DEFAULT_APISERVER_PROTOCOL
 APISERVER_HOST = DEFAULT_APISERVER_HOST
 APISERVER_PORT = DEFAULT_APISERVER_PORT
 
-SESSION_HANDLERS = collections.defaultdict(requests.session)
+#SESSION_HANDLERS = collections.defaultdict(requests.session)
+from ssl import CERT_REQUIRED
+def new_session():
+    return urllib3.PoolManager(cert_reqs=CERT_REQUIRED, ca_certs=requests.certs.where())
+
+SESSION_HANDLERS = collections.defaultdict(new_session)
 
 DEFAULT_RETRIES = 6
 _DEBUG = 0  # debug verbosity level
@@ -335,7 +341,12 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
         try:
             _method, _url, _headers = _process_method_url_headers(method, url, headers)
             _timeout = timeout or 600
-            response = session_handler.request(_method, _url, headers=_headers, data=data, timeout=_timeout, auth=auth,
+
+            if auth is not None:
+                auth_header = auth.security_context["auth_token_type"] + " " + auth.security_context["auth_token"]
+                _headers[b'Authorization'] = auth_header.encode()
+
+            response = session_handler.request(_method, _url, headers=_headers, body=data, timeout=_timeout, # auth=auth,
                                                **kwargs)
 
             if _UPGRADE_NOTIFY and response.headers.get('x-upgrade-info', '').startswith('A recommended update is available') and not os.environ.has_key('_ARGCOMPLETE'):
@@ -349,30 +360,30 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
 
             # If an HTTP code that is not in the 200 series is received and the content is JSON, parse it and throw the
             # appropriate error.  Otherwise, raise the usual exception.
-            if response.status_code // 100 != 2:
+            if response.status // 100 != 2:
                 # response.headers key lookup is case-insensitive
                 if response.headers.get('content-type', '').startswith('application/json'):
-                    content = json.loads(response.content.decode('utf-8'))
+                    content = json.loads(response.data.decode('utf-8'))
                     error_class = getattr(exceptions, content["error"]["type"], exceptions.DXAPIError)
-                    raise error_class(content, response.status_code)
+                    raise error_class(content, response.status)
                 response.raise_for_status()
 
             if want_full_response:
                 return response
             else:
                 if 'content-length' in response.headers:
-                    if int(response.headers['content-length']) != len(response.content):
+                    if int(response.headers['content-length']) != len(response.data):
                         range_str = (' (%s)' % (headers['Range'],)) if 'Range' in headers else ''
                         raise exceptions.ContentLengthError(
                             "Received response with content-length header set to %s but content length is %d%s" %
-                            (response.headers['content-length'], len(response.content), range_str)
+                            (response.headers['content-length'], len(response.data), range_str)
                         )
 
                 if use_compression and response.headers.get('content-encoding', '') == 'snappy':
                     # TODO: check if snappy raises any exceptions on truncated response content
-                    content = snappy.uncompress(response.content)
+                    content = snappy.uncompress(response.data)
                 else:
-                    content = response.content
+                    content = response.data
 
                 if decode_response_body:
                     content = content.decode('utf-8')
@@ -381,10 +392,10 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
                             content = json.loads(content)
                             if _DEBUG >= 2:
                                 t = int(response.elapsed.total_seconds()*1000)
-                                print(method, url, "<=", response.status_code, "(%dms)"%t, "\n" + json.dumps(content, indent=2), file=sys.stderr)
+                                print(method, url, "<=", response.status, "(%dms)"%t, "\n" + json.dumps(content, indent=2), file=sys.stderr)
                             elif _DEBUG > 0:
                                 t = int(response.elapsed.total_seconds()*1000)
-                                print(method, url, "<=", response.status_code, "(%dms)"%t, Repr().repr(content), file=sys.stderr)
+                                print(method, url, "<=", response.status, "(%dms)"%t, Repr().repr(content), file=sys.stderr)
                             return content
                         except ValueError:
                             # If a streaming API call (no content-length
@@ -405,7 +416,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
                 last_exc_type, last_error, last_traceback = sys.exc_info()
                 exception_msg = traceback.format_exc().splitlines()[-1].strip()
 
-                if response is not None and response.status_code == 503:
+                if response is not None and response.status == 503:
                     DEFAULT_RETRY_AFTER_INTERVAL = 60
                     try:
                         seconds_to_wait = int(response.headers.get('retry-after', DEFAULT_RETRY_AFTER_INTERVAL))
@@ -439,7 +450,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
                        streaming_response_truncated:
                         ok_to_retry = always_retry or (method == 'GET') or _is_retryable_exception(e)
                     else:
-                        ok_to_retry = 500 <= response.status_code < 600
+                        ok_to_retry = 500 <= response.status < 600
 
                     if ok_to_retry:
                         if rewind_input_buffer_offset is not None:
