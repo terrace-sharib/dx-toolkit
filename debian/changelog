@@ -1,3 +1,45 @@
+dx-toolkit (0.140.0) precise; urgency=low
+
+  * Minor fixes 
+
+ -- Kaveh Nafissi <knafissi@dnanexus.com>  Wed, 08 Apr 2015 17:05:49 +0000
+
+dx-toolkit (0.139.0) precise; urgency=low
+
+  * Minor fixes
+
+ -- Phil Sung <psung@dnanexus.com>  Tue, 31 Mar 2015 23:24:28 +0000
+
+dx-toolkit (0.138.0) precise; urgency=low
+
+  * minor fixes
+
+ -- Kaveh Nafissi <knafissi@dnanexus.com>  Wed, 25 Mar 2015 20:00:40 +0000
+
+dx-toolkit (0.137.0) precise; urgency=low
+
+  * Bug fixes
+
+ -- Kaveh Nafissi <knafissi@dnanexus.com>  Wed, 18 Mar 2015 20:31:08 +0000
+
+dx-toolkit (0.136.0) precise; urgency=low
+
+  * Bug fixes
+
+ -- Phil Sung <psung@dnanexus.com>  Tue, 10 Mar 2015 21:48:40 +0000
+
+dx-toolkit (0.135.0) precise; urgency=low
+
+  * Fix regression in DXFile buffer size selection
+
+ -- Ric Medlinger <ric@dnanexus.com>  Wed, 04 Mar 2015 23:38:09 +0000
+
+dx-toolkit (0.134.0) precise; urgency=low
+
+  *  Minor optimizations
+
+ -- Ric Medlinger <ric@dnanexus.com>  Tue, 24 Feb 2015 23:47:09 +0000
+
 dx-toolkit (0.133.0) precise; urgency=low
 
   * Improved config management in dxpy

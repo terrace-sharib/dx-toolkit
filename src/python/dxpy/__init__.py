@@ -414,7 +414,14 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True, timeou
                 logger.error("{} {}: Timeout exceeded".format(method, url))
             elif isinstance(e, _expected_exceptions):
                 last_exc_type, last_error, last_traceback = sys.exc_info()
-                exception_msg = traceback.format_exc().splitlines()[-1].strip()
+                if isinstance(last_error, exceptions.DXAPIError):
+                    # Using the same code path as below would not
+                    # produce a useful message when the error contains a
+                    # 'details' hash (which would have a last line of
+                    # '}')
+                    exception_msg = last_error.error_message()
+                else:
+                    exception_msg = traceback.format_exc().splitlines()[-1].strip()
 
                 if response is not None and response.status == 503:
                     DEFAULT_RETRY_AFTER_INTERVAL = 60
@@ -591,9 +598,9 @@ def get_auth_server_name(host_override=None, port_override=None):
         err_msg = "Could not determine which auth server is associated with {apiserver}."
         raise exceptions.DXError(err_msg.format(apiserver=APISERVER_HOST))
 
+from .utils.config import DXConfig as _DXConfig
+config = _DXConfig()
+
 from .bindings import *
 from .dxlog import DXLogHandler
 from .utils.exec_utils import run, entry_point
-from .utils.config import DXConfig as _DXConfig
-
-config = _DXConfig()
