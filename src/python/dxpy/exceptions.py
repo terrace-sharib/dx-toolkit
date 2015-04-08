@@ -189,6 +189,15 @@ def exit_with_exc_info(code=1, message='', print_tb=False, exception=None):
         elif isinstance(exc_value, KeyboardInterrupt):
             sys.stderr.write('^C\n')
         else:
+            try:
+                import inspect
+                frame, filename, line_number, function_name, lines, index = inspect.getouterframes(inspect.currentframe())[2]
+            except Exception:
+                filename, line_number, function_name = "unknown", "unknown", "unknown"
+            sys.stderr.write("Error in {filename}:{line} ({func}) (dxpy {v}):\n".format(v=dxpy.TOOLKIT_VERSION,
+                                                                                       filename=os.path.basename(filename),
+                                                                                       func=function_name,
+                                                                                       line=line_number))
             for line in traceback.format_exception_only(exc_type, exc_value):
                 sys.stderr.write(line)
 
