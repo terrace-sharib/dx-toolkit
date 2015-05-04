@@ -416,14 +416,6 @@ def print_project_desc(desc, verbose=False):
 def print_app_desc(desc, verbose=False):
     recognized_fields = ['id', 'class', 'name', 'version', 'aliases', 'createdBy', 'created', 'modified', 'deleted', 'published', 'title', 'subtitle', 'description', 'categories', 'access', 'dxapi', 'inputSpec', 'outputSpec', 'runSpec', 'resources', 'billTo', 'installed', 'openSource', 'summary', 'applet', 'installs', 'billing', 'details', 'developerNotes',
                          'authorizedUsers']
-
-    advanced_inputs = []
-    details = desc["details"]
-    if isinstance(details, dict) and "advancedInputs" in details:
-        if not verbose:
-            advanced_inputs = details["advancedInputs"]
-        del details["advancedInputs"]
-
     print_field("ID", desc["id"])
     print_field("Class", desc["class"])
     if 'billTo' in desc:
@@ -437,8 +429,15 @@ def print_app_desc(desc, verbose=False):
     print_field("Created from", desc["applet"])
     print_json_field('Installed', desc['installed'])
     print_json_field('Open source', desc['openSource'])
-    print_json_field('Deleted', desc['deleted'])
+    print_json_field('deleted', desc['deleted'])
     if not desc['deleted']:
+        advanced_inputs = []
+        details = desc["details"]
+        if isinstance(details, dict) and "advancedInputs" in details:
+            if not verbose:
+                advanced_inputs = details["advancedInputs"]
+            del details["advancedInputs"]
+
         if 'published' not in desc or desc["published"] < 0:
             print_field("Published", "-")
         else:
