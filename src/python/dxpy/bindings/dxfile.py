@@ -469,6 +469,8 @@ class DXFile(DXDataObject):
         else:
             md5.update(data)
 
+        req_input["md5sum"] = md5.hexdigest()
+
         def get_upload_url_and_headers():
             # This function is called from within a retry loop, so to avoid amplifying the number of retries
             # geometrically, we decrease the allowed number of retries for the nested API call every time.
