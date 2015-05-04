@@ -1187,12 +1187,12 @@ class TestDXClientDescribe(DXTestCase):
                                                      "code": ""},
                                          "name": "applet_to_delete"})['id']
         app_new_output = dxpy.api.app_new({"name": "app_to_delete",
-                                           "applet": applet_id, 
+                                           "applet": applet_id,
                                            "version": "1.0.0"})
 
         # make second app with no default tag
         app_new_output2 = dxpy.api.app_new({"name": "app_to_delete",
-                                           "applet": applet_id, 
+                                           "applet": applet_id,
                                            "version": "1.0.1"})
         dxpy.api.app_delete(app_new_output2["id"])
 
