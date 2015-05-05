@@ -470,6 +470,7 @@ class DXFile(DXDataObject):
             md5.update(data)
 
         req_input["md5sum"] = md5.hexdigest()
+        req_input["content-length"] = str(len(data))
 
         def get_upload_url_and_headers():
             # This function is called from within a retry loop, so to avoid amplifying the number of retries
@@ -481,16 +482,13 @@ class DXFile(DXDataObject):
 
             resp = dxpy.api.file_upload(self._dxid, req_input, **kwargs)
             url = resp["url"]
-            headers = resp.get("headers", {})
-            headers['Content-Length'] = str(len(data))
-            headers['Content-MD5'] = md5.hexdigest()
-            return url, headers
+            return url, resp.get("headers", {})
 
         # The file upload API requires us to get a pre-authenticated upload URL (and headers for it) every time we
         # attempt an upload. Because DXHTTPRequest will retry requests under retryable conditions, we give it a callback
         # to ask us for a new upload URL every time it attempts a request (instead of giving them directly).
         dxpy.DXHTTPRequest(get_upload_url_and_headers, data, jsonify_data=False, prepend_srv=False, always_retry=True,
-                           auth=None)
+                           auth=None, method='PUT')
 
         self._num_uploaded_parts += 1
 
