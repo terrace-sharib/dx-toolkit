@@ -41,7 +41,7 @@ boost::mutex instantaneousBytesMutex;
 // (like ~30sec) to mitigate rounding effect.
 const size_t MAX_QUEUE_SIZE = 5000;
 
-// Replace contents of "dest" with gzip of empty string 
+// Replace contents of "dest" with gzip of empty string
 void get_empty_string_gzip(vector<char> &dest) {
   DXLOG(dx::logINFO) << "Computing gzip of zero length string...";
   int64_t destLen = gzCompressBound(0);
@@ -118,8 +118,8 @@ void Chunk::read() {
   in.read(&(data[0]), len);
   if (!in.good()) {
     ostringstream msg;
-    msg << "unable to read '" << len << "' bytes from location '" << start << "' in the file '" 
-        << localFile.c_str() << "' (fail bit = " << in.fail() << ", bad bit = " << in.bad() 
+    msg << "unable to read '" << len << "' bytes from location '" << start << "' in the file '"
+        << localFile.c_str() << "' (fail bit = " << in.fail() << ", bad bit = " << in.bad()
         << ", eofbit = " << in.eof() <<")... readdata failed on chunk " << (*this);
     throw runtime_error(msg.str());
   }
@@ -290,7 +290,7 @@ void Chunk::upload(Options &opt) {
     if (!hostName.empty() && !resolvedIP.empty()) { // Will never be true when compiling on windows
       log("Adding ip '" + resolvedIP + "' to resolve list for hostname '" + hostName + "'");
       slist_resolved_ip = curl_slist_append(slist_resolved_ip, (hostName + ":443:" + resolvedIP).c_str());
-      slist_resolved_ip = curl_slist_append(slist_resolved_ip, (hostName + ":80:" + resolvedIP).c_str()); 
+      slist_resolved_ip = curl_slist_append(slist_resolved_ip, (hostName + ":80:" + resolvedIP).c_str());
       checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_RESOLVE, slist_resolved_ip), errorBuffer);
       // Note: We don't remove this extra host name resolution info by setting "-HOST:PORT:IP" at the end,
       // since we don't reuse the curl handle anyway
@@ -321,7 +321,7 @@ void Chunk::upload(Options &opt) {
     // Set time out to infinite
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0l), errorBuffer);
 
-    if (!dx::config::LIBCURL_VERBOSE().empty() && dx::config::LIBCURL_VERBOSE() != "0") { 
+    if (!dx::config::LIBCURL_VERBOSE().empty() && dx::config::LIBCURL_VERBOSE() != "0") {
       checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_VERBOSE, 1), errorBuffer);
     }
 
@@ -448,7 +448,7 @@ static string extractHostFromURL(const string &url) {
 // This function looks at the hostname extracted from the url, and decides if we want to resolve the
 // ip address explicitly or not, e.g., we do not attempt to resolve a hostname if it is already an ip address
 // (which is actually the case when UA is run from within a job in DNAnexus)
-// Note: The regexp for IP address we use is quite lenient, and matches some non-valid ips, but that's 
+// Note: The regexp for IP address we use is quite lenient, and matches some non-valid ips, but that's
 //       fine for our purpose here, since:
 //       1) Not resolving a hostname explicitly does not break anything (but the opposite can be dangerous),
 //       2) The input received by this function is not arbitrary but rather something decided by apiserver
@@ -468,7 +468,7 @@ pair<string, dx::JSON> Chunk::uploadURL(Options &opt) {
   const string &url = toReturn.first;
   log("/" + fileID + "/upload call returned this url: " + url);
 
-  if (!opt.noRoundRobinDNS) { 
+  if (!opt.noRoundRobinDNS) {
     // Now, try to resolve the host name in url to an ip address (for explicit round robin DNS)
     // If we are unable to do so, just leave the resolvedIP variable an empty string
     resolvedIP.clear();
