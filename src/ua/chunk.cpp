@@ -318,7 +318,7 @@ void Chunk::upload(Options &opt) {
       checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_MAX_SEND_SPEED_LARGE, tval), errorBuffer);
     }
 
-    // Set time out to infinite
+    // Set timeout to infinite
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0l), errorBuffer);
 
     if (!dx::config::LIBCURL_VERBOSE().empty() && dx::config::LIBCURL_VERBOSE() != "0") {
@@ -345,10 +345,8 @@ void Chunk::upload(Options &opt) {
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_READDATA, this), errorBuffer);
 
     // Set callback for recieving the response data
-    /** set callback function */
     respData.clear();
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback) , errorBuffer);
-    /** "respData" is a member variable of Chunk class*/
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &respData), errorBuffer);
 
 
