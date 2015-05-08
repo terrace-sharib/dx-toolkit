@@ -349,18 +349,6 @@ void Chunk::upload(Options &opt) {
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback) , errorBuffer);
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &respData), errorBuffer);
 
-
-    // Set the Content-Length header.
-    ostringstream clen;
-    clen << "Content-Length: " << data.size();
-    slist_headers = curl_slist_append(slist_headers, clen.str().c_str());
-
-    // Compute the MD5 sum of data, and add the Content-MD5 header
-    expectedMD5 = dx::getHexifiedMD5(data);
-    ostringstream cmd5;
-    cmd5 << "Content-MD5: " << expectedMD5;
-    slist_headers = curl_slist_append(slist_headers, cmd5.str().c_str());
-
     // Remove the Content-Type header (libcurl sets "Content-Type: application/x-www-form-urlencoded" by default for POST)
     slist_headers = curl_slist_append(slist_headers, "Content-Type:");
 
@@ -460,6 +448,8 @@ static bool attemptExplicitDNSResolve(const string &host) {
 pair<string, dx::JSON> Chunk::uploadURL(Options &opt) {
   dx::JSON params(dx::JSON_OBJECT);
   params["index"] = index + 1;  // minimum part index is 1
+  params["content-length"] = data.size();
+  params["md5Sum"] = dx::getHexifiedMD5(data);
   log("Generating Upload URL for index = " + boost::lexical_cast<string>(params["index"].get<int>()));
   dx::JSON result = fileUpload(fileID, params);
   pair<string, dx::JSON> toReturn = make_pair(result["url"].get<string>(), result["headers"]);
