@@ -353,24 +353,18 @@ void Chunk::upload(Options &opt) {
 
 
     // Set the Content-Length header.
-    {
-      ostringstream clen;
-      clen << "Content-Length: " << data.size();
-      slist_headers = curl_slist_append(slist_headers, clen.str().c_str());
-    }
+    ostringstream clen;
+    clen << "Content-Length: " << data.size();
+    slist_headers = curl_slist_append(slist_headers, clen.str().c_str());
 
     // Compute the MD5 sum of data, and add the Content-MD5 header
     expectedMD5 = dx::getHexifiedMD5(data);
-    {
-      ostringstream cmd5;
-      cmd5 << "Content-MD5: " << expectedMD5;
-      slist_headers = curl_slist_append(slist_headers, cmd5.str().c_str());
-    }
+    ostringstream cmd5;
+    cmd5 << "Content-MD5: " << expectedMD5;
+    slist_headers = curl_slist_append(slist_headers, cmd5.str().c_str());
 
     // Remove the Content-Type header (libcurl sets "Content-Type: application/x-www-form-urlencoded" by default for POST)
-    {
-      slist_headers = curl_slist_append(slist_headers, "Content-Type:");
-    }
+    slist_headers = curl_slist_append(slist_headers, "Content-Type:");
 
     // Append additional headers requested by /file-xxxx/upload call
     for (dx::JSON::const_object_iterator it = headersToSend.object_begin(); it != headersToSend.object_end(); ++it) {
