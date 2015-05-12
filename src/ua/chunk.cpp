@@ -339,7 +339,7 @@ void Chunk::upload(Options &opt) {
     /* See: http://curl.haxx.se/libcurl/c/libcurl-tutorial.html#Multi-threading */
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1l), errorBuffer);
 
-    checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_POST, 1), errorBuffer);
+    checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_UPLOAD, 1), errorBuffer);
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()), errorBuffer);
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_READFUNCTION, curlReadFunction), errorBuffer);
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_READDATA, this), errorBuffer);
@@ -361,6 +361,10 @@ void Chunk::upload(Options &opt) {
 
     checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist_headers), errorBuffer);
 
+    // curl wants to know this (otherwise it uses chunked transfer), even
+    // though we have set the content-length header above
+    checkConfigCURLcode(curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)data.size()), errorBuffer);
+
     log("Starting curl_easy_perform...");
 
     checkPerformCURLcode(curl_easy_perform(curl), errorBuffer);
@@ -375,6 +379,7 @@ void Chunk::upload(Options &opt) {
     upload_cleanup(&curl, &slist_headers, &slist_resolved_ip);
     throw;
   }
+
   if ((responseCode < 200) || (responseCode >= 300)) {
     log("Response code not in 2xx range ... throwing runtime_error", dx::logERROR);
     ostringstream msg;
@@ -382,27 +387,7 @@ void Chunk::upload(Options &opt) {
     throw runtime_error(msg.str());
   }
 
-  /************************************************************************************************/
-  /* Assertions for testing APIservers checksum logic (in case of succesful /UPLOAD/xxxx request) */
-  /* Can be removed later (when we are relatively confident of apiserver's checksum logic) ********/
-
-  // We check that /UPLOAD/xxxx returned back a hash of form {md5: xxxxx},
-  // and that value is equal to md5 we computed (and sent as Content-MD5 header).
-  // If the values differ - it's a MAJOR apiserver bug (since server must have rejected request with incorrect Content-MD5 anyway)
-  dx::JSON apiserverResp;
-  try {
-    apiserverResp = dx::JSON::parse(respData);
-  } catch(dx::JSONException &jexcp) {
-    cerr << "\nUNEXPECTED FATAL ERROR: Response from /UPLOAD/xxxx route could not be parsed as valid JSON" << endl
-         << "JSONException = '" << jexcp.what() << "'" << endl
-         << "APIServer response = '" << respData << "'" << endl;
-    assert(false); // This should not happen (apiserver response could not be parsed as JSON)
-    throw jexcp;
-  }
-  assert(apiserverResp.type() == dx::JSON_HASH);
-  assert(apiserverResp.has("md5") && apiserverResp["md5"].type() == dx::JSON_STRING);
-  assert(apiserverResp["md5"].get<string>() == expectedMD5);
-  /************************************************************************************************/
+  assert(respData == "");
 }
 
 void Chunk::clear() {
