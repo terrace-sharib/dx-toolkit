@@ -470,7 +470,7 @@ class DXFile(DXDataObject):
             md5.update(data)
 
         req_input["md5Sum"] = md5.hexdigest()
-        req_input["content-length"] = len(data)
+        req_input["size"] = len(data)
 
         def get_upload_url_and_headers():
             # This function is called from within a retry loop, so to avoid amplifying the number of retries

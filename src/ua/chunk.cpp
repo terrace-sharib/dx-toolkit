@@ -433,7 +433,7 @@ static bool attemptExplicitDNSResolve(const string &host) {
 pair<string, dx::JSON> Chunk::uploadURL(Options &opt) {
   dx::JSON params(dx::JSON_OBJECT);
   params["index"] = index + 1;  // minimum part index is 1
-  params["content-length"] = data.size();
+  params["size"] = data.size();
   params["md5Sum"] = dx::getHexifiedMD5(data);
   log("Generating Upload URL for index = " + boost::lexical_cast<string>(params["index"].get<int>()));
   dx::JSON result = fileUpload(fileID, params);
