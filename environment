@@ -54,8 +54,6 @@ fi
 # encoding. We reset it here to avoid having to set it for every I/O operation explicitly.
 export PYTHONIOENCODING=UTF-8
 
-eval "$(register-python-argcomplete dx|sed 's/-o default//')"
-
 # Clean up old session files
 (shopt -s nullglob;
  if [[ $HOME != "" ]]; then
