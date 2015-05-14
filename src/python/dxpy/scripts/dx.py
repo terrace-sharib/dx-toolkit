@@ -714,6 +714,9 @@ def ls(args):
                                                    args.path,
                                                    ask_to_resolve=False)
 
+    if not folderpath.endswith("/"):
+        folderpath += "/"
+
     if project is None:
         parser.exit(1, fill('Current project must be set or specified before any data can be listed') + '\n')
     dxproj = dxpy.get_handler(project)
@@ -749,6 +752,7 @@ def ls(args):
                         print(BOLD() + BLUE() + os.path.basename(folder) + '/' + ENDC())
             if not args.folders:
                 resp["objects"] = sorted(resp["objects"], key=cmp_names)
+                desc_prefix = ""
                 if args.verbose:
                     if len(resp['objects']) > 0:
                         print(BOLD() + 'State' + DELIMITER('\t') + 'Last modified' + DELIMITER('       ') + 'Size' + DELIMITER('     ') + 'Name' + DELIMITER(' (') + 'ID' + DELIMITER(')') + ENDC())
@@ -761,7 +765,9 @@ def ls(args):
                     elif args.verbose:
                         print_ls_l_desc(obj['describe'], include_project=False)
                     else:
-                        print_ls_desc(obj['describe'], print_id=True if name_counts[obj['describe']['name']] > 1 else False)
+                        print_ls_desc(obj['describe'],
+                                      prefix=folderpath if args.full else "",
+                                      print_id=True if name_counts[obj['describe']['name']] > 1 else False)
         except:
             err_exit()
     else:
@@ -777,7 +783,9 @@ def ls(args):
                 elif args.verbose:
                     print_ls_l_desc(result['describe'], include_project=False)
                 else:
-                    print_ls_desc(result['describe'], print_id=True if name_counts[result['describe']['name']] > 1 else False)
+                    print_ls_desc(result['describe'],
+                                  prefix=folderpath if args.full else "",
+                                  print_id=True if name_counts[result['describe']['name']] > 1 else False)
 
 def mkdir(args):
     had_error = False

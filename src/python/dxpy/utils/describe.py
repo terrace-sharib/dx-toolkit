@@ -771,12 +771,12 @@ def print_desc(desc, verbose=False):
     else:
         print_data_obj_desc(desc, verbose=verbose)
 
-def get_ls_desc(desc, print_id=False):
-    addendum = ' : ' + desc['id'] if print_id is True else ''
+def get_ls_desc(desc, prefix="", print_id=False):
+    suffix = ' : ' + desc['id'] if print_id is True else ''
     if desc['class'] in ['applet', 'workflow']:
-        return BOLD() + GREEN() + desc['name'] + ENDC() + addendum
+        return BOLD() + GREEN() + prefix + desc['name'] + ENDC() + suffix
     else:
-        return desc['name'] + addendum
+        return prefix + desc['name'] + suffix
 
 def print_ls_desc(desc, **kwargs):
     print(get_ls_desc(desc, **kwargs))

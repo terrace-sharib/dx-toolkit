@@ -157,6 +157,7 @@ class TestDXClient(DXTestCase):
         cd("..")
         run("dx pwd")
         run("dx ls")
+        run("dx ls --full")
         with self.assertRaises(subprocess.CalledProcessError):
             run("dx rm '{f}'".format(f=filename))
         cd(folder_name)
