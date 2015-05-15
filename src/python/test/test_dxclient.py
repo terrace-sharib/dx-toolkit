@@ -1176,6 +1176,27 @@ class TestDXClientDescribe(DXTestCase):
 
         run("dx describe " + self.project + " --project-context-id foo")
 
+    def test_user_has_bill_to_field(self):
+        user_id = dxpy.whoami()
+        user_desc = dxpy.api.user_describe(user_id)
+        self.assertTrue("billTo" in user_desc)
+        self.assertEqual(user_desc.get("billTo"), user_id)
+
+        cli_user_desc = run("dx describe " + user_id).strip().split("\n")
+        parsed_desc = map(lambda out: out.split(), cli_user_desc)
+        parsed_desc = filter(lambda elt: len(elt) == 2, parsed_desc)
+        parsed_keys = map(lambda elt: elt[0], parsed_desc)
+        self.assertIn("Bill To ID", parsed_keys)
+        for key, value in parsed_desc:
+            if key == "Bill To ID":
+                self.assertEqual(value, user_id)
+
+        cli_user_desc_json = json.loads(
+            run("dx describe " + user_id + " --json")
+        )
+        self.assertTrue("billTo" in cli_user_desc_json)
+        self.assertEqual(cli_user_desc_json.get("billTo"), user_id)
+
     @unittest.skipUnless(testutil.TEST_CREATE_APPS,
                          'skipping test that would create apps')
     def test_describe_deleted_app(self):
