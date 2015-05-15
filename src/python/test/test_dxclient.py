@@ -29,7 +29,7 @@ import dxpy
 from dxpy.scripts import dx_build_app
 from dxpy_testutil import DXTestCase, check_output, temporary_project, select_project, cd
 import dxpy_testutil as testutil
-from dxpy.exceptions import DXAPIError, EXPECTED_ERR_EXIT_STATUS
+from dxpy.exceptions import DXAPIError, DXSearchError, EXPECTED_ERR_EXIT_STATUS
 from dxpy.compat import str, sys_encoding
 
 @contextmanager
@@ -130,6 +130,34 @@ class TestDXTestUtils(DXTestCase):
                 # successfully changed by select_project
                 run('dx cd {dirname}'.format(dirname=test_dirname))
 
+
+class TestDXRemove(DXTestCase):
+    def test_remove_folders(self):
+        folder_name = "/test_folder"
+        record_name = "test_folder"
+
+        # Throw error on non-existent folder
+        with self.assertRaises(subprocess.CalledProcessError):
+            run("dx rm -r {f}".format(f=folder_name))
+
+        # make folder and file of the same name, confirm that file is deleted with regular rm call
+        run("dx mkdir {f}".format(f=folder_name))
+        self.assertIn(folder_name, list_folder(self.project, "/")['folders'])
+        run("dx new record {f}".format(f=record_name))
+        self.assertEquals(record_name,
+                          dxpy.find_one_data_object(classname="record",
+                                                    describe=True,
+                                                    project=self.project)['describe']['name'])
+        # -r flag shouldn't matter, object will take precedence over folder
+        run("dx rm -r {f}".format(f=record_name))
+        with self.assertRaises(DXSearchError):
+            dxpy.find_one_data_object(classname="record", describe=True, project=self.project)
+        # if no -r flag provided, should throw error since it's a folder
+        with self.assertRaises(subprocess.CalledProcessError):
+            run("dx rm {f}".format(f=record_name))
+        # finally remove the folder
+        run("dx rm -r {f}".format(f=record_name))
+        self.assertNotIn(folder_name, list_folder(self.project, "/")['folders'])
 
 class TestDXClient(DXTestCase):
     def test_dx_version(self):

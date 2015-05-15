@@ -812,7 +812,7 @@ def rmdir(args):
         if project is None:
             print(fill('Could not resolve the project of "' + path + '"'))
         try:
-            dxpy.api.project_remove_folder(project, {"folder": folderpath, "force": args.force})
+            dxpy.api.project_remove_folder(project, {"folder": folderpath})
         except Exception as details:
             print("Error while removing " + folderpath + " in " + project)
             print("  " + str(details))
@@ -855,13 +855,15 @@ def rm(args):
     for project in projects:
         for folder in projects[project]['folders']:
             try:
-                dxpy.api.project_remove_folder(project, {"folder": folder, "recurse": True, "force": args.force})
+                # set force as true to make dx rm idempotent
+                dxpy.api.project_remove_folder(project, {"folder": folder, "recurse": True, "force": True})
             except Exception as details:
                 print("Error while removing " + folder + " from " + project)
                 print("  " + str(details))
                 had_error = True
         try:
-            dxpy.api.project_remove_objects(project, {"objects": projects[project]['objects'], "force": args.force})
+            # set force as true to make dx rm idempotent
+            dxpy.api.project_remove_objects(project, {"objects": projects[project]['objects'], "force": True})
         except Exception as details:
             print("Error while removing " + json.dumps(projects[project]['objects']) + " from " + project)
             print("  " + str(details))

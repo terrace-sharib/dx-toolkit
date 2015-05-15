@@ -628,7 +628,6 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
         if len(results) == 0:
             # Could not find it as a data object.  If anything, it's a
             # folder.
-
             if '/' in entity_name:
                 # Then there's no way it's supposed to be a folder
                 raise ResolutionError(msg)
@@ -637,6 +636,16 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
             # error-checking for later.  Note that folderpath does
             possible_folder = folderpath + '/' + entity_name
             possible_folder, _skip = clean_folder_path(possible_folder, 'folder')
+
+            # Check that the folder specified actually exists, and raise error if it doesn't
+            try:
+                folder_list = dxpy.api.container_list_folder(project, {"folder": folderpath, "only": "folders"})
+            except Exception as details:
+                raise ResolutionError(str(details))
+            target_folder = '/' + entity_name
+            # Check that folder name exists in return from list folder API call
+            if target_folder not in folder_list['folders']:
+                raise ResolutionError('No folder named "' + entity_name + '"')
             return project, possible_folder, None
 
         # Caller wants ALL results; just return the whole thing
