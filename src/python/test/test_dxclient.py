@@ -1177,19 +1177,23 @@ class TestDXClientDescribe(DXTestCase):
         run("dx describe " + self.project + " --project-context-id foo")
 
     def test_user_has_bill_to_field(self):
+        ## Verify `billTo` from /user-xxxx/describe.
         user_id = dxpy.whoami()
         user_desc = dxpy.api.user_describe(user_id)
         self.assertTrue("billTo" in user_desc)
         self.assertEqual(user_desc.get("billTo"), user_id)
 
+        ## Verify `billTo` from "dx describe user-xxxx".
+        bill_to_label = "Default bill to"
         cli_user_desc = run("dx describe " + user_id).strip().split("\n")
-        parsed_desc = filter(lambda line: line.startswith("Bill To ID"),
+        parsed_desc = filter(lambda line: line.startswith(bill_to_label),
                              cli_user_desc)
         self.assertEqual(len(parsed_desc), 1)
-        key_and_value = parsed_desc[0].split("      ")
-        self.assertEqual(key_and_value[0], "Bill To ID")
-        self.assertEqual(key_and_value[1], user_id)
+        key_and_value = parsed_desc[0].split(bill_to_label)
+        self.assertEqual(key_and_value[0], "")
+        self.assertEqual(key_and_value[1].strip(), user_id)
 
+        ## Verify `billTo` from "dx describe user-xxxx --json".
         cli_user_desc_json = json.loads(
             run("dx describe " + user_id + " --json")
         )
