@@ -1183,13 +1183,12 @@ class TestDXClientDescribe(DXTestCase):
         self.assertEqual(user_desc.get("billTo"), user_id)
 
         cli_user_desc = run("dx describe " + user_id).strip().split("\n")
-        parsed_desc = map(lambda out: out.split(), cli_user_desc)
-        parsed_desc = filter(lambda elt: len(elt) == 2, parsed_desc)
-        parsed_keys = map(lambda elt: elt[0], parsed_desc)
-        self.assertIn("Bill To ID", parsed_keys)
-        for key, value in parsed_desc:
-            if key == "Bill To ID":
-                self.assertEqual(value, user_id)
+        parsed_desc = filter(lambda line: line.startswith("Bill To ID"),
+                             cli_user_desc)
+        self.assertEqual(len(parsed_desc), 1)
+        key_and_value = parsed_desc[0].split("      ")
+        self.assertEqual(key_and_value[0], "Bill To ID")
+        self.assertEqual(key_and_value[1], user_id)
 
         cli_user_desc_json = json.loads(
             run("dx describe " + user_id + " --json")
