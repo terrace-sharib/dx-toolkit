@@ -568,7 +568,8 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
 
     if entity_name is None:
         # Definitely a folder (or project)
-        # FIXME? Should I check that the folder exists if expected="folder"?
+        if not check_folder_exists(project, folderpath, entity_name):
+            raise ResolutionError('No folder name' + entity_name + 'found and expected == folder')
         return project, folderpath, entity_name
     elif is_hashid(entity_name):
         found_valid_class = True
@@ -638,13 +639,7 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
             possible_folder, _skip = clean_folder_path(possible_folder, 'folder')
 
             # Check that the folder specified actually exists, and raise error if it doesn't
-            try:
-                folder_list = dxpy.api.container_list_folder(project, {"folder": folderpath, "only": "folders"})
-            except Exception as details:
-                raise ResolutionError(str(details))
-            target_folder = '/' + entity_name
-            # Check that folder name exists in return from list folder API call
-            if target_folder not in folder_list['folders']:
+            if not check_folder_exists(project, folderpath, entity_name):
                 raise ResolutionError('No folder named "' + entity_name + '"')
             return project, possible_folder, None
 
@@ -667,6 +662,32 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
                 raise ResolutionError('The given path "' + path + '" resolves to ' + str(len(results)) + ' data objects')
         elif len(results) == 1:
             return project, None, ([results[0]] if allow_mult else results[0])
+
+
+def check_folder_exists(project, path, folder_name):
+    '''
+    :param project: project id
+    :type project: string
+    :param path: path to where we should look for the folder in question
+    :type path: string
+    :param folder_name: name of the folder in question
+    :type path: string
+    :returns: A boolean True or False whether the folder exists at the specified path
+    :type: boolean
+    :raises: :exc:'ResolutionError' if dxpy.api.container_list_folder raises an exception
+
+    This method calls dxpy.api.container_list_folder and returns a boolean
+    value that indicates whether a folder of the specified name exists at the specified path
+    '''
+    # Check that the folder specified actually exists, and raise error if it doesn't
+    try:
+        folder_list = dxpy.api.container_list_folder(project, {"folder": path, "only": "folders"})
+    except Exception as details:
+        raise ResolutionError(str(details))
+    # api call returns folders with '/' prepended so sanitize input if necessary
+    target_folder = folder_name if folder_name.startswith('/') else ('/' + folder_name)
+    # Check that folder name exists in return from list folder API call
+    return target_folder in folder_list['folders']
 
 def get_app_from_path(path):
     '''

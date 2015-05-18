@@ -855,15 +855,19 @@ def rm(args):
     for project in projects:
         for folder in projects[project]['folders']:
             try:
-                # set force as true to make dx rm idempotent
-                dxpy.api.project_remove_folder(project, {"folder": folder, "recurse": True, "force": True})
+                # set force as true so the underlying API requests are idempotent
+                dxpy.api.project_remove_folder(project,
+                                               {"folder": folder, "recurse": True, "force": True},
+                                               always_retry=True)
             except Exception as details:
                 print("Error while removing " + folder + " from " + project)
                 print("  " + str(details))
                 had_error = True
         try:
             # set force as true to make dx rm idempotent
-            dxpy.api.project_remove_objects(project, {"objects": projects[project]['objects'], "force": True})
+            dxpy.api.project_remove_objects(project,
+                                            {"objects": projects[project]['objects'], "force": True},
+                                            always_retry=True)
         except Exception as details:
             print("Error while removing " + json.dumps(projects[project]['objects']) + " from " + project)
             print("  " + str(details))

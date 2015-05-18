@@ -137,7 +137,7 @@ class TestDXRemove(DXTestCase):
         record_name = "test_folder"
 
         # Throw error on non-existent folder
-        with self.assertRaises(subprocess.CalledProcessError):
+        with self.assertSubprocessFailure(exit_code=1):
             run("dx rm -r {f}".format(f=folder_name))
 
         # make folder and file of the same name, confirm that file is deleted with regular rm call
@@ -153,7 +153,7 @@ class TestDXRemove(DXTestCase):
         with self.assertRaises(DXSearchError):
             dxpy.find_one_data_object(classname="record", describe=True, project=self.project)
         # if no -r flag provided, should throw error since it's a folder
-        with self.assertRaises(subprocess.CalledProcessError):
+        with self.assertSubprocessFailure(exit_code=1):
             run("dx rm {f}".format(f=record_name))
         # finally remove the folder
         run("dx rm -r {f}".format(f=record_name))
