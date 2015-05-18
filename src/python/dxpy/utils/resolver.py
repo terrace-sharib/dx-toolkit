@@ -568,7 +568,7 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
 
     if entity_name is None:
         # Definitely a folder (or project)
-        if not check_folder_exists(project, folderpath, entity_name):
+        if expected != 'folder' and (not check_folder_exists(project, folderpath, entity_name)):
             raise ResolutionError('No folder name' + entity_name + 'found and expected == folder')
         return project, folderpath, entity_name
     elif is_hashid(entity_name):
@@ -679,7 +679,8 @@ def check_folder_exists(project, path, folder_name):
     This method calls dxpy.api.container_list_folder and returns a boolean
     value that indicates whether a folder of the specified name exists at the specified path
     '''
-    # Check that the folder specified actually exists, and raise error if it doesn't
+    if folder_name is None or path is None:
+        return False
     try:
         folder_list = dxpy.api.container_list_folder(project, {"folder": path, "only": "folders"})
     except Exception as details:
