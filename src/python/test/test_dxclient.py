@@ -131,6 +131,7 @@ class TestDXTestUtils(DXTestCase):
                 run('dx cd {dirname}'.format(dirname=test_dirname))
 
 
+# TODO: these 'dx rm' and related commands should really exit with code 3 to distinguish user and internal errors
 class TestDXRemove(DXTestCase):
     def test_remove_folders(self):
         folder_name = "/test_folder"

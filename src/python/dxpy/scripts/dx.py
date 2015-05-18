@@ -864,7 +864,7 @@ def rm(args):
                 print("  " + str(details))
                 had_error = True
         try:
-            # set force as true to make dx rm idempotent
+            # set force as true so the underlying API requests are idempotent
             dxpy.api.project_remove_objects(project,
                                             {"objects": projects[project]['objects'], "force": True},
                                             always_retry=True)
@@ -873,6 +873,7 @@ def rm(args):
             print("  " + str(details))
             had_error = True
     if had_error:
+        # TODO: 'dx rm' and related commands should separate out user error exceptions and internal code exceptions
         parser.exit(1)
 
 def rmproject(args):
@@ -3457,7 +3458,6 @@ parser_rmdir = subparsers.add_parser('rmdir', help='Remove a folder',
                                      parents=[env_args])
 rmdir_paths_action = parser_rmdir.add_argument('paths', help='Paths to folders to remove', metavar='path', nargs='+')
 rmdir_paths_action.completer = DXPathCompleter(expected='folder')
-parser_rmdir.add_argument('-f', '--force', help='Suppress errors if folder does not exist', action='store_true')
 parser_rmdir.set_defaults(func=rmdir)
 register_subparser(parser_rmdir, categories='fs')
 
@@ -3467,7 +3467,6 @@ parser_rm = subparsers.add_parser('rm', help='Remove data objects and folders',
 rm_paths_action = parser_rm.add_argument('paths', help='Paths to remove', metavar='path', nargs='+')
 rm_paths_action.completer = DXPathCompleter()
 parser_rm.add_argument('-r', '--recursive', help='Recurse into a directory', action='store_true')
-parser_rm.add_argument('-f', '--force', help='Suppress errors if any items do not exist', action='store_true')
 parser_rm.set_defaults(func=rm)
 register_subparser(parser_rm, categories='fs')
 

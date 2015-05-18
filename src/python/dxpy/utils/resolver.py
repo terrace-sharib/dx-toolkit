@@ -568,8 +568,7 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
 
     if entity_name is None:
         # Definitely a folder (or project)
-        if expected != 'folder' and (not check_folder_exists(project, folderpath, entity_name)):
-            raise ResolutionError('No folder name' + entity_name + 'found and expected == folder')
+        # TODO: find a good way to check if folder exists and expected=folder
         return project, folderpath, entity_name
     elif is_hashid(entity_name):
         found_valid_class = True
@@ -671,20 +670,25 @@ def check_folder_exists(project, path, folder_name):
     :param path: path to where we should look for the folder in question
     :type path: string
     :param folder_name: name of the folder in question
-    :type path: string
+    :type folder_name: string
     :returns: A boolean True or False whether the folder exists at the specified path
     :type: boolean
     :raises: :exc:'ResolutionError' if dxpy.api.container_list_folder raises an exception
 
-    This method calls dxpy.api.container_list_folder and returns a boolean
-    value that indicates whether a folder of the specified name exists at the specified path
+    This function returns a boolean value that indicates whether a folder of the
+    specified name exists at the specified path
+
+    Note: this function will NOT work on the root folder case, i.e. '/'
     '''
     if folder_name is None or path is None:
         return False
     try:
         folder_list = dxpy.api.container_list_folder(project, {"folder": path, "only": "folders"})
-    except Exception as details:
-        raise ResolutionError(str(details))
+    except dxpy.exceptions.DXAPIError as e:
+        if e.name == 'ResourceNotFound':
+            raise ResolutionError(str(details))
+        else:
+            raise
     # api call returns folders with '/' prepended so sanitize input if necessary
     target_folder = folder_name if folder_name.startswith('/') else ('/' + folder_name)
     # Check that folder name exists in return from list folder API call
