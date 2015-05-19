@@ -1117,7 +1117,7 @@ dxpy.run()
             self.assertEqual(expected_result, result)
 
             # Case: File does not exist.
-            with self.assertSubprocessFailure(stderr_regexp="Could not resolve", exit_code=1):
+            with self.assertSubprocessFailure(stderr_regexp="Could not resolve", exit_code=3):
                 run("dx download foo -o -")
 
             # Case: Invalid output field name when specifying <job_id>:<output_field>.
@@ -1249,7 +1249,7 @@ class TestDXClientRun(DXTestCase):
                                          "hidden": True,
                                          "name": "hidden_applet"})['id']
         run("dx describe hidden_applet")
-        with self.assertSubprocessFailure(stderr_regexp='No matches found', exit_code=3):
+        with self.assertSubprocessFailure(stderr_regexp='ResolutionError', exit_code=3):
             run("dx run hidden_applet")
         # by ID will still work
         run("dx run " + applet_id + " -y")
@@ -1257,7 +1257,7 @@ class TestDXClientRun(DXTestCase):
         # hidden workflow
         dxworkflow = dxpy.new_dxworkflow(name="hidden_workflow", hidden=True)
         dxworkflow.add_stage(applet_id)
-        with self.assertSubprocessFailure(stderr_regexp='No matches found', exit_code=3):
+        with self.assertSubprocessFailure(stderr_regexp='ResolutionError', exit_code=3):
             run("dx run hidden_workflow")
         # by ID will still work
         run("dx run " + dxworkflow.get_id() + " -y")
