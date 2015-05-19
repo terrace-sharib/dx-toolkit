@@ -639,7 +639,7 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
 
             # Check that the folder specified actually exists, and raise error if it doesn't
             if not check_folder_exists(project, folderpath, entity_name):
-                raise ResolutionError('No folder named "' + entity_name + '"')
+                raise ResolutionError('Could not resolve "' + entity_name + '" to a folder name.' + folderpath)
             return project, possible_folder, None
 
         # Caller wants ALL results; just return the whole thing
@@ -686,11 +686,13 @@ def check_folder_exists(project, path, folder_name):
         folder_list = dxpy.api.container_list_folder(project, {"folder": path, "only": "folders"})
     except dxpy.exceptions.DXAPIError as e:
         if e.name == 'ResourceNotFound':
-            raise ResolutionError(str(details))
+            raise ResolutionError(str(e.msg))
         else:
-            raise
-    # api call returns folders with '/' prepended so sanitize input if necessary
-    target_folder = folder_name if folder_name.startswith('/') else ('/' + folder_name)
+            raise e
+    target_folder = path + '/' + folder_name
+    # sanitize input if necessary
+    target_folder, _skip = clean_folder_path(target_folder, 'folder')
+
     # Check that folder name exists in return from list folder API call
     return target_folder in folder_list['folders']
 
