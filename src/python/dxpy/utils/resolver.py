@@ -639,7 +639,8 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
 
             # Check that the folder specified actually exists, and raise error if it doesn't
             if not check_folder_exists(project, folderpath, entity_name):
-                raise ResolutionError('Could not resolve "' + entity_name + '" to a folder name.' + folderpath)
+                raise ResolutionError('Could not resolve "' + entity_name +
+                                      '" to a folder name in \'' + folderpath + "'")
             return project, possible_folder, None
 
         # Caller wants ALL results; just return the whole thing

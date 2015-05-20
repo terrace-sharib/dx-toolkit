@@ -136,13 +136,14 @@ class TestDXRemove(DXTestCase):
     def test_remove_folders(self):
         folder_name = "/test_folder"
         record_name = "test_folder"
+        record_name2 = "test_folder2"
 
         # Throw error on non-existent folder
         with self.assertSubprocessFailure(exit_code=1):
             run("dx rm -r {f}".format(f=folder_name))
 
         # make folder and file of the same name, confirm that file is deleted with regular rm call
-        run("dx mkdir {f}".format(f=folder_name))
+        create_folder_in_project(self.project, folder_name)
         self.assertIn(folder_name, list_folder(self.project, "/")['folders'])
         run("dx new record {f}".format(f=record_name))
         self.assertEquals(record_name,
@@ -159,6 +160,15 @@ class TestDXRemove(DXTestCase):
         # finally remove the folder
         run("dx rm -r {f}".format(f=record_name))
         self.assertNotIn(folder_name, list_folder(self.project, "/")['folders'])
+
+        # make a record and then try to delete that record along with a non-existent record
+        run("dx new record {f}".format(f=record_name))
+        self.assertEquals(record_name,
+                          dxpy.find_one_data_object(classname="record",
+                                                    describe=True,
+                                                    project=self.project)['describe']['name'])
+        with self.assertSubprocessFailure(exit_code=1):
+            run("dx rm {f} {f2}".format(f=record_name, f2=record_name2))
 
 class TestDXClient(DXTestCase):
     def test_dx_version(self):
@@ -1240,6 +1250,7 @@ class TestDXClientRun(DXTestCase):
 
     def test_dx_run_no_hidden_executables(self):
         # hidden applet
+        applet_name = "hidden_applet"
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "dxapi": "1.0.0",
                                          "inputSpec": [],
@@ -1247,17 +1258,20 @@ class TestDXClientRun(DXTestCase):
                                          "runSpec": {"interpreter": "bash",
                                                      "code": "echo 'hello'"},
                                          "hidden": True,
-                                         "name": "hidden_applet"})['id']
+                                         "name": applet_name})['id']
         run("dx describe hidden_applet")
-        with self.assertSubprocessFailure(stderr_regexp='ResolutionError', exit_code=3):
+        with self.assertSubprocessFailure(stderr_text='ResolutionError: Could not resolve "{f}" to a folder name.'
+                                          .format(f=applet_name), exit_code=3):
             run("dx run hidden_applet")
         # by ID will still work
         run("dx run " + applet_id + " -y")
 
         # hidden workflow
-        dxworkflow = dxpy.new_dxworkflow(name="hidden_workflow", hidden=True)
+        workflow_name = "hidden_workflow"
+        dxworkflow = dxpy.new_dxworkflow(name=workflow_name, hidden=True)
         dxworkflow.add_stage(applet_id)
-        with self.assertSubprocessFailure(stderr_regexp='ResolutionError', exit_code=3):
+        with self.assertSubprocessFailure(stderr_text='ResolutionError: Could not resolve "{f}" to a folder name.'
+                                          .format(f=workflow_name), exit_code=3):
             run("dx run hidden_workflow")
         # by ID will still work
         run("dx run " + dxworkflow.get_id() + " -y")
