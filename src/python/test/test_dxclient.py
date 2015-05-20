@@ -301,7 +301,7 @@ class TestDXClient(DXTestCase):
             run("dx add_types Ψ ΨΨ")
         run("dx remove_types Ψ abc xyz")
         run("dx remove_types Ψ abc xyz")
-        with self.assertSubprocessFailure(stderr_regexp="Could not resolve", exit_code=3):
+        with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
             run("dx remove_types ΨΨ Ψ")
 
     def test_dx_set_details(self):
@@ -418,9 +418,9 @@ class TestDXClient(DXTestCase):
         self.assertEqual(len(second_tags), 0)
 
         # nonexistent name
-        with self.assertSubprocessFailure(stderr_regexp='Could not resolve', exit_code=3):
+        with self.assertSubprocessFailure(stderr_regexp='Unable to resolve', exit_code=3):
             run("dx tag nonexistent atag")
-        with self.assertSubprocessFailure(stderr_regexp='Could not resolve', exit_code=3):
+        with self.assertSubprocessFailure(stderr_regexp='Unable to resolve', exit_code=3):
             run("dx untag nonexistent atag")
 
     def test_dx_project_tagging(self):
@@ -487,9 +487,9 @@ class TestDXClient(DXTestCase):
         self.assertEqual(len(second_properties), 0)
 
         # nonexistent name
-        with self.assertSubprocessFailure(stderr_regexp='Could not resolve', exit_code=3):
+        with self.assertSubprocessFailure(stderr_regexp='Unable to resolve', exit_code=3):
             run("dx set_properties nonexistent key=value")
-        with self.assertSubprocessFailure(stderr_regexp='Could not resolve', exit_code=3):
+        with self.assertSubprocessFailure(stderr_regexp='Unable to resolve', exit_code=3):
             run("dx unset_properties nonexistent key")
 
         # Errors parsing --property value
@@ -1127,7 +1127,7 @@ dxpy.run()
             self.assertEqual(expected_result, result)
 
             # Case: File does not exist.
-            with self.assertSubprocessFailure(stderr_regexp="Could not resolve", exit_code=3):
+            with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
                 run("dx download foo -o -")
 
             # Case: Invalid output field name when specifying <job_id>:<output_field>.
@@ -1260,7 +1260,7 @@ class TestDXClientRun(DXTestCase):
                                          "hidden": True,
                                          "name": applet_name})['id']
         run("dx describe hidden_applet")
-        with self.assertSubprocessFailure(stderr_text='ResolutionError: Could not resolve "{f}" to a folder name.'
+        with self.assertSubprocessFailure(stderr_regexp='ResolutionError: Unable to resolve "{f}"'
                                           .format(f=applet_name), exit_code=3):
             run("dx run hidden_applet")
         # by ID will still work
@@ -1270,7 +1270,7 @@ class TestDXClientRun(DXTestCase):
         workflow_name = "hidden_workflow"
         dxworkflow = dxpy.new_dxworkflow(name=workflow_name, hidden=True)
         dxworkflow.add_stage(applet_id)
-        with self.assertSubprocessFailure(stderr_text='ResolutionError: Could not resolve "{f}" to a folder name.'
+        with self.assertSubprocessFailure(stderr_regexp='ResolutionError: Unable to resolve "{f}"'
                                           .format(f=workflow_name), exit_code=3):
             run("dx run hidden_workflow")
         # by ID will still work
@@ -2100,7 +2100,7 @@ class TestDXClientWorkflow(DXTestCase):
             run("dx new workflow --init " + workflow_id)
 
     def test_dx_workflow_resolution(self):
-        with self.assertSubprocessFailure(stderr_regexp='Could not resolve', exit_code=3):
+        with self.assertSubprocessFailure(stderr_regexp='Unable to resolve', exit_code=3):
             run("dx update workflow foo")
 
         record_id = run("dx new record --type pipeline --brief").strip()
@@ -3249,7 +3249,7 @@ class TestDXBuildApp(DXTestCase):
                              open(os.path.join("get_applet", "resources", "resources_file")).read())
 
             # Target applet does not exist
-            with self.assertSubprocessFailure(stderr_regexp='Could not resolve', exit_code=3):
+            with self.assertSubprocessFailure(stderr_regexp='Unable to resolve', exit_code=3):
                 run("dx get path_does_not_exist")
 
             # -o dest (dest does not exist yet)
