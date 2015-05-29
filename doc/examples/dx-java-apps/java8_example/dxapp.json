@@ -1,0 +1,22 @@
+{
+  "name": "java8_example",
+  "title": "Java 8 Example",
+  "summary": "Demonstrates how to run your app using java 8",
+  "description": "Demonstrates the installation of openjdk-8. See the main.sh file and the dependency below; the Java payload is otherwise the same as that of the Hello World example",
+  "dxapi": "1.0.0",
+  "inputSpec": [
+    {"optional": true, "name": "name", "class": "string"}
+  ],
+  "outputSpec": [
+    {"name": "greeting", "class": "string"}
+  ],
+  "runSpec": {
+    "file": "main.sh",
+    "interpreter": "bash",
+    "execDepends": [
+      {"name": "dx-java-bindings"},
+      {"name": "openjdk-8-jre-headless"}
+    ]
+  },
+  "version": "0.0.1"
+}
