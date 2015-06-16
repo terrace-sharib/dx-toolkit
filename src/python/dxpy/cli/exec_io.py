@@ -30,7 +30,7 @@ from ..exceptions import DXCLIError
 from ..utils.printing import (RED, GREEN, BLUE, YELLOW, WHITE, BOLD, ENDC, DELIMITER, UNDERLINE, get_delimiter, fill)
 from ..utils.describe import (get_find_executions_string, get_ls_l_desc, parse_typespec)
 from ..utils.resolver import (get_first_pos_of_char, is_hashid, is_job_id, is_localjob_id, paginate_and_pick, pick,
-                              resolve_existing_path, split_unescaped)
+                              resolve_existing_path, resolve_existing_path_multi, split_unescaped)
 from ..utils import OrderedDefaultdict
 from ..compat import input, str, shlex
 
@@ -413,6 +413,7 @@ class ExecutableInputs(object):
         self.input_spec = collections.OrderedDict() if 'inputSpec' in self._desc or input_spec else None
         self.required_inputs, self.optional_inputs, self.array_inputs = [], [], set()
         self.input_name_prefix = input_name_prefix
+        self.requires_resolution = OrderedDefaultdict(list)
 
         if input_spec is None:
             input_spec = self._desc.get('inputSpec', [])
@@ -442,7 +443,14 @@ class ExecutableInputs(object):
         else:
             self.inputs.update(new_inputs)
 
+    def update_required_resolution_inputs(self):
+        #Call resolve Data Objects here with batch: self.requires_resolution
+        #print("UPDATING: " + str(self.requires_resolution))
+        results = resolve_existing_path_multi(self.requires_resolution, expected='entity')
+        self.update(results)
+
     def add(self, input_name, input_value):
+        #print("Adding " + input_name + " with value " + input_value)
         if self.input_name_prefix is not None:
             if input_name.startswith(self.input_name_prefix):
                 input_name = input_name[len(self.input_name_prefix):]
@@ -480,6 +488,9 @@ class ExecutableInputs(object):
                         raise Exception()
                 except:
                     # Not recognized JSON (list or dict), so resolve it as a name
+                    # Add to things to be resolved
+                    self.requires_resolution[input_name] = input_value
+                    """
                     try:
                         project, folderpath, entity_result = resolve_existing_path(input_value,
                                                                                    expected='entity')
@@ -492,6 +503,7 @@ class ExecutableInputs(object):
                         else:
                             input_value = {"$dnanexus_link": {"project": entity_result['describe']['project'],
                                                               "id": entity_result['id']}}
+                    """
             if isinstance(self.inputs[input_name], list) and \
                not isinstance(self.inputs[input_name], basestring):
                 self.inputs[input_name].append(input_value)
@@ -621,6 +633,7 @@ class ExecutableInputs(object):
                     raise DXCLIError('An input was found that did not conform to the syntax: -i<input name>=<input value>')
                 self.add(self.executable._get_input_name(name) if \
                          self._desc.get('class') == 'workflow' else name, value)
+            self.update_required_resolution_inputs()
 
         if self.input_spec is None:
             for i in self.inputs:

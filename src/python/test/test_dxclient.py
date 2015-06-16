@@ -1272,6 +1272,32 @@ class TestDXClientRun(DXTestCase):
         dxpy.api.project_destroy(self.other_proj_id, {'terminateJobs': True})
         super(TestDXClientRun, self).tearDown()
 
+    def test_dx_resolve(self):
+        applet_id = dxpy.api.applet_new({"project": self.project,
+                                         "dxapi": "1.0.0",
+                                         "runSpec": {"interpreter": "bash",
+                                                     "code": "echo 'hello'"}
+                                         })['id']
+
+        record_ids, record_names = [], []
+        command = "dx run " + applet_id
+        num_records = 3
+
+        for i in range(num_records):
+            r_name = "resolve_record" + str(i)
+            record_names.append(r_name)
+            r_id = dxpy.api.record_new({"project": self.project,
+                                       "dxapi": "1.0.0",
+                                       "name": r_name})['id']
+            record_ids.append(r_id)
+            command += " -iinput" + str(i) + "=" + r_name
+
+        command += " -iint1=5 -iint2=15 --brief -y"
+
+        job_id = run(command).strip()
+
+        print(dxpy.describe(job_id))
+
     def test_dx_run_depends_on_success(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "dxapi": "1.0.0",

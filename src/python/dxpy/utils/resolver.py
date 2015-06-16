@@ -32,6 +32,7 @@ from .describe import get_ls_l_desc
 from ..exceptions import DXError
 from ..compat import str, input
 from ..cli import INTERACTIVE_CLI
+from ..utils import OrderedDefaultdict
 
 def pick(choices, default=None, str_choices=None, prompt=None, allow_mult=False, more_choices=False):
     '''
@@ -531,6 +532,53 @@ def resolve_job_ref(job_id, name, describe={}):
         raise ResolutionError('Could not find "' + name + '" as an output field name of ' + job_id + '; available fields are: ' + ', '.join(job_desc['output'].keys()))
 
     return results
+
+def resolve_existing_path_multi(paths, expected=None, ask_to_resolve=True, expected_classes=None, allow_mult=False, describe={}, all_mult=False, allow_empty_string=True,
+                          visibility="either"):
+    print("Paths: ")
+    print(str(type(paths)) + " | " + str(paths))
+    resolved_objects = OrderedDefaultdict(list)
+    to_resolve_in_batch = OrderedDefaultdict(list)
+    for key in paths:
+        if len(to_resolve_in_batch) == 1000:
+            resolved_objects.update(dxpy.resolve_data_objects(to_resolve_in_batch.values())) #Will require editing
+            to_resolve_in_batch = OrderedDefaultdict(list)    
+        project, folderpath, entity_name = resolve_path(paths[key], expected, allow_empty_string=allow_empty_string)
+        need_to_resolve, path, folderpath, entity_name = resolution_helper(project, folderpath, entity_name, expected=expected, ask_to_resolve=ask_to_resolve,
+                                                                           expected_classes=expected_classes, allow_mult=allow_mult, describe=describe,
+                                                                           all_mult=all_mult, allow_empty_string=allow_empty_string, visibility=visibility)
+        if need_to_resolve:
+            to_resolve_in_batch[key] = {"project": project, "folder": folderpath, "name": entity_name}
+        else:
+            resolved_objects[key] = {"project": project, "folder": folderpath, "name": entity_name}
+    # Tail Case:
+    if to_resolve_in_batch:
+        x = dxpy.resolve_data_objects(to_resolve_in_batch.values())
+        print("Result from RDO call:")
+        print(str(type(x['results'])) + " | " + str(x['results']))
+        i = 0
+        for k in to_resolve_in_batch:
+            resolved_objects[k] = x['results'][i]
+            i += 1
+    print("\nFinished resolving in batches:")
+    print(str(resolved_objects)+"\n")
+    return resolved_objects
+
+def resolution_helper(project, folderpath, entity_name, expected=None, ask_to_resolve=True, expected_classes=None, allow_mult=False, describe={}, all_mult=False, allow_empty_string=True,
+                          visibility="either"):
+    # First argument is whether or not it still needs to be resolved
+    if "*" in entity_name:
+        results = list(dxpy.find_data_objects(project=project,
+                                                      folder=folderpath,
+                                                      name=entity_name,
+                                                      name_mode='glob',
+                                                      recurse=False,
+                                                      describe=describe,
+                                                      visibility=visibility))
+        return False, project, folderpath, results[0]
+    else:
+        return True, project, folderpath, entity_name # Still needs to be resolved
+    
 
 def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_classes=None, allow_mult=False, describe={}, all_mult=False, allow_empty_string=True,
                           visibility="either"):

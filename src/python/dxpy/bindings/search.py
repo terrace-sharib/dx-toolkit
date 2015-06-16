@@ -23,10 +23,17 @@ provides search functionality over all data objects in the system. The
 '''
 
 from __future__ import (print_function, unicode_literals)
-
+import sys
 import dxpy
 from . import DXApplet, DXApp, DXWorkflow, DXProject, DXJob, DXAnalysis
 from ..exceptions import DXError, DXSearchError
+
+def resolve_data_objects(items, project=None, folder=None):
+    if project and folder:
+        args = {'project':project, 'folder':folder, 'objects':items}
+    else:
+        args = {'objects':items}
+    return dxpy.api.system_resolve_data_objects(args)
 
 def _find(api_method, query, limit, return_handler, first_page_size, **kwargs):
     ''' Takes an API method handler (dxpy.api.find...) and calls it with *query*, then wraps a generator around its
@@ -148,7 +155,8 @@ def find_data_objects(classname=None, state=None, visibility=None,
           print "Found gtable with object id " + result["id"]
 
     """
-
+    print("HAI I AM IN THE SEARCH FDO")
+    x = 1 / 0
     query = {}
     if classname is not None:
         query["class"] = classname
