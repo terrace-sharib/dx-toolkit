@@ -456,9 +456,11 @@ class ExecutableInputs(object):
                 if is_hashid(input_value):
                     input_value = {'$dnanexus_link': entity_result['id']}
                 elif 'describe' in entity_result:
+                    # Then findDataObjects was called (returned describe hash)
                     input_value = {"$dnanexus_link": {"project": entity_result['describe']['project'],
                                                       "id": entity_result['id']}}
                 else:
+                    # Then resolveDataObjects was called in a batch (no describe hash)
                     input_value = {"$dnanexus_link": {"project": entity_result['project'],
                                                       "id": entity_result['id']}}
             # if isinstance(self.inputs[key], list) and \

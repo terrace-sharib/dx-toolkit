@@ -642,7 +642,7 @@ def resolution_preprocess(project, folderpath, entity_name, expected=None, ask_t
             return False, project, folderpath, [result]
     elif project is None:
         raise ResolutionError('Could not resolve "' + path + '" to a project context.  Please either set a default project using dx select or cd, or add a colon (":") after your project ID or name')
-    elif "*" in entity_name or "?" in entity_name:
+    elif "*" in entity_name or "?" in entity_name or describe:
         msg = 'Object of name ' + str(entity_name) + ' could not be resolved in folder ' + str(folderpath) + ' of project ID ' + str(project)
         # Probably an object
         if is_job_id(project):
@@ -789,8 +789,6 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
             project = None
         else:
             try:
-                import sys
-                sys.stderr.write("\nCalling FDO!\n")
                 results = list(dxpy.find_data_objects(project=project,
                                                       folder=folderpath,
                                                       name=entity_name,
