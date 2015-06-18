@@ -2160,7 +2160,6 @@ def system_find_data_objects(input_params={}, always_retry=True, **kwargs):
 
     For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Search#API-method%3A-%2Fsystem%2FfindDataObjects
     """
-    x = 1 / 0
     return DXHTTPRequest('/system/findDataObjects', input_params, always_retry=always_retry, **kwargs)
 
 def systemResolveDataObjects(*args, **kwargs):

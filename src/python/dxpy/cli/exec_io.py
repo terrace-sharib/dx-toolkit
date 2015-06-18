@@ -445,12 +445,10 @@ class ExecutableInputs(object):
 
     def update_required_resolution_inputs(self):
         #Call resolve Data Objects here with batch: self.requires_resolution
-        #print("UPDATING: " + str(self.requires_resolution))
         results = resolve_existing_path_multi(self.requires_resolution, expected='entity')
         self.update(results)
 
     def add(self, input_name, input_value):
-        #print("Adding " + input_name + " with value " + input_value)
         if self.input_name_prefix is not None:
             if input_name.startswith(self.input_name_prefix):
                 input_name = input_name[len(self.input_name_prefix):]

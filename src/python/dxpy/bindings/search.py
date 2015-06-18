@@ -155,8 +155,6 @@ def find_data_objects(classname=None, state=None, visibility=None,
           print "Found gtable with object id " + result["id"]
 
     """
-    print("HAI I AM IN THE SEARCH FDO")
-    x = 1 / 0
     query = {}
     if classname is not None:
         query["class"] = classname

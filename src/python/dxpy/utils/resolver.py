@@ -535,8 +535,6 @@ def resolve_job_ref(job_id, name, describe={}):
 
 def resolve_existing_path_multi(paths, expected=None, ask_to_resolve=True, expected_classes=None, allow_mult=False, describe={}, all_mult=False, allow_empty_string=True,
                           visibility="either"):
-    print("Paths: ")
-    print(str(type(paths)) + " | " + str(paths))
     resolved_objects = OrderedDefaultdict(list)
     to_resolve_in_batch = OrderedDefaultdict(list)
     for key in paths:
@@ -554,15 +552,21 @@ def resolve_existing_path_multi(paths, expected=None, ask_to_resolve=True, expec
     # Tail Case:
     if to_resolve_in_batch:
         x = dxpy.resolve_data_objects(to_resolve_in_batch.values())
-        print("Result from RDO call:")
-        print(str(type(x['results'])) + " | " + str(x['results']))
         i = 0
         for k in to_resolve_in_batch:
             resolved_objects[k] = x['results'][i]
             i += 1
-    print("\nFinished resolving in batches:")
-    print(str(resolved_objects)+"\n")
     return resolved_objects
+    # for key in paths:
+    #     project, folderpath, entity_result = resolve_existing_path(paths[key], expected=expected, ask_to_resolve=ask_to_resolve,
+    #                                                                       expected_classes=expected_classes, allow_mult=allow_mult, describe=describe,
+    #                                                                       all_mult=all_mult, allow_empty_string=allow_empty_string, visibility=visibility)
+    #     resolved_objects[key] = {"$dnanexus_link": {"project": entity_result['describe']['project'],
+    #                                                           "id": entity_result['id']}}
+                              
+    return resolved_objects
+
+
 
 def resolution_helper(project, folderpath, entity_name, expected=None, ask_to_resolve=True, expected_classes=None, allow_mult=False, describe={}, all_mult=False, allow_empty_string=True,
                           visibility="either"):
@@ -664,6 +668,8 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
             project = None
         else:
             try:
+                import sys
+                sys.stderr.write("\nCalling FDO!\n")
                 results = list(dxpy.find_data_objects(project=project,
                                                       folder=folderpath,
                                                       name=entity_name,

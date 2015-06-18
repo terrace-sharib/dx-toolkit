@@ -1297,7 +1297,7 @@ class TestDXClientRun(DXTestCase):
         job_id = run(command).strip()
 
         print(dxpy.describe(job_id))
-
+        
     def test_dx_run_depends_on_success(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "dxapi": "1.0.0",
