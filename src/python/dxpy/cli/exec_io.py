@@ -414,6 +414,7 @@ class ExecutableInputs(object):
         self.required_inputs, self.optional_inputs, self.array_inputs = [], [], set()
         self.input_name_prefix = input_name_prefix
         self.requires_resolution = OrderedDefaultdict(list)
+        self.resolution_input_values = OrderedDefaultdict(list)
 
         if input_spec is None:
             input_spec = self._desc.get('inputSpec', [])
@@ -446,7 +447,25 @@ class ExecutableInputs(object):
     def update_required_resolution_inputs(self):
         #Call resolve Data Objects here with batch: self.requires_resolution
         results = resolve_existing_path_multi(self.requires_resolution, expected='entity')
-        self.update(results)
+        for key in results:
+            project = results[key]['project']
+            folderpath = results[key]['folder']
+            entity_result = results[key]['name']
+            input_value = self.resolution_input_values[key]
+            if entity_result is not None:
+                if is_hashid(input_value):
+                    input_value = {'$dnanexus_link': entity_result['id']}
+                elif 'describe' in entity_result:
+                    input_value = {"$dnanexus_link": {"project": entity_result['describe']['project'],
+                                                      "id": entity_result['id']}}
+                else:
+                    input_value = {"$dnanexus_link": {"project": entity_result['project'],
+                                                      "id": entity_result['id']}}
+            # if isinstance(self.inputs[key], list) and \
+            #    not isinstance(self.inputs[key], basestring):
+            #     self.inputs[key].append(input_value)
+            # else:
+            self.inputs[key] = input_value
 
     def add(self, input_name, input_value):
         if self.input_name_prefix is not None:
@@ -488,20 +507,7 @@ class ExecutableInputs(object):
                     # Not recognized JSON (list or dict), so resolve it as a name
                     # Add to things to be resolved
                     self.requires_resolution[input_name] = input_value
-                    """
-                    try:
-                        project, folderpath, entity_result = resolve_existing_path(input_value,
-                                                                                   expected='entity')
-                    except:
-                        # If not possible, then leave it as a string
-                        project, folderpath, entity_result = None, None, None
-                    if entity_result is not None:
-                        if is_hashid(input_value):
-                            input_value = {'$dnanexus_link': entity_result['id']}
-                        else:
-                            input_value = {"$dnanexus_link": {"project": entity_result['describe']['project'],
-                                                              "id": entity_result['id']}}
-                    """
+                    self.resolution_input_values[input_name] = input_value
             if isinstance(self.inputs[input_name], list) and \
                not isinstance(self.inputs[input_name], basestring):
                 self.inputs[input_name].append(input_value)

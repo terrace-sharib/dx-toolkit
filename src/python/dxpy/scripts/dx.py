@@ -2375,7 +2375,7 @@ def run_one(args, executable, dest_proj, dest_path, preset_inputs=None, input_na
     input_json = exec_inputs.inputs
 
     # print("Input JSON:")
-    # print(json.dumps(input_json))
+    # print(json.dumps(input_json, sort_keys=True, indent=3))
 
     run_kwargs = {
         "project": dest_proj,

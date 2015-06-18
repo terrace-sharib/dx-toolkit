@@ -1291,12 +1291,18 @@ class TestDXClientRun(DXTestCase):
                                        "name": r_name})['id']
             record_ids.append(r_id)
             command += " -iinput" + str(i) + "=" + r_name
+        glob_id = dxpy.api.record_new({"project": self.project,
+                                       "dxapi": "1.0.0",
+                                       "name": "global_resolve_record"})['id']
 
-        command += " -iint1=5 -iint2=15 --brief -y"
+        command += " -iinput3=global_resolve* -iint1=5 -iint2=15 --brief -y"
 
         job_id = run(command).strip()
+        job_desc = dxpy.describe(job_id)
 
-        print(dxpy.describe(job_id))
+        print(json.dumps(job_desc, indent=3, sort_keys=True))
+
+        self.assertEquals(job_desc['input']['input0']['$dnanexus_link']['id'], record_ids[0])
         
     def test_dx_run_depends_on_success(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
