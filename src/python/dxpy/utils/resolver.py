@@ -622,108 +622,111 @@ def resolution_postprocess(to_resolve_in_batch, resolution_result, resolved_obje
 
 def resolution_preprocess(project, folderpath, entity_name, expected=None, ask_to_resolve=True, expected_classes=None, allow_mult=False, describe={}, all_mult=False, allow_empty_string=True,
                           visibility="either"):
-    # First argument is whether or not it still needs to be resolved
-    if entity_name is None:
-        # Definitely a folder (or project)
-        # TODO: find a good way to check if folder exists and expected=folder
-        return False, project, folderpath, entity_name
-    elif is_hashid(entity_name):
-        found_valid_class = True
-        if expected_classes is not None:
-            found_valid_class = False
-            for klass in expected_classes:
-                if entity_name.startswith(klass):
-                    found_valid_class = True
-        if not found_valid_class:
-            return False, None, None, None
+    try:
+        # First argument is whether or not it still needs to be resolved
+        if entity_name is None:
+            # Definitely a folder (or project)
+            # TODO: find a good way to check if folder exists and expected=folder
+            return False, project, folderpath, entity_name
+        elif is_hashid(entity_name):
+            found_valid_class = True
+            if expected_classes is not None:
+                found_valid_class = False
+                for klass in expected_classes:
+                    if entity_name.startswith(klass):
+                        found_valid_class = True
+            if not found_valid_class:
+                return False, None, None, None
 
-        if 'project' not in describe:
-            if project != dxpy.WORKSPACE_ID:
-                describe['project'] = project
-            elif dxpy.WORKSPACE_ID is not None:
-                describe['project'] = dxpy.WORKSPACE_ID
-        try:
-            desc = dxpy.DXHTTPRequest('/' + entity_name + '/describe', describe)
-        except Exception as details:
-            if 'project' in describe:
-                # Now try it without the hint
-                del describe['project']
+            if 'project' not in describe:
+                if project != dxpy.WORKSPACE_ID:
+                    describe['project'] = project
+                elif dxpy.WORKSPACE_ID is not None:
+                    describe['project'] = dxpy.WORKSPACE_ID
+            try:
+                desc = dxpy.DXHTTPRequest('/' + entity_name + '/describe', describe)
+            except Exception as details:
+                if 'project' in describe:
+                    # Now try it without the hint
+                    del describe['project']
+                    try:
+                        desc = dxpy.DXHTTPRequest('/' + entity_name + '/describe', describe)
+                    except Exception as details:
+                        raise ResolutionError(str(details))
+                else:
+                    raise ResolutionError(str(details))
+            result = {"id": entity_name, "describe": desc}
+            if ask_to_resolve and not allow_mult:
+                return False, project, folderpath, result
+            else:
+                return False, project, folderpath, [result]
+        elif project is None:
+            raise ResolutionError('Could not resolve "' + path + '" to a project context.  Please either set a default project using dx select or cd, or add a colon (":") after your project ID or name')
+        elif "*" in entity_name or "?" in entity_name or describe:
+            msg = 'Object of name ' + str(entity_name) + ' could not be resolved in folder ' + str(folderpath) + ' of project ID ' + str(project)
+            # Probably an object
+            if is_job_id(project):
+                # The following will raise if no results could be found
+                results = resolve_job_ref(project, entity_name, describe=describe)
+
+                # If results able to resolve without error, project will be
+                # incorporated into results assuming results were found.
+                project = None
+            else:
                 try:
-                    desc = dxpy.DXHTTPRequest('/' + entity_name + '/describe', describe)
+                    results = list(dxpy.find_data_objects(project=project,
+                                                          folder=folderpath,
+                                                          name=entity_name,
+                                                          name_mode='glob',
+                                                          recurse=False,
+                                                          describe=describe,
+                                                          visibility=visibility))
                 except Exception as details:
                     raise ResolutionError(str(details))
-            else:
-                raise ResolutionError(str(details))
-        result = {"id": entity_name, "describe": desc}
-        if ask_to_resolve and not allow_mult:
-            return False, project, folderpath, result
-        else:
-            return False, project, folderpath, [result]
-    elif project is None:
-        raise ResolutionError('Could not resolve "' + path + '" to a project context.  Please either set a default project using dx select or cd, or add a colon (":") after your project ID or name')
-    elif "*" in entity_name or "?" in entity_name or describe:
-        msg = 'Object of name ' + str(entity_name) + ' could not be resolved in folder ' + str(folderpath) + ' of project ID ' + str(project)
-        # Probably an object
-        if is_job_id(project):
-            # The following will raise if no results could be found
-            results = resolve_job_ref(project, entity_name, describe=describe)
+            if len(results) == 0:
+                # Could not find it as a data object.  If anything, it's a
+                # folder.
+                if '/' in entity_name:
+                    # Then there's no way it's supposed to be a folder
+                    raise ResolutionError(msg)
 
-            # If results able to resolve without error, project will be
-            # incorporated into results assuming results were found.
-            project = None
-        else:
-            try:
-                results = list(dxpy.find_data_objects(project=project,
-                                                      folder=folderpath,
-                                                      name=entity_name,
-                                                      name_mode='glob',
-                                                      recurse=False,
-                                                      describe=describe,
-                                                      visibility=visibility))
-            except Exception as details:
-                raise ResolutionError(str(details))
-        if len(results) == 0:
-            # Could not find it as a data object.  If anything, it's a
-            # folder.
-            if '/' in entity_name:
-                # Then there's no way it's supposed to be a folder
-                raise ResolutionError(msg)
+                # This is the only possibility left.  Leave the
+                # error-checking for later.  Note that folderpath does
+                possible_folder = folderpath + '/' + entity_name
+                possible_folder, _skip = clean_folder_path(possible_folder, 'folder')
 
-            # This is the only possibility left.  Leave the
-            # error-checking for later.  Note that folderpath does
-            possible_folder = folderpath + '/' + entity_name
-            possible_folder, _skip = clean_folder_path(possible_folder, 'folder')
+                # Check that the folder specified actually exists, and raise error if it doesn't
 
-            # Check that the folder specified actually exists, and raise error if it doesn't
+                sys.stderr.write("\n<FDO> project: {0} | folderpath: {1} | entity_name: {2}\n\n".format(project, folderpath, entity_name))
 
-            sys.stderr.write("\n<FDO> project: {0} | folderpath: {1} | entity_name: {2}\n\n".format(project, folderpath, entity_name))
+                if not check_folder_exists(project, folderpath, entity_name):
+                    raise ResolutionError('Unable to resolve "' + entity_name +
+                                          '" to a data object or folder name in \'' + folderpath + "'")
+                return False, project, possible_folder, None
 
-            if not check_folder_exists(project, folderpath, entity_name):
-                raise ResolutionError('Unable to resolve "' + entity_name +
-                                      '" to a data object or folder name in \'' + folderpath + "'")
-            return False, project, possible_folder, None
-
-        # Caller wants ALL results; just return the whole thing
-        if not ask_to_resolve:
-            return False, project, None, results
-
-        if len(results) > 1:
-            if allow_mult and (all_mult or is_glob_pattern(entity_name)):
+            # Caller wants ALL results; just return the whole thing
+            if not ask_to_resolve:
                 return False, project, None, results
-            if INTERACTIVE_CLI:
-                print('The given path "' + path + '" resolves to the following data objects:')
-                choice = pick([get_ls_l_desc(result['describe']) for result in results],
-                              allow_mult=allow_mult)
-                if allow_mult and choice == '*':
+
+            if len(results) > 1:
+                if allow_mult and (all_mult or is_glob_pattern(entity_name)):
                     return False, project, None, results
+                if INTERACTIVE_CLI:
+                    print('The given path "' + path + '" resolves to the following data objects:')
+                    choice = pick([get_ls_l_desc(result['describe']) for result in results],
+                                  allow_mult=allow_mult)
+                    if allow_mult and choice == '*':
+                        return False, project, None, results
+                    else:
+                        return False, project, None, ([results[choice]] if allow_mult else results[choice])
                 else:
-                    return False, project, None, ([results[choice]] if allow_mult else results[choice])
-            else:
-                raise ResolutionError('The given path "' + path + '" resolves to ' + str(len(results)) + ' data objects')
-        elif len(results) == 1:
-            return False, project, None, ([results[0]] if allow_mult else results[0])
-    else:
-        return True, project, folderpath, entity_name
+                    raise ResolutionError('The given path "' + path + '" resolves to ' + str(len(results)) + ' data objects')
+            elif len(results) == 1:
+                return False, project, None, ([results[0]] if allow_mult else results[0])
+        else:
+            return True, project, folderpath, entity_name
+    except:
+        return False, None, None, None
     
 
 def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_classes=None, allow_mult=False, describe={}, all_mult=False, allow_empty_string=True,

@@ -1309,12 +1309,12 @@ class TestDXClientRun(DXTestCase):
         # self.assertEquals(job_desc['input']['int1'], 5)
         # self.assertEquals(job_desc['input']['int2'], 15)
 
-        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_be_resolved").strip()
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_be_resolved*").strip()
         job_desc = dxpy.describe(job_id)
 
         print(json.dumps(job_desc, indent=3, sort_keys=True))
 
-        self.assertEquals(job_desc['input']['input0'], "cannot_be_resolved")
+        self.assertEquals(job_desc['input']['input0'], "cannot_be_resolved*")
 
 
         
