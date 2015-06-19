@@ -1297,12 +1297,26 @@ class TestDXClientRun(DXTestCase):
 
         command += " -iinput3=global_resolve* -iint1=5 -iint2=15 --brief -y"
 
-        job_id = run(command).strip()
+        # job_id = run(command).strip()
+        # job_desc = dxpy.describe(job_id)
+
+        # print(json.dumps(job_desc, indent=3, sort_keys=True))
+
+        # self.assertEquals(job_desc['input']['input0']['$dnanexus_link']['id'], record_ids[0])
+        # self.assertEquals(job_desc['input']['input1']['$dnanexus_link']['id'], record_ids[1])
+        # self.assertEquals(job_desc['input']['input2']['$dnanexus_link']['id'], record_ids[2])
+        # self.assertEquals(job_desc['input']['input3']['$dnanexus_link']['id'], glob_id)
+        # self.assertEquals(job_desc['input']['int1'], 5)
+        # self.assertEquals(job_desc['input']['int2'], 15)
+
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_be_resolved").strip()
         job_desc = dxpy.describe(job_id)
 
         print(json.dumps(job_desc, indent=3, sort_keys=True))
 
-        self.assertEquals(job_desc['input']['input0']['$dnanexus_link']['id'], record_ids[0])
+        self.assertEquals(job_desc['input']['input0'], "cannot_be_resolved")
+
+
         
     def test_dx_run_depends_on_success(self):
         applet_id = dxpy.api.applet_new({"project": self.project,

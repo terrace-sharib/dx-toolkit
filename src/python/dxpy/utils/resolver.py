@@ -543,63 +543,82 @@ def resolve_existing_path_multi(paths, expected=None, ask_to_resolve=True, expec
             resolution_postprocess(to_resolve_in_batch, res_results['results'], resolved_objects, ask_to_resolve=ask_to_resolve, allow_mult=allow_mult, all_mult=all_mult)
             to_resolve_in_batch = OrderedDefaultdict(list)    
         project, folderpath, entity_name = resolve_path(paths[key], expected, allow_empty_string=allow_empty_string)
+        sys.stderr.write("\nAbout to preprocess")
         need_to_resolve, path, folderpath, entity_name = resolution_preprocess(project, folderpath, entity_name, expected=expected, ask_to_resolve=ask_to_resolve,
                                                                            expected_classes=expected_classes, allow_mult=allow_mult, describe=describe,
                                                                            all_mult=all_mult, allow_empty_string=allow_empty_string, visibility=visibility)
+        sys.stderr.write("Finished preprocess")
         if need_to_resolve:
             to_resolve_in_batch[key] = {"project": project, "folder": folderpath, "name": entity_name}
         else:
             resolved_objects[key] = {"project": project, "folder": folderpath, "name": entity_name}
     # Tail Case:
     if to_resolve_in_batch:
+        sys.stderr.write("\nAbout to call RDO")
         res_results = dxpy.resolve_data_objects(to_resolve_in_batch.values())
+        sys.stderr.write("\nFinished call to RDO\n")
         resolution_postprocess(to_resolve_in_batch, res_results['results'], resolved_objects, ask_to_resolve=ask_to_resolve, allow_mult=allow_mult, all_mult=all_mult)
+        sys.stderr.write("Finished postprocess\n")
 
     return resolved_objects
 
 def resolution_postprocess(to_resolve_in_batch, resolution_result, resolved_objects, ask_to_resolve=True, allow_mult=False, all_mult=False):
     i = 0
     for key in to_resolve_in_batch:
-        project, folderpath, entity_name = to_resolve_in_batch[key]
-        results = resolution_result[i]
-        if len(results) == 0:
-            # Could not find it as a data object.  If anything, it's a
-            # folder.
-            if '/' in entity_name:
-                # Then there's no way it's supposed to be a folder
-                raise ResolutionError(msg)
+        try:
+            project, folderpath, entity_name = to_resolve_in_batch[key].values()
+            sys.stderr.write("\n" + str(to_resolve_in_batch[key]) + "\n")
+            msg = 'Object of name ' + str(entity_name) + ' could not be resolved in folder ' + str(folderpath) + ' of project ID ' + str(project)
+            results = resolution_result[i]
+            if len(results) == 0:
+                # Could not find it as a data object.  If anything, it's a
+                # folder.
+                if '/' in entity_name:
+                    # Then there's no way it's supposed to be a folder
+                    raise ResolutionError(msg)
 
-            # This is the only possibility left.  Leave the
-            # error-checking for later.  Note that folderpath does
-            possible_folder = folderpath + '/' + entity_name
-            possible_folder, _skip = clean_folder_path(possible_folder, 'folder')
+                # This is the only possibility left.  Leave the
+                # error-checking for later.  Note that folderpath does
+                possible_folder = folderpath + '/' + entity_name
+                possible_folder, _skip = clean_folder_path(possible_folder, 'folder')
 
-            # Check that the folder specified actually exists, and raise error if it doesn't
-            if not check_folder_exists(project, folderpath, entity_name):
-                raise ResolutionError('Unable to resolve "' + entity_name +
-                                      '" to a data object or folder name in \'' + folderpath + "'")
-            resolved_objects[key] = {"project": project, "folder": possible_folder, "name": None}
+                sys.stderr.write("\n" + str(project))
+                sys.stderr.write("\n<RDO> project: {0} | folderpath: {1} | entity_name: {2}\n\n".format(project, folderpath, entity_name))
+                #sys.stderr.write("\n" + str(check_folder_exists(project, folderpath, entity_name)) + "\n")
 
-        # Caller wants ALL results; just return the whole thing
-        if not ask_to_resolve:
-            resolved_objects[key] = {"project": project, "folder": None, "name": results}
+                # Check that the folder specified actually exists, and raise error if it doesn't
+                sys.stderr.write("\n" + str(check_folder_exists(project, folderpath, entity_name)))
+                if not check_folder_exists(project, folderpath, entity_name):
+                    sys.stderr.write("Raising this error...")
+                    raise ResolutionError('Unable to resolve "' + entity_name +
+                                          '" to a data object or folder name in \'' + folderpath + "'")
+                resolved_objects[key] = {"project": project, "folder": possible_folder, "name": None}
 
-        if len(results) > 1:
-            if allow_mult and (all_mult or is_glob_pattern(entity_name)):
+            sys.stderr.write("OUT OF THE WOODS?")
+            # Caller wants ALL results; just return the whole thing
+            if not ask_to_resolve:
                 resolved_objects[key] = {"project": project, "folder": None, "name": results}
-            if INTERACTIVE_CLI:
-                print('The given path "' + path + '" resolves to the following data objects:')
-                choice = pick([get_ls_l_desc(result['describe']) for result in results],
-                              allow_mult=allow_mult)
-                if allow_mult and choice == '*':
+
+
+            if len(results) > 1:
+                if allow_mult and (all_mult or is_glob_pattern(entity_name)):
                     resolved_objects[key] = {"project": project, "folder": None, "name": results}
+                if INTERACTIVE_CLI:
+                    print('The given path "' + path + '" resolves to the following data objects:')
+                    choice = pick([get_ls_l_desc(result['describe']) for result in results],
+                                  allow_mult=allow_mult)
+                    if allow_mult and choice == '*':
+                        resolved_objects[key] = {"project": project, "folder": None, "name": results}
+                    else:
+                        resolved_objects[key] = {"project": project, "folder": None, "name": ([results[choice]] if allow_mult else results[choice])}
                 else:
-                    resolved_objects[key] = {"project": project, "folder": None, "name": ([results[choice]] if allow_mult else results[choice])}
-            else:
-                raise ResolutionError('The given path "' + path + '" resolves to ' + str(len(results)) + ' data objects')
-        elif len(results) == 1:
-            resolved_objects[key] = {"project": project, "folder": None, "name": ([results[0]] if allow_mult else results[0])}
-        i += 1
+                    raise ResolutionError('The given path "' + path + '" resolves to ' + str(len(results)) + ' data objects')
+            elif len(results) == 1:
+                resolved_objects[key] = {"project": project, "folder": None, "name": ([results[0]] if allow_mult else results[0])}
+        except:
+            resolved_objects[key] = {"project": None, "folder": None, "name": None}
+        finally:
+            i += 1
 
 def resolution_preprocess(project, folderpath, entity_name, expected=None, ask_to_resolve=True, expected_classes=None, allow_mult=False, describe={}, all_mult=False, allow_empty_string=True,
                           visibility="either"):
@@ -654,7 +673,6 @@ def resolution_preprocess(project, folderpath, entity_name, expected=None, ask_t
             project = None
         else:
             try:
-                import sys
                 results = list(dxpy.find_data_objects(project=project,
                                                       folder=folderpath,
                                                       name=entity_name,
@@ -677,6 +695,9 @@ def resolution_preprocess(project, folderpath, entity_name, expected=None, ask_t
             possible_folder, _skip = clean_folder_path(possible_folder, 'folder')
 
             # Check that the folder specified actually exists, and raise error if it doesn't
+
+            sys.stderr.write("\n<FDO> project: {0} | folderpath: {1} | entity_name: {2}\n\n".format(project, folderpath, entity_name))
+
             if not check_folder_exists(project, folderpath, entity_name):
                 raise ResolutionError('Unable to resolve "' + entity_name +
                                       '" to a data object or folder name in \'' + folderpath + "'")
