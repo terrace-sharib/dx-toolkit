@@ -1295,26 +1295,35 @@ class TestDXClientRun(DXTestCase):
                                        "dxapi": "1.0.0",
                                        "name": "global_resolve_record"})['id']
 
-        command += " -iinput3=global_resolve* -iint1=5 -iint2=15 --brief -y"
+        command += " -iinput3=global_resolve* -iint0=5 -iint1=15 --brief -y"
 
-        # job_id = run(command).strip()
-        # job_desc = dxpy.describe(job_id)
-
-        # print(json.dumps(job_desc, indent=3, sort_keys=True))
-
-        # self.assertEquals(job_desc['input']['input0']['$dnanexus_link']['id'], record_ids[0])
-        # self.assertEquals(job_desc['input']['input1']['$dnanexus_link']['id'], record_ids[1])
-        # self.assertEquals(job_desc['input']['input2']['$dnanexus_link']['id'], record_ids[2])
-        # self.assertEquals(job_desc['input']['input3']['$dnanexus_link']['id'], glob_id)
-        # self.assertEquals(job_desc['input']['int1'], 5)
-        # self.assertEquals(job_desc['input']['int2'], 15)
-
-        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_be_resolved*").strip()
+        job_id = run(command).strip()
         job_desc = dxpy.describe(job_id)
 
         print(json.dumps(job_desc, indent=3, sort_keys=True))
 
-        self.assertEquals(job_desc['input']['input0'], "cannot_be_resolved*")
+        self.assertEquals(job_desc['input']['input0']['$dnanexus_link']['id'], record_ids[0])
+        self.assertEquals(job_desc['input']['input1']['$dnanexus_link']['id'], record_ids[1])
+        self.assertEquals(job_desc['input']['input2']['$dnanexus_link']['id'], record_ids[2])
+        self.assertEquals(job_desc['input']['input3']['$dnanexus_link']['id'], glob_id)
+        self.assertEquals(job_desc['input']['int0'], 5)
+        self.assertEquals(job_desc['input']['int1'], 15)
+
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_resolve -iinput1=" + record_names[1] + " -iint0=10").strip()
+        job_desc = dxpy.describe(job_id)
+
+        print(json.dumps(job_desc, indent=3, sort_keys=True))
+
+        self.assertEquals(job_desc['input']['input0'], "cannot_resolve")
+        self.assertEquals(job_desc['input']['input1']['$dnanexus_link']['id'], record_ids[1])
+        self.assertEquals(job_desc['input']['int0'], 10)
+
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=global_cannot_resolve*").strip()
+        job_desc = dxpy.describe(job_id)
+
+        print(json.dumps(job_desc, indent=3, sort_keys=True))
+
+        self.assertEquals(job_desc['input']['input0'], "global_cannot_resolve*")
 
 
         
