@@ -1325,6 +1325,33 @@ class TestDXClientRun(DXTestCase):
 
         self.assertEquals(job_desc['input']['input0'], "global_cannot_resolve*")
 
+    def profile_resolution(self):
+
+        num_records = 1000
+
+        applet_id = dxpy.api.applet_new({"project": self.project,
+                                         "dxapi": "1.0.0",
+                                         "runSpec": {"interpreter": "bash",
+                                                     "code": "echo 'hello'"}
+                                         })['id']
+
+        command = "dx run " + applet_id
+
+        for i in range(num_records):
+            r_name = "resolve_record" + str(i)
+            r_id = dxpy.api.record_new({"project": self.project,
+                                       "dxapi": "1.0.0",
+                                       "name": r_name})['id']
+            command += " -iinput" + str(i) + "=" + r_name
+        command += " --brief -y"
+
+        import time
+
+        start = time.time()
+        run(command)
+        elapsed = time.time() - start
+
+        print("Seconds elapsed for {0} record resolutions: {1}s".format(num_records, elapsed))
 
         
     def test_dx_run_depends_on_success(self):
