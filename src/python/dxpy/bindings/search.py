@@ -23,7 +23,6 @@ provides search functionality over all data objects in the system. The
 '''
 
 from __future__ import (print_function, unicode_literals)
-import sys
 import dxpy
 from . import DXApplet, DXApp, DXWorkflow, DXProject, DXJob, DXAnalysis
 from ..exceptions import DXError, DXSearchError
