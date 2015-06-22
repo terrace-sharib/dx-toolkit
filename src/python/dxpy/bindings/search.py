@@ -29,9 +29,9 @@ from ..exceptions import DXError, DXSearchError
 
 def resolve_data_objects(items, project=None, folder=None):
     if project and folder:
-        args = {'project':project, 'folder':folder, 'objects':items}
+        args = {'project': project, 'folder': folder, 'objects': items}
     else:
-        args = {'objects':items}
+        args = {'objects': items}
     return dxpy.api.system_resolve_data_objects(args)
 
 def _find(api_method, query, limit, return_handler, first_page_size, **kwargs):

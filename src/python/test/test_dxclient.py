@@ -1287,8 +1287,8 @@ class TestDXClientRun(DXTestCase):
             r_name = "resolve_record" + str(i)
             record_names.append(r_name)
             r_id = dxpy.api.record_new({"project": self.project,
-                                       "dxapi": "1.0.0",
-                                       "name": r_name})['id']
+                                        "dxapi": "1.0.0",
+                                        "name": r_name})['id']
             record_ids.append(r_id)
             command += " -iinput" + str(i) + "=" + r_name
         glob_id = dxpy.api.record_new({"project": self.project,
@@ -1307,7 +1307,8 @@ class TestDXClientRun(DXTestCase):
         self.assertEquals(job_desc['input']['int0'], 5)
         self.assertEquals(job_desc['input']['int1'], 15)
 
-        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_resolve -iinput1=" + record_names[1] + " -iint0=10").strip()
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_resolve -iinput1=" +
+                     record_names[1] + " -iint0=10").strip()
         job_desc = dxpy.describe(job_id)
 
         self.assertEquals(job_desc['input']['input0'], "cannot_resolve")
@@ -1330,16 +1331,16 @@ class TestDXClientRun(DXTestCase):
                                                      "code": "echo 'hello'"}
                                          })['id']
 
-
         workflow_id = run("dx new workflow myworkflow --output-folder /foo --brief").strip()
         stage_id = dxpy.api.workflow_add_stage(workflow_id,
                                                {"editVersion": 0, "executable": applet_id})['stage']
 
         record_id = dxpy.api.record_new({"project": self.project,
-                           "dxapi": "1.0.0",
-                           "name": "myrecord"})['id']
+                                         "dxapi": "1.0.0",
+                                         "name": "myrecord"})['id']
 
-        analysis_id = run("dx run " + workflow_id + " -i" + stage_id + ".input0=myrecord -i" + stage_id + ".int0=77 -y --brief").strip()
+        analysis_id = run("dx run " + workflow_id + " -i" + stage_id + ".input0=myrecord -i" +
+                          stage_id + ".int0=77 -y --brief").strip()
         analysis_desc = dxpy.describe(analysis_id)
 
         self.assertEquals(analysis_desc['input'][stage_id + '.input0']['$dnanexus_link']['id'], record_id)
@@ -1360,8 +1361,8 @@ class TestDXClientRun(DXTestCase):
         for i in range(num_records):
             r_name = "resolve_record" + str(i)
             r_id = dxpy.api.record_new({"project": self.project,
-                                       "dxapi": "1.0.0",
-                                       "name": r_name})['id']
+                                        "dxapi": "1.0.0",
+                                        "name": r_name})['id']
             command += " -iinput" + str(i) + "=" + r_name
         command += " --brief -y"
 
@@ -1373,7 +1374,6 @@ class TestDXClientRun(DXTestCase):
 
         print("Seconds elapsed for {0} record resolutions: {1}s".format(num_records, elapsed))
 
-        
     def test_dx_run_depends_on_success(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "dxapi": "1.0.0",

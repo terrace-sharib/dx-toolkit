@@ -445,7 +445,7 @@ class ExecutableInputs(object):
             self.inputs.update(new_inputs)
 
     def update_required_resolution_inputs(self):
-        #Call resolve Data Objects here with batch: self.requires_resolution
+        # Call resolve Data Objects here with batch: self.requires_resolution
         results = resolve_existing_path_multi(self.requires_resolution, expected='entity')
         for key in results:
             project = results[key]['project']

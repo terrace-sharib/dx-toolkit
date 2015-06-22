@@ -540,7 +540,7 @@ def resolve_existing_path_multi(paths, expected=None):
         if len(to_resolve_in_batch) == 1000:
             res_results = dxpy.resolve_data_objects(to_resolve_in_batch.values())
             resolution_multi_postprocess(to_resolve_in_batch, res_results['results'], resolved_objects)
-            to_resolve_in_batch = OrderedDefaultdict(list)    
+            to_resolve_in_batch = OrderedDefaultdict(list)
         project, folderpath, entity_name = resolve_path(paths[key], expected)
         need_to_resolve, path, folderpath, entity_name = resolution_multi_preprocess(project, folderpath, entity_name)
         if need_to_resolve:
@@ -636,7 +636,7 @@ def resolution_multi_preprocess(project, folderpath, entity_name):
             return True, project, folderpath, entity_name
     except:
         return False, None, None, None
-    
+
 def resolution_multi_postprocess(to_resolve_in_batch, resolution_result, resolved_objects):
     i = 0
     for key in to_resolve_in_batch:
