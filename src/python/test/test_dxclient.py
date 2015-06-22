@@ -1325,9 +1325,37 @@ class TestDXClientRun(DXTestCase):
 
         self.assertEquals(job_desc['input']['input0'], "global_cannot_resolve*")
 
+        applet_id = dxpy.api.applet_new({"project": self.project,
+                                         "dxapi": "1.0.0",
+                                         "inputSpec": [
+                                            {"name": "input0", "class": "record"},
+                                            {"name": "int0", "class": "int"}
+                                         ],
+                                         "outputSpec": [],
+                                         "runSpec": {"interpreter": "bash",
+                                                     "code": "echo 'hello'"}
+                                         })['id']
+
+
+        workflow_id = run("dx new workflow myworkflow --output-folder /foo --brief").strip()
+        stage_id = dxpy.api.workflow_add_stage(workflow_id,
+                                               {"editVersion": 0, "executable": applet_id})['stage']
+
+        record_id = dxpy.api.record_new({"project": self.project,
+                           "dxapi": "1.0.0",
+                           "name": "myrecord"})['id']
+
+        analysis_id = run("dx run " + workflow_id + " -i" + stage_id + ".input0=myrecord -i" + stage_id + ".int0=77 -y --brief").strip()
+        analysis_desc = dxpy.describe(analysis_id)
+
+        print(json.dumps(analysis_desc, indent=3, sort_keys=True))
+
+        self.assertEquals(analysis_desc['input'][stage_id + '.input0']['$dnanexus_link']['id'], record_id)
+        self.assertEquals(analysis_desc['input'][stage_id + '.int0'], 77)
+
     def profile_resolution(self):
 
-        num_records = 1000
+        num_records = 3000
 
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "dxapi": "1.0.0",

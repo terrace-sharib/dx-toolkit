@@ -470,6 +470,7 @@ class ExecutableInputs(object):
             self.inputs[key] = input_value
 
     def add(self, input_name, input_value):
+        sys.stderr.write("\n" + input_name + " " + input_value)
         if self.input_name_prefix is not None:
             if input_name.startswith(self.input_name_prefix):
                 input_name = input_name[len(self.input_name_prefix):]
@@ -645,6 +646,8 @@ class ExecutableInputs(object):
             for i in self.inputs:
                 if type(self.inputs[i]) == list and len(self.inputs[i]) == 1:
                     self.inputs[i] = self.inputs[i][0]
+
+        sys.stderr.write("\n" + str(self.input_spec))
 
         # For now, we do not handle prompting for workflow inputs nor
         # recognizing when not all inputs haven't been bound

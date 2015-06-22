@@ -2374,6 +2374,9 @@ def run_one(args, executable, dest_proj, dest_path, preset_inputs=None, input_na
 
     input_json = exec_inputs.inputs
 
+    sys.stderr.write("\nINPUT_JSON")
+    sys.stderr.write("\n" + str(input_json))
+
     run_kwargs = {
         "project": dest_proj,
         "folder": dest_path,
