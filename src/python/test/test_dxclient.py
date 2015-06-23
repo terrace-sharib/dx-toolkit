@@ -31,6 +31,7 @@ from dxpy_testutil import DXTestCase, check_output, temporary_project, select_pr
 import dxpy_testutil as testutil
 from dxpy.exceptions import DXAPIError, DXSearchError, EXPECTED_ERR_EXIT_STATUS
 from dxpy.compat import str, sys_encoding
+from dxpy.utils import resolver
 
 @contextmanager
 def chdir(dirname=None):
@@ -1272,6 +1273,33 @@ class TestDXClientRun(DXTestCase):
         dxpy.api.project_destroy(self.other_proj_id, {'terminateJobs': True})
         super(TestDXClientRun, self).tearDown()
 
+    def test_dx_resolve_preprocess(self):
+        preprocess = resolver.resolution_multi_preprocess
+
+        # If no entity_name is given, no entity_name should be returned
+        self.assertEquals(preprocess("project_id", "/", None), (False, "project_id", "/", None))
+
+        record_id = dxpy.api.record_new({"project": self.project,
+                                    "dxapi": "1.0.0",
+                                    "name": "myrecord"})['id']
+
+        # If the entity_id is given, there is no need to resolve, and the describe
+        # output is returned
+        desc_output = preprocess(dxpy.WORKSPACE_ID, "/", record_id)[3]
+        self.assertEquals(desc_output["describe"]["project"], dxpy.WORKSPACE_ID)
+        self.assertEquals(desc_output["describe"]["name"], "myrecord")
+        self.assertEquals(desc_output["id"], record_id)
+
+        desc_output = preprocess("not_a_real_project_id", "/", record_id)[3]
+        # Even if the given project is not a real project ID, the correct project ID
+        # should be in the describe output
+        self.assertEquals(desc_output["describe"]["project"], dxpy.WORKSPACE_ID)
+        self.assertEquals(desc_output["describe"]["name"], "myrecord")
+        self.assertEquals(desc_output["id"], record_id)
+
+        # If no project is provided, all None should be returned for exec_io to handle
+        self.assertEquals(preprocess(None, "/", "myrecord"), (False, None, None, None))
+
     def test_dx_resolve(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "dxapi": "1.0.0",
@@ -1281,44 +1309,56 @@ class TestDXClientRun(DXTestCase):
 
         record_ids, record_names = [], []
         command = "dx run " + applet_id
-        num_records = 3
 
-        for i in range(num_records):
-            r_name = "resolve_record" + str(i)
-            record_names.append(r_name)
-            r_id = dxpy.api.record_new({"project": self.project,
-                                        "dxapi": "1.0.0",
-                                        "name": r_name})['id']
-            record_ids.append(r_id)
-            command += " -iinput" + str(i) + "=" + r_name
+        record_id0 = dxpy.api.record_new({"project": self.project,
+                                          "dxapi": "1.0.0",
+                                          "name": "resolve_record0"})['id']
+        record_id1 = dxpy.api.record_new({"project": self.project,
+                                          "dxapi": "1.0.0",
+                                          "name": "resolve_record1"})['id']
         glob_id = dxpy.api.record_new({"project": self.project,
                                        "dxapi": "1.0.0",
                                        "name": "global_resolve_record"})['id']
 
-        command += " -iinput3=global_resolve* -iint0=5 -iint1=15 --brief -y"
+        command += " -iinput0=resolve_record0 -iinput1=resolve_record1 -iinput2=global_resolve* -iint0=5 -iint1=15 --brief -y"
 
         job_id = run(command).strip()
         job_desc = dxpy.describe(job_id)
 
-        self.assertEquals(job_desc['input']['input0']['$dnanexus_link']['id'], record_ids[0])
-        self.assertEquals(job_desc['input']['input1']['$dnanexus_link']['id'], record_ids[1])
-        self.assertEquals(job_desc['input']['input2']['$dnanexus_link']['id'], record_ids[2])
-        self.assertEquals(job_desc['input']['input3']['$dnanexus_link']['id'], glob_id)
+        self.assertEquals(job_desc['input']['input0']['$dnanexus_link']['id'], record_id0)
+        self.assertEquals(job_desc['input']['input1']['$dnanexus_link']['id'], record_id1)
+        self.assertEquals(job_desc['input']['input2']['$dnanexus_link']['id'], glob_id)
         self.assertEquals(job_desc['input']['int0'], 5)
         self.assertEquals(job_desc['input']['int1'], 15)
 
-        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_resolve -iinput1=" +
-                     record_names[1] + " -iint0=10").strip()
+        # Should return differently formatted input if record cannot be resolved (global or not)
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_resolve -iinput1=resolve_record0 -iint0=10").strip()
         job_desc = dxpy.describe(job_id)
 
         self.assertEquals(job_desc['input']['input0'], "cannot_resolve")
-        self.assertEquals(job_desc['input']['input1']['$dnanexus_link']['id'], record_ids[1])
+        self.assertEquals(job_desc['input']['input1']['$dnanexus_link']['id'], record_id0)
         self.assertEquals(job_desc['input']['int0'], 10)
 
         job_id = run("dx run " + applet_id + " --brief -y -iinput0=global_cannot_resolve*").strip()
         job_desc = dxpy.describe(job_id)
 
         self.assertEquals(job_desc['input']['input0'], "global_cannot_resolve*")
+
+        # Should simply use given name if it corresponds to multiple records (global or not)
+        # postprocess errors out, but exec_io catches it
+        duplicate_record_id = dxpy.api.record_new({"project": self.project,
+                                          "dxapi": "1.0.0",
+                                          "name": "resolve_record0"})['id']
+
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=resolve_record0").strip()
+        job_desc = dxpy.describe(job_id)
+
+        self.assertEquals(job_desc['input']['input0'], "resolve_record0")
+
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=resolve_record*").strip()
+        job_desc = dxpy.describe(job_id)
+        
+        self.assertEquals(job_desc['input']['input0'], "resolve_record*")
 
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "dxapi": "1.0.0",
@@ -1331,6 +1371,7 @@ class TestDXClientRun(DXTestCase):
                                                      "code": "echo 'hello'"}
                                          })['id']
 
+        # Workflows should show same behavior as applets
         workflow_id = run("dx new workflow myworkflow --output-folder /foo --brief").strip()
         stage_id = dxpy.api.workflow_add_stage(workflow_id,
                                                {"editVersion": 0, "executable": applet_id})['stage']

@@ -534,6 +534,9 @@ def resolve_job_ref(job_id, name, describe={}):
     return results
 
 def resolve_existing_path_multi(paths, expected=None):
+    """
+    
+    """
     resolved_objects = OrderedDefaultdict(list)
     to_resolve_in_batch = OrderedDefaultdict(list)
     for key in paths:
@@ -556,19 +559,19 @@ def resolve_existing_path_multi(paths, expected=None):
 
 def resolution_multi_preprocess(project, folderpath, entity_name):
     try:
-        # First argument is whether or not it still needs to be resolved
+        # First return value is whether or not it still needs to be resolved
         if entity_name is None:
             # Definitely a folder (or project)
             # TODO: find a good way to check if folder exists and expected=folder
             return False, project, folderpath, entity_name
         elif is_hashid(entity_name):
-            if 'project' not in describe:
-                if project != dxpy.WORKSPACE_ID:
-                    describe['project'] = project
-                elif dxpy.WORKSPACE_ID is not None:
-                    describe['project'] = dxpy.WORKSPACE_ID
+            describe = {}
+            if project != dxpy.WORKSPACE_ID:
+                describe['project'] = project
+            elif dxpy.WORKSPACE_ID is not None:
+                describe['project'] = dxpy.WORKSPACE_ID
             try:
-                desc = dxpy.DXHTTPRequest('/' + entity_name + '/describe', {})
+                desc = dxpy.DXHTTPRequest('/' + entity_name + '/describe', describe)
             except Exception as details:
                 if 'project' in describe:
                     # Now try it without the hint

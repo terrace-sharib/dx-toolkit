@@ -23,15 +23,31 @@ provides search functionality over all data objects in the system. The
 '''
 
 from __future__ import (print_function, unicode_literals)
+
 import dxpy
 from . import DXApplet, DXApp, DXWorkflow, DXProject, DXJob, DXAnalysis
 from ..exceptions import DXError, DXSearchError
 
-def resolve_data_objects(items, project=None, folder=None):
+def resolve_data_objects(objects, project=None, folder=None):
+    """
+    :param objects: Object specifications, each with fields "name" (required), "folder", and "project"
+    :type objects: list of dictionaries (list has max length of 1000), where dictionary values are strings
+    :param project: ID of project context; an object's project defaults to this if not specifically provided
+    :type project: string
+    :param folder: Folder path within the project; an objects folderpath defaults to this if not specifically provided; default is "/"
+    :type folder: string
+    :returns: List of results parallel to input objects, where each entry is a list of 0 or more resolved object dictionaries
+    :rtype: List of lists of dictionaries (list has max length of 1000)
+
+    Calls API method /system/resolveDataObjects to resolve data objects in bulk.
+    Each returned element is dictionary with keys "project" and "id", with values
+    of DNAnexus IDs for project and resolved object, respectively. 
+    Number of results for each objects may be 0, 1, or more. 
+    """
     if project and folder:
-        args = {'project': project, 'folder': folder, 'objects': items}
+        args = {'project': project, 'folder': folder, 'objects': objects}
     else:
-        args = {'objects': items}
+        args = {'objects': objects}
     return dxpy.api.system_resolve_data_objects(args)
 
 def _find(api_method, query, limit, return_handler, first_page_size, **kwargs):

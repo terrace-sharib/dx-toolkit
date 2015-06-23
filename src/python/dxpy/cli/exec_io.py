@@ -463,10 +463,6 @@ class ExecutableInputs(object):
                     # Then resolveDataObjects was called in a batch (no describe hash)
                     input_value = {"$dnanexus_link": {"project": entity_result['project'],
                                                       "id": entity_result['id']}}
-            # if isinstance(self.inputs[key], list) and \
-            #    not isinstance(self.inputs[key], basestring):
-            #     self.inputs[key].append(input_value)
-            # else:
             self.inputs[key] = input_value
 
     def add(self, input_name, input_value):

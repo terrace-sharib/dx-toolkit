@@ -2080,9 +2080,6 @@ class TestResolver(unittest.TestCase):
         proj_id, path, entity_id = resolve_existing_path(':')
         self.assertEqual(proj_id, dxpy.WORKSPACE_ID)
 
-    def test_resolution(self):
-        pass
-
 if __name__ == '__main__':
     if dxpy.AUTH_HELPER is None:
         sys.exit(1, 'Error: Need to be logged in to run these tests')
