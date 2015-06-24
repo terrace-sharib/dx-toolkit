@@ -1280,8 +1280,8 @@ class TestDXClientRun(DXTestCase):
         self.assertEquals(preprocess("project_id", "/", None), (False, "project_id", "/", None))
 
         record_id = dxpy.api.record_new({"project": self.project,
-                                    "dxapi": "1.0.0",
-                                    "name": "myrecord"})['id']
+                                         "dxapi": "1.0.0",
+                                         "name": "myrecord"})['id']
 
         # If the entity_id is given, there is no need to resolve, and the describe
         # output is returned
@@ -1331,6 +1331,26 @@ class TestDXClientRun(DXTestCase):
         self.assertEquals(job_desc['input']['int0'], 5)
         self.assertEquals(job_desc['input']['int1'], 15)
 
+        # Test usage on over 1000 inputs (Takes a few minutes)
+        command = "dx run " + applet_id
+        many_names, many_ids = [], []
+        for i in range(1010):
+            r_name = "one_of_many_records" + str(i)
+            r_id = dxpy.api.record_new({"project": self.project,
+                                        "dxapi": "1.0.0",
+                                        "name": r_name})['id']
+            many_names.append(r_name)
+            many_ids.append(r_id)
+            command += " -iinput" + str(i) + "=" + r_name
+        command += " -iinputglob=global_res* --brief -y"
+
+        job_id = run(command).strip()
+        job_desc = dxpy.describe(job_id)
+
+        self.assertEquals(job_desc['input']['input300']['$dnanexus_link']['id'], many_ids[300])
+        self.assertEquals(job_desc['input']['input1005']['$dnanexus_link']['id'], many_ids[1005])
+        self.assertEquals(job_desc['input']['inputglob']['$dnanexus_link']['id'], glob_id)
+
         # Should return differently formatted input if record cannot be resolved (global or not)
         job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_resolve -iinput1=resolve_record0 -iint0=10").strip()
         job_desc = dxpy.describe(job_id)
@@ -1347,8 +1367,8 @@ class TestDXClientRun(DXTestCase):
         # Should simply use given name if it corresponds to multiple records (global or not)
         # postprocess errors out, but exec_io catches it
         duplicate_record_id = dxpy.api.record_new({"project": self.project,
-                                          "dxapi": "1.0.0",
-                                          "name": "resolve_record0"})['id']
+                                                   "dxapi": "1.0.0",
+                                                   "name": "resolve_record0"})['id']
 
         job_id = run("dx run " + applet_id + " --brief -y -iinput0=resolve_record0").strip()
         job_desc = dxpy.describe(job_id)
@@ -1357,7 +1377,7 @@ class TestDXClientRun(DXTestCase):
 
         job_id = run("dx run " + applet_id + " --brief -y -iinput0=resolve_record*").strip()
         job_desc = dxpy.describe(job_id)
-        
+
         self.assertEquals(job_desc['input']['input0'], "resolve_record*")
 
         applet_id = dxpy.api.applet_new({"project": self.project,

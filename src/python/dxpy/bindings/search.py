@@ -34,16 +34,18 @@ def resolve_data_objects(objects, project=None, folder=None):
     :type objects: List of mappings
     :param project: ID of project context; an object's project defaults to this if not specifically provided
     :type project: string
-    :param folder: Folder path within the project; an objects folderpath defaults to this if not specifically provided; default is "/"
+    :param folder: Folder path within the project; an objects folderpath defaults to this if not specifically
+                   provided; default is "/"
     :type folder: string
-    :returns: List of results parallel to input objects, where each entry is a list of 0 or more resolved object dictionaries
+    :returns: List of results parallel to input objects, where each entry is a list of 0 or more resolved
+              object dictionaries
     :rtype: List of lists of dictionaries
 
     Calls API method /system/resolveDataObjects to resolve data objects in bulk. Batches
     calls into groups of 1000 objects.
     Each returned element is dictionary with keys "project" and "id", with values
-    of DNAnexus IDs for project and resolved object, respectively. 
-    Number of results for each objects may be 0, 1, or more. 
+    of DNAnexus IDs for project and resolved object, respectively.
+    Number of results for each objects may be 0, 1, or more.
     """
     if project and folder:
         args = {'project': project, 'folder': folder}
@@ -51,7 +53,7 @@ def resolve_data_objects(objects, project=None, folder=None):
         args = {}
     results = []
     for i in range(len(objects)):
-        to_resolve = objects[(i * 100) : ((i + 1) * 100)]
+        to_resolve = objects[(i * 100):((i + 1) * 100)]
         if to_resolve:
             args['objects'] = to_resolve
             results.extend(dxpy.api.system_resolve_data_objects(args)['results'])

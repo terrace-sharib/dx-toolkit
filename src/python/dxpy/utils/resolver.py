@@ -543,7 +543,7 @@ def resolve_existing_path_multi(paths):
     For each input given in paths, first finds the project and path to the input, if possible.
     The input is preprocessed to check if it can be resolved at all.
     Preprocessing may also pre-resolve the entity if it is given a global name,
-    and therefore calls findDataObjects. 
+    and therefore calls findDataObjects.
     Inputs that are not resolved by preprocessing are resolved in batch by
     resolveDataObjects. These resolved inputs are then postprocessed to ensure that they
     are formatted correctly if 0 objects or found, or multiple objects are found.
@@ -578,7 +578,7 @@ def resolution_multi_preprocess(project, folderpath, entity_name):
     First checks if the entity_name is None. If so, then it is likely to be a folder, and requires
     no further resolution.
     -If the entity_name is already an ID, then resolution is no longer required, but description is.
-    Attempts to use the provided project as the hosting project (or the workspace project if not 
+    Attempts to use the provided project as the hosting project (or the workspace project if not
     provided), and tries to describe. If it fails, then it attempts to describe without the project
     hint. If description is successful, returns mapping of the given ID and the description. If
     description fails, then give up resolution and return Nones.
@@ -586,7 +586,7 @@ def resolution_multi_preprocess(project, folderpath, entity_name):
     -If entity_name is a global name pattern (uses `*` or `?` characters), then attempt to resolve
     entity using system/findDataObjects. If no results are found, or too many are found without
     the ability to select one, then give up resolution and return Nones.
-    If none of the above are true, then resolution is still required. 
+    If none of the above are true, then resolution is still required.
     """
     try:
         if entity_name is None:
@@ -675,17 +675,17 @@ def resolution_multi_postprocess(to_resolve_in_batch, resolution_result, resolve
                                 mapping from intput name to project, folderpath, and entity_name
     :type to_resolve_in_batch: OrderedDefaultdict
     :param resolution_result: Resulting list of entities that have completed resolution, where each
-                              result is a mapping of project and resolved entity ID, parallel to 
+                              result is a mapping of project and resolved entity ID, parallel to
                               to_resolve_in_batch
     :type resolution_result: list of lists of mappings
     :param resolved_objects: Entities that have completed resolution, or failed to resolved
-    
+
     -Assume that on calling, to_resolve_in_batch has already been resolved by resolveDataObjects
     to yield resolution_result.
     -resolved_objects will be mutated in place.
     -Each resolved object will be added to resolved_objects with the same key as to_resolve_in_batch,
     but with a value that is a mapping of "project", "folder", and "name", where "name" corresponds
-    to either a successful resolved ID, or None. 
+    to either a successful resolved ID, or None.
     -For each resolved object, if no results are found, or too many are found without
     the ability to select one, then use Nones as values.
     """
