@@ -551,21 +551,15 @@ def resolve_existing_path_multi(paths):
     resolved_objects = OrderedDefaultdict(list)
     to_resolve_in_batch = OrderedDefaultdict(list)
     for key in paths:
-        if len(to_resolve_in_batch) == 1000:
-            res_results = dxpy.resolve_data_objects(to_resolve_in_batch.values())
-            resolution_multi_postprocess(to_resolve_in_batch, res_results['results'], resolved_objects)
-            to_resolve_in_batch = OrderedDefaultdict(list)
         project, folderpath, entity_name = resolve_path(paths[key], 'entity')
         need_to_resolve, path, folderpath, entity_name = resolution_multi_preprocess(project, folderpath, entity_name)
         if need_to_resolve:
             to_resolve_in_batch[key] = {"project": project, "folder": folderpath, "name": entity_name}
         else:
             resolved_objects[key] = {"project": project, "folder": folderpath, "name": entity_name}
-    # Tail Case:
-    if to_resolve_in_batch:
-        res_results = dxpy.resolve_data_objects(to_resolve_in_batch.values())
-        resolution_multi_postprocess(to_resolve_in_batch, res_results['results'], resolved_objects)
 
+    resolved_in_batch = dxpy.resolve_data_objects(to_resolve_in_batch.values())
+    resolution_multi_postprocess(to_resolve_in_batch, resolved_in_batch, resolved_objects)
     return resolved_objects
 
 def resolution_multi_preprocess(project, folderpath, entity_name):

@@ -31,13 +31,13 @@ from ..exceptions import DXError, DXSearchError
 def resolve_data_objects(objects, project=None, folder=None):
     """
     :param objects: Object specifications, each with fields "name" (required), "folder", and "project"
-    :type objects: OrderedDefaultdict (list has max length of 1000), where each entry is a mapping to a dictionary
+    :type objects: List of mappings
     :param project: ID of project context; an object's project defaults to this if not specifically provided
     :type project: string
     :param folder: Folder path within the project; an objects folderpath defaults to this if not specifically provided; default is "/"
     :type folder: string
     :returns: List of results parallel to input objects, where each entry is a list of 0 or more resolved object dictionaries
-    :rtype: List of lists of dictionaries (list has max length of 1000)
+    :rtype: List of lists of dictionaries
 
     Calls API method /system/resolveDataObjects to resolve data objects in bulk. Batches
     calls into groups of 1000 objects.
@@ -46,10 +46,16 @@ def resolve_data_objects(objects, project=None, folder=None):
     Number of results for each objects may be 0, 1, or more. 
     """
     if project and folder:
-        args = {'project': project, 'folder': folder, 'objects': objects}
+        args = {'project': project, 'folder': folder}
     else:
-        args = {'objects': objects}
-    return dxpy.api.system_resolve_data_objects(args)
+        args = {}
+    results = []
+    for i in range(len(objects)):
+        to_resolve = objects[(i * 100) : ((i + 1) * 100)]
+        if to_resolve:
+            args['objects'] = to_resolve
+            results.extend(dxpy.api.system_resolve_data_objects(args)['results'])
+    return results
 
 def _find(api_method, query, limit, return_handler, first_page_size, **kwargs):
     ''' Takes an API method handler (dxpy.api.find...) and calls it with *query*, then wraps a generator around its

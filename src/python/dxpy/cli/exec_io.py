@@ -448,10 +448,12 @@ class ExecutableInputs(object):
         # Call resolve Data Objects here with batch: self.requires_resolution
         results = resolve_existing_path_multi(self.requires_resolution)
         for key in results:
+            # print(results[key])
             project = results[key]['project']
             folderpath = results[key]['folder']
             entity_result = results[key]['name']
             input_value = self.resolution_input_values[key]
+            # print(input_value)
             if entity_result is not None:
                 if is_hashid(input_value):
                     input_value = {'$dnanexus_link': entity_result['id']}
