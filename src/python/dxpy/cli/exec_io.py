@@ -446,7 +446,7 @@ class ExecutableInputs(object):
 
     def update_required_resolution_inputs(self):
         # Call resolve Data Objects here with batch: self.requires_resolution
-        results = resolve_existing_path_multi(self.requires_resolution, expected='entity')
+        results = resolve_existing_path_multi(self.requires_resolution)
         for key in results:
             project = results[key]['project']
             folderpath = results[key]['folder']

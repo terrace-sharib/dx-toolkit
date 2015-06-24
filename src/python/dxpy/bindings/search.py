@@ -31,7 +31,7 @@ from ..exceptions import DXError, DXSearchError
 def resolve_data_objects(objects, project=None, folder=None):
     """
     :param objects: Object specifications, each with fields "name" (required), "folder", and "project"
-    :type objects: list of dictionaries (list has max length of 1000), where dictionary values are strings
+    :type objects: OrderedDefaultdict (list has max length of 1000), where each entry is a mapping to a dictionary
     :param project: ID of project context; an object's project defaults to this if not specifically provided
     :type project: string
     :param folder: Folder path within the project; an objects folderpath defaults to this if not specifically provided; default is "/"
@@ -39,7 +39,8 @@ def resolve_data_objects(objects, project=None, folder=None):
     :returns: List of results parallel to input objects, where each entry is a list of 0 or more resolved object dictionaries
     :rtype: List of lists of dictionaries (list has max length of 1000)
 
-    Calls API method /system/resolveDataObjects to resolve data objects in bulk.
+    Calls API method /system/resolveDataObjects to resolve data objects in bulk. Batches
+    calls into groups of 1000 objects.
     Each returned element is dictionary with keys "project" and "id", with values
     of DNAnexus IDs for project and resolved object, respectively. 
     Number of results for each objects may be 0, 1, or more. 
