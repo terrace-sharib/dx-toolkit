@@ -30,30 +30,32 @@ from ..exceptions import DXError, DXSearchError
 
 def resolve_data_objects(objects, project=None, folder=None):
     """
-    :param objects: Object specifications, each with fields "name" (required), "folder", and "project"
-    :type objects: List of mappings
-    :param project: ID of project context; an object's project defaults to this if not specifically provided
+    :param objects: Data object specifications, each with fields "name" (required), "folder", and "project"
+    :type objects: List of dicitonaries
+    :param project: ID of project context; a data object's project defaults to this if not specifically provided
+                    per project
     :type project: string
-    :param folder: Folder path within the project; an objects folderpath defaults to this if not specifically
-                   provided; default is "/"
+    :param folder: Folder path within the project; a data object's folderpath defaults to this if not specifically
+                   provided; if left as default (None), then folderpath used for resolution is "/"
     :type folder: string
-    :returns: List of results parallel to input objects, where each entry is a list of 0 or more resolved
+    :returns: List of results parallel to input data omittedbjects, where each entry is a list of 0 or more resolved
               object dictionaries
     :rtype: List of lists of dictionaries
 
-    Calls API method /system/resolveDataObjects to resolve data objects in bulk. Batches
-    calls into groups of 1000 objects.
     Each returned element is dictionary with keys "project" and "id", with values
     of DNAnexus IDs for project and resolved object, respectively.
     Number of results for each objects may be 0, 1, or more.
     """
-    if project and folder:
-        args = {'project': project, 'folder': folder}
-    else:
-        args = {}
+    args = {}
+    if project:
+        args = {'project': project}
+    if folder:
+        args = {'folder': folder}
     results = []
-    for i in range(len(objects)):
-        to_resolve = objects[(i * 100):((i + 1) * 100)]
+
+    # Call API method /system/resolveDataObjects in batches of 1000
+    for i in range(0, len(objects), 1000):  # Count by 1000's, get next batch of 1000
+        to_resolve = objects[i:(i+1000)]
         if to_resolve:
             args['objects'] = to_resolve
             results.extend(dxpy.api.system_resolve_data_objects(args)['results'])

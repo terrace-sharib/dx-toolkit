@@ -533,9 +533,10 @@ def resolve_job_ref(job_id, name, describe={}):
 
     return results
 
+
 def resolve_existing_path_multi(paths):
     """
-    :param paths: A mapping of input name to input values given from command line
+    :param paths: A mapping of keys to input values given from command line
     :type paths: OrderedDefaultdict
     :returns: A mapping of input names to resolved values (or None, if failed to resolve)
     :rtype: OrderedDefaultdict
@@ -561,6 +562,7 @@ def resolve_existing_path_multi(paths):
     resolved_in_batch = dxpy.resolve_data_objects(to_resolve_in_batch.values())
     resolution_multi_postprocess(to_resolve_in_batch, resolved_in_batch, resolved_objects)
     return resolved_objects
+
 
 def resolution_multi_preprocess(project, folderpath, entity_name):
     """
@@ -669,6 +671,7 @@ def resolution_multi_preprocess(project, folderpath, entity_name):
     except:
         return False, None, None, None
 
+
 def resolution_multi_postprocess(to_resolve_in_batch, resolution_result, resolved_objects):
     """
     :param to_resolve_in_batch: Entities that still needed to be resolved;
@@ -727,6 +730,7 @@ def resolution_multi_postprocess(to_resolve_in_batch, resolution_result, resolve
             resolved_objects[key] = {"project": None, "folder": None, "name": None}
         finally:
             i += 1
+
 
 def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_classes=None, allow_mult=False, describe={}, all_mult=False, allow_empty_string=True,
                           visibility="either"):

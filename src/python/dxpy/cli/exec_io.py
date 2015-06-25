@@ -414,7 +414,6 @@ class ExecutableInputs(object):
         self.required_inputs, self.optional_inputs, self.array_inputs = [], [], set()
         self.input_name_prefix = input_name_prefix
         self.requires_resolution = OrderedDefaultdict(list)
-        self.resolution_input_values = OrderedDefaultdict(list)
 
         if input_spec is None:
             input_spec = self._desc.get('inputSpec', [])
@@ -444,16 +443,14 @@ class ExecutableInputs(object):
         else:
             self.inputs.update(new_inputs)
 
-    def update_required_resolution_inputs(self):
+    def _update_required_resolution_inputs(self):
         # Call resolve Data Objects here with batch: self.requires_resolution
         results = resolve_existing_path_multi(self.requires_resolution)
-        for key in results:
-            # print(results[key])
-            project = results[key]['project']
-            folderpath = results[key]['folder']
-            entity_result = results[key]['name']
-            input_value = self.resolution_input_values[key]
-            # print(input_value)
+        for input_name in results:
+            project = results[input_name]['project']
+            folderpath = results[input_name]['folder']
+            entity_result = results[input_name]['name']
+            input_value = self.requires_resolution[input_name]
             if entity_result is not None:
                 if is_hashid(input_value):
                     input_value = {'$dnanexus_link': entity_result['id']}
@@ -465,7 +462,7 @@ class ExecutableInputs(object):
                     # Then resolveDataObjects was called in a batch (no describe hash)
                     input_value = {"$dnanexus_link": {"project": entity_result['project'],
                                                       "id": entity_result['id']}}
-            self.inputs[key] = input_value
+            self.inputs[input_name] = input_value
 
     def add(self, input_name, input_value):
         if self.input_name_prefix is not None:
@@ -507,7 +504,6 @@ class ExecutableInputs(object):
                     # Not recognized JSON (list or dict), so resolve it as a name
                     # Add to things to be resolved
                     self.requires_resolution[input_name] = input_value
-                    self.resolution_input_values[input_name] = input_value
             if isinstance(self.inputs[input_name], list) and \
                not isinstance(self.inputs[input_name], basestring):
                 self.inputs[input_name].append(input_value)
@@ -637,7 +633,7 @@ class ExecutableInputs(object):
                     raise DXCLIError('An input was found that did not conform to the syntax: -i<input name>=<input value>')
                 self.add(self.executable._get_input_name(name) if \
                          self._desc.get('class') == 'workflow' else name, value)
-            self.update_required_resolution_inputs()
+            self._update_required_resolution_inputs()
 
         if self.input_spec is None:
             for i in self.inputs:
