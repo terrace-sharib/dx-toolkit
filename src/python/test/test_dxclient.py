@@ -1331,25 +1331,25 @@ class TestDXClientRun(DXTestCase):
         self.assertEquals(job_desc['input']['int0'], 5)
         self.assertEquals(job_desc['input']['int1'], 15)
 
-        # # Test usage on over 1000 inputs (Takes a few minutes)
-        # command = "dx run " + applet_id
-        # many_names, many_ids = [], []
-        # for i in range(1010):
-        #     r_name = "one_of_many_records" + str(i)
-        #     r_id = dxpy.api.record_new({"project": self.project,
-        #                                 "dxapi": "1.0.0",
-        #                                 "name": r_name})['id']
-        #     many_names.append(r_name)
-        #     many_ids.append(r_id)
-        #     command += " -iinput" + str(i) + "=" + r_name
-        # command += " -iinputglob=global_res* --brief -y"
+        # Test usage on over 1000 inputs (Takes a few minutes)
+        command = "dx run " + applet_id
+        many_names, many_ids = [], []
+        for i in range(1010):
+            r_name = "one_of_many_records" + str(i)
+            r_id = dxpy.api.record_new({"project": self.project,
+                                        "dxapi": "1.0.0",
+                                        "name": r_name})['id']
+            many_names.append(r_name)
+            many_ids.append(r_id)
+            command += " -iinput" + str(i) + "=" + r_name
+        command += " -iinputglob=global_res* --brief -y"
 
-        # job_id = run(command).strip()
-        # job_desc = dxpy.describe(job_id)
+        job_id = run(command).strip()
+        job_desc = dxpy.describe(job_id)
 
-        # self.assertEquals(job_desc['input']['input300']['$dnanexus_link']['id'], many_ids[300])
-        # self.assertEquals(job_desc['input']['input1005']['$dnanexus_link']['id'], many_ids[1005])
-        # self.assertEquals(job_desc['input']['inputglob']['$dnanexus_link']['id'], glob_id)
+        self.assertEquals(job_desc['input']['input300']['$dnanexus_link']['id'], many_ids[300])
+        self.assertEquals(job_desc['input']['input1005']['$dnanexus_link']['id'], many_ids[1005])
+        self.assertEquals(job_desc['input']['inputglob']['$dnanexus_link']['id'], glob_id)
 
         # Should return differently formatted input if record cannot be resolved (global or not)
         job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_resolve -iinput1=resolve_record0 -iint0=10").strip()

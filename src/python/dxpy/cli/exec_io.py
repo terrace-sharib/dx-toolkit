@@ -444,7 +444,6 @@ class ExecutableInputs(object):
             self.inputs.update(new_inputs)
 
     def _update_required_resolution_inputs(self):
-        # Call resolve Data Objects here with batch: self.requires_resolution
         results = resolve_existing_path_multi(self.requires_resolution.values())
         for input_name in self.requires_resolution:
             input_value = self.requires_resolution[input_name]

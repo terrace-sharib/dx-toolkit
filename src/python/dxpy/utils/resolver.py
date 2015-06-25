@@ -545,13 +545,16 @@ def resolve_existing_path_multi(paths):
     (global paths included).
     The resolved value for a data object is a dictionary with keys, "project", "folder",
     and "name". If resolution fails, the dictionary values will be all Nones.
+
+    TODO: Consolidate preprocessing, REPM, and postprocessing+
     """
     resolved_objects = {}
     to_resolve_in_batch_paths = []  # Paths to resolve
-    to_resolve_in_batch_details = [] # Project, folderpath, and entity name
+    to_resolve_in_batch_details = []  # Project, folderpath, and entity name
     for path in paths:
         project, folderpath, entity_name = resolve_path(path, 'entity')
-        need_to_resolve, project, folderpath, entity_name = resolution_multi_preprocess(project, folderpath, entity_name)
+        need_to_resolve, project, folderpath, entity_name = resolution_multi_preprocess(project, folderpath,
+                                                                                        entity_name)
         if need_to_resolve:
             to_resolve_in_batch_paths.append(path)
             to_resolve_in_batch_details.append({"project": project, "folder": folderpath, "name": entity_name})
@@ -726,45 +729,6 @@ def resolution_multi_postprocess(resolution_result):
         except ResolutionError:
             resolved_objects[path] = {"project": None, "folder": None, "name": None}
     return resolved_objects
-
-    # i = 0
-    # for path in to_resolve_in_batch:
-    #     try:
-    #         project, folderpath, entity_name = to_resolve_in_batch[path].values()
-    #         msg = 'Object of name ' + str(entity_name) + ' could not be resolved in folder ' + str(folderpath) + ' of project ID ' + str(project)
-    #         results = resolution_result[i]
-    #         if len(results) == 0:
-    #             # Could not find it as a data object.  If anything, it's a
-    #             # folder.
-    #             if '/' in entity_name:
-    #                 # Then there's no way it's supposed to be a folder
-    #                 raise ResolutionError(msg)
-
-    #             # This is the only possibility left.  Leave the
-    #             # error-checking for later.  Note that folderpath does
-    #             possible_folder = folderpath + '/' + entity_name
-    #             possible_folder, _skip = clean_folder_path(possible_folder, 'folder')
-
-    #             # Check that the folder specified actually exists, and raise error if it doesn't
-    #             if not check_folder_exists(project, folderpath, entity_name):
-    #                 raise ResolutionError('Unable to resolve "' + entity_name +
-    #                                       '" to a data object or folder name in \'' + folderpath + "'")
-    #             resolved_objects[path] = {"project": project, "folder": possible_folder, "name": None}
-
-    #         if len(results) > 1:
-    #             if INTERACTIVE_CLI:
-    #                 print('The given path "' + path + '" resolves to the following data objects:')
-    #                 choice = pick([get_ls_l_desc(result['describe']) for result in results],
-    #                               allow_mult=False)
-    #                 resolved_objects[path] = {"project": project, "folder": None, "name": results[choice]}
-    #             else:
-    #                 raise ResolutionError('The given path "' + path + '" resolves to ' + str(len(results)) + ' data objects')
-    #         elif len(results) == 1:
-    #             resolved_objects[path] = {"project": project, "folder": None, "name": results[0]}
-    #     except ResolutionError:
-    #         resolved_objects[path] = {"project": None, "folder": None, "name": None}
-    #     finally:
-    #         i += 1
 
 
 def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_classes=None, allow_mult=False, describe={}, all_mult=False, allow_empty_string=True,

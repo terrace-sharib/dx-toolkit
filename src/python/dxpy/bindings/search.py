@@ -61,6 +61,7 @@ def resolve_data_objects(objects, project=None, folder=None):
             results.extend(dxpy.api.system_resolve_data_objects(args)['results'])
     return results
 
+
 def _find(api_method, query, limit, return_handler, first_page_size, **kwargs):
     ''' Takes an API method handler (dxpy.api.find...) and calls it with *query*, then wraps a generator around its
     output. Used by the methods below.
