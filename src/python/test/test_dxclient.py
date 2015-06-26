@@ -1274,7 +1274,7 @@ class TestDXClientRun(DXTestCase):
         super(TestDXClientRun, self).tearDown()
 
     def test_dx_resolve_preprocess(self):
-        preprocess = resolver.repm_pre
+        preprocess = resolver._check_resolution_needed
 
         # If no entity_name is given, no entity_name should be returned
         self.assertEquals(preprocess("project_id", "/", None), (False, "project_id", "/", None))

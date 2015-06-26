@@ -30,7 +30,7 @@ from ..exceptions import DXCLIError
 from ..utils.printing import (RED, GREEN, BLUE, YELLOW, WHITE, BOLD, ENDC, DELIMITER, UNDERLINE, get_delimiter, fill)
 from ..utils.describe import (get_find_executions_string, get_ls_l_desc, parse_typespec)
 from ..utils.resolver import (get_first_pos_of_char, is_hashid, is_job_id, is_localjob_id, paginate_and_pick, pick,
-                              resolve_existing_path, resolve_existing_path_multi, repm, split_unescaped)
+                              resolve_existing_path, resolve_multiple_existing_paths, split_unescaped)
 from ..utils import OrderedDefaultdict
 from ..compat import input, str, shlex
 
@@ -444,7 +444,7 @@ class ExecutableInputs(object):
             self.inputs.update(new_inputs)
 
     def _update_required_resolution_inputs(self):
-        results = repm(self.requires_resolution.values())
+        results = resolve_multiple_existing_paths(self.requires_resolution.values())
         for input_name in self.requires_resolution:
             input_value = self.requires_resolution[input_name]
             project = results[input_value]['project']
