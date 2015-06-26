@@ -1320,7 +1320,8 @@ class TestDXClientRun(DXTestCase):
                                        "dxapi": "1.0.0",
                                        "name": "global_resolve_record"})['id']
 
-        command += " -iinput0=resolve_record0 -iinput1=resolve_record1 -iinput2=global_resolve* -iint0=5 -iint1=15 --brief -y"
+        command += ("-iinput0=resolve_record0 -iinput1=resolve_record1 -iinput2=global_resolve* "
+                    "-iint0=5 -iint1=15 --brief -y")
 
         job_id = run(command).strip()
         job_desc = dxpy.describe(job_id)
@@ -1352,7 +1353,8 @@ class TestDXClientRun(DXTestCase):
         self.assertEquals(job_desc['input']['inputglob']['$dnanexus_link']['id'], glob_id)
 
         # Should return differently formatted input if record cannot be resolved (global or not)
-        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_resolve -iinput1=resolve_record0 -iint0=10").strip()
+        job_id = run(("dx run " + applet_id + " --brief -y -iinput0=cannot_resolve "
+                      "-iinput1=resolve_record0 -iint0=10")).strip()
         job_desc = dxpy.describe(job_id)
 
         self.assertEquals(job_desc['input']['input0'], "cannot_resolve")

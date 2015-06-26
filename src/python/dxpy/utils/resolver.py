@@ -584,8 +584,8 @@ def resolve_multiple_existing_paths(paths):
     to_resolve_in_batch_results = dxpy.resolve_data_objects(to_resolve_in_batch_details)
     for i in range(len(to_resolve_in_batch_paths)):
         path = to_resolve_in_batch_paths[i]
-        done_objects[path] = validate_results_length(path, to_resolve_in_batch_details[i], to_resolve_in_batch_results[i])
-
+        done_objects[path] = validate_results_length(path, to_resolve_in_batch_details[i],
+                                                     to_resolve_in_batch_results[i])
     return done_objects
 
 
@@ -638,7 +638,7 @@ def _check_resolution_needed(project, folderpath, entity_name):
         else:
             return True, project, folderpath, entity_name
     except ResolutionError:
-        return False, None, None, None 
+        return False, None, None, None
 
 
 def validate_results_length(path, details, results):
