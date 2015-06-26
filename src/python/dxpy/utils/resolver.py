@@ -533,6 +533,170 @@ def resolve_job_ref(job_id, name, describe={}):
     return results
 
 
+def repm(paths):
+    """
+    :param paths: A list of paths to items that need to be resolved
+    :type paths: list
+    :returns: A dictionary of given paths mapped to resolved values (or Nones, if failed to resolve);
+              unordered, may not be parallel to paths
+    :rtype: dict
+
+    For each input given in paths, resolves the path into a data object ID if possible
+    (global paths included).
+    The resolved value for a data object is a dictionary with keys, "project", "folder",
+    and "name". If resolution fails, the dictionary values will be all Nones.
+    """
+    done_objects = {}  # Return value
+    to_resolve_in_batch_paths = []  # Paths to resolve
+    to_resolve_in_batch_details = []  # Project, folderpath, and entity name
+    for path in paths:
+        project, folderpath, entity_name = resolve_path(path, 'entity')
+        need_to_resolve, project, folderpath, entity_name = repm_pre(project, folderpath, entity_name)
+        if need_to_resolve:
+            if "*" in entity_name or "?" in entity_name:
+                # Call findDataObjects
+                try:
+                    if is_job_id(project):
+                        # The following will raise if no results could be found
+                        results = resolve_job_ref(project, entity_name, describe={})
+                        # If results able to resolve without error, project will be
+                        # incorporated into results assuming results were found.
+                        project = None
+                    results = list(dxpy.find_data_objects(project=project,
+                                                          folder=folderpath,
+                                                          name=entity_name,
+                                                          name_mode='glob',
+                                                          recurse=False,
+                                                          describe={},
+                                                          visibility="either"))
+                    done_objects[path] = repm_post(path, (project, folderpath, entity_name), results)
+                except Exception:
+                    done_objects[path] = {"project": None, "folder": None, "name": None}
+            else:
+                # Prepare batch call for resolveDataObjects
+                to_resolve_in_batch_paths.append(path)
+                to_resolve_in_batch_details.append({"project": project, "folder": folderpath, "name": entity_name})
+        else:
+            # No need to resolve
+            done_objects[path] = {"project": project, "folder": folderpath, "name": entity_name}
+
+    # Call resolveDataObjects
+    to_resolve_in_batch_results = dxpy.resolve_data_objects(to_resolve_in_batch_details)
+    for i in range(len(to_resolve_in_batch_paths)):
+        path = to_resolve_in_batch_paths[i]
+        done_objects[path] = repm_post(path, to_resolve_in_batch_details[i], to_resolve_in_batch_results[i])
+
+    return done_objects
+
+
+def repm_pre(project, folderpath, entity_name):
+    """
+    :param project: The project that the entity belongs to
+    :type project: string
+    :param folderpath: Path to the entity within the project
+    :type folderpath: string
+    :param entity_name: The name of the entity that may or may not need resolving
+    :type entity_name: string
+    :returns: Whether or not the entity needs to be resolved after preprocessing, the project
+              the entity belongs to or None, the folderpath to the entity, and the entity name
+              itself
+    :rtype: tuple of 4 elements
+
+    Checks if entity truly requires resolution (not a folder, not an ID).
+    If the entity is a folder, then no processing is done.
+    If the entity is an ID, then will attempt to describe. If description is successful,
+    returns mapping of the given ID and the description. If it fails, return Nones.
+    Otherwise, can defer resolution for later (then the first return value will be True).
+    """
+    try:
+        if entity_name is None:
+            # Definitely a folder (or project)
+            # TODO: find a good way to check if folder exists and expected=folder
+            return False, project, folderpath, entity_name
+        elif is_hashid(entity_name):
+            describe = {}
+            if project != dxpy.WORKSPACE_ID:
+                describe['project'] = project
+            elif dxpy.WORKSPACE_ID is not None:
+                describe['project'] = dxpy.WORKSPACE_ID
+            try:
+                desc = dxpy.DXHTTPRequest('/' + entity_name + '/describe', describe)
+            except Exception as details:
+                if 'project' in describe:
+                    # Now try it without the hint
+                    del describe['project']
+                    try:
+                        desc = dxpy.DXHTTPRequest('/' + entity_name + '/describe', {})
+                    except Exception as details:
+                        raise ResolutionError(str(details))
+                else:
+                    raise ResolutionError(str(details))
+            result = {"id": entity_name, "describe": desc}
+            return False, project, folderpath, result
+        elif project is None:
+            raise ResolutionError('Could not resolve "' + folderpath + '" to a project context.  Please either set a default project using dx select or cd, or add a colon (":") after your project ID or name')
+        else:
+            return True, project, folderpath, entity_name
+    except ResolutionError:
+        return False, None, None, None 
+
+
+def repm_post(path, details, results):
+    """
+    :param path: Path to the object that required resolution
+    :type path: string
+    :param details: Details of the object that was resolved (corresponding project, folder path, name of object)
+                    in that order
+    :type details: tuple of 3 elements
+    :param results: Result of resolution; list of object specifications (each specification is a dictionary with
+                    keys "project" and "id")
+    :type results: list
+    :returns: Dictionary with keys "project", "folder", and "name", where the values are potentially
+              modified to reflect the number of results returned
+    :rtype: dict
+
+    Validates length of results. Returns a dictionary that is a mapping of "project", "folder", and "name",
+    where "name" corresponds to either a successful resolved ID, or None.
+    If no results are found, or too many are found without
+    the ability to select one, then values are Nones.
+    If no results are found because the entity is a folder, then only "name" is none, and "folder" is the
+    potential folder that is found.
+    """
+    try:
+        project, folderpath, entity_name = details
+        msg = 'Object of name ' + str(entity_name) + ' could not be resolved in folder ' + str(folderpath) + ' of project ID ' + str(project)
+        if len(results) == 0:
+            # Could not find it as a data object.  If anything, it's a
+            # folder.
+            if '/' in entity_name:
+                # Then there's no way it's supposed to be a folder
+                raise ResolutionError(msg)
+
+            # This is the only possibility left.  Leave the
+            # error-checking for later.  Note that folderpath does
+            possible_folder = folderpath + '/' + entity_name
+            possible_folder, _skip = clean_folder_path(possible_folder, 'folder')
+
+            # Check that the folder specified actually exists, and raise error if it doesn't
+            if not check_folder_exists(project, folderpath, entity_name):
+                raise ResolutionError('Unable to resolve "' + entity_name +
+                                      '" to a data object or folder name in \'' + folderpath + "'")
+            return {"project": project, "folder": possible_folder, "name": None}
+
+        if len(results) > 1:
+            if INTERACTIVE_CLI:
+                print('The given path "' + path + '" resolves to the following data objects:')
+                choice = pick([get_ls_l_desc(result['describe']) for result in results],
+                              allow_mult=False)
+                return {"project": project, "folder": None, "name": results[choice]}
+            else:
+                raise ResolutionError('The given path "' + path + '" resolves to ' + str(len(results)) + ' data objects')
+        elif len(results) == 1:
+            return {"project": project, "folder": None, "name": results[0]}
+    except ResolutionError:
+            return {"project": None, "folder": None, "name": None}
+
+
 def resolve_existing_path_multi(paths):
     """
     :param paths: A list of paths to items that need to be resolved
@@ -545,8 +709,6 @@ def resolve_existing_path_multi(paths):
     (global paths included).
     The resolved value for a data object is a dictionary with keys, "project", "folder",
     and "name". If resolution fails, the dictionary values will be all Nones.
-
-    TODO: Consolidate preprocessing, REPM, and postprocessing+
     """
     resolved_objects = {}
     to_resolve_in_batch_paths = []  # Paths to resolve
