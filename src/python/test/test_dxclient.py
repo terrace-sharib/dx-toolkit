@@ -1320,7 +1320,7 @@ class TestDXClientRun(DXTestCase):
                                        "dxapi": "1.0.0",
                                        "name": "global_resolve_record"})['id']
 
-        command += ("-iinput0=resolve_record0 -iinput1=resolve_record1 -iinput2=global_resolve* "
+        command += (" -iinput0=resolve_record0 -iinput1=resolve_record1 -iinput2=global_resolve* "
                     "-iint0=5 -iint1=15 --brief -y")
 
         job_id = run(command).strip()

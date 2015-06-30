@@ -28,17 +28,18 @@ import dxpy
 from . import DXApplet, DXApp, DXWorkflow, DXProject, DXJob, DXAnalysis
 from ..exceptions import DXError, DXSearchError
 
+
 def resolve_data_objects(objects, project=None, folder=None):
     """
     :param objects: Data object specifications, each with fields "name" (required), "folder", and "project"
-    :type objects: List of dicitonaries
+    :type objects: List of dictionaries
     :param project: ID of project context; a data object's project defaults to this if not specifically provided
-                    per project
+                    per object
     :type project: string
     :param folder: Folder path within the project; a data object's folderpath defaults to this if not specifically
-                   provided; if left as default (None), then folderpath used for resolution is "/"
+                   provided per object; if unspecified, then folderpath defaults to "/"
     :type folder: string
-    :returns: List of results parallel to input data omittedbjects, where each entry is a list of 0 or more resolved
+    :returns: List of results parallel to input data objects, where each entry is a list of 0 or more resolved
               object dictionaries
     :rtype: List of lists of dictionaries
 
@@ -48,17 +49,17 @@ def resolve_data_objects(objects, project=None, folder=None):
     """
     args = {}
     if project:
-        args = {'project': project}
+        args.update({'project': project})
     if folder:
-        args = {'folder': folder}
+        args.update({'folder': folder})
+
     results = []
 
     # Call API method /system/resolveDataObjects in batches of 1000
     for i in range(0, len(objects), 1000):  # Count by 1000's, get next batch of 1000
         to_resolve = objects[i:(i+1000)]
-        if to_resolve:
-            args['objects'] = to_resolve
-            results.extend(dxpy.api.system_resolve_data_objects(args)['results'])
+        args['objects'] = to_resolve
+        results.extend(dxpy.api.system_resolve_data_objects(args)['results'])
     return results
 
 

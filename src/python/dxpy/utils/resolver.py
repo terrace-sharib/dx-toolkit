@@ -537,20 +537,20 @@ def resolve_multiple_existing_paths(paths):
     """
     :param paths: A list of paths to items that need to be resolved
     :type paths: list
-    :returns: A dictionary of given paths mapped to resolved values (or Nones, if failed to resolve);
-              unordered, may not be parallel to paths
+    :returns: A dictionary mappng a specified path to its resolved object (or None if the object
+              could not be resolved); unordered, may not be parallel to paths
     :rtype: dict
 
-    For each input given in paths, resolves the path into a data object ID if possible
-    (global paths included).
-    The resolved value for a data object is a dictionary with keys, "project", "folder",
-    and "name". If resolution fails, the dictionary values will be all Nones.
+    For each input given in paths, attempts to resolve the path. The resolved value
+    for a data object is a dictionary with keys, "project", "folder", and "name". If
+    resolution succeeds, the "name" value will be data object ID. If resolution fails,
+    then the dictionary values will all be None.
     """
     done_objects = {}  # Return value
     to_resolve_in_batch_paths = []  # Paths to resolve
     to_resolve_in_batch_details = []  # Project, folderpath, and entity name
     for path in paths:
-        project, folderpath, entity_name = resolve_path(path, 'entity')
+        project, folderpath, entity_name = resolve_path(path, expected='entity')
         need_to_resolve, project, folderpath, entity_name = _check_resolution_needed(project, folderpath, entity_name)
         if need_to_resolve:
             if "*" in entity_name or "?" in entity_name:
@@ -562,13 +562,14 @@ def resolve_multiple_existing_paths(paths):
                         # If results able to resolve without error, project will be
                         # incorporated into results assuming results were found.
                         project = None
-                    results = list(dxpy.find_data_objects(project=project,
-                                                          folder=folderpath,
-                                                          name=entity_name,
-                                                          name_mode='glob',
-                                                          recurse=False,
-                                                          describe={},
-                                                          visibility="either"))
+                    else:
+                        results = list(dxpy.find_data_objects(project=project,
+                                                              folder=folderpath,
+                                                              name=entity_name,
+                                                              name_mode='glob',
+                                                              recurse=False,
+                                                              describe={},
+                                                              visibility="either"))
                     done_objects[path] = validate_results_length(path, (project, folderpath, entity_name), results)
                 except Exception:
                     done_objects[path] = {"project": None, "folder": None, "name": None}
@@ -591,7 +592,7 @@ def resolve_multiple_existing_paths(paths):
 
 def _check_resolution_needed(project, folderpath, entity_name):
     """
-    :param project: The project that the entity belongs to
+    :param project: The potential project the entity belongs to, determined by resolve_path
     :type project: string
     :param folderpath: Path to the entity within the project
     :type folderpath: string
@@ -603,17 +604,14 @@ def _check_resolution_needed(project, folderpath, entity_name):
     :rtype: tuple of 4 elements
 
     Checks if entity truly requires resolution (not a folder, not an ID).
-    If the entity is a folder, then no processing is done.
-    If the entity is an ID, then will attempt to describe. If description is successful,
-    returns mapping of the given ID and the description. If it fails, return Nones.
     Otherwise, can defer resolution for later (then the first return value will be True).
     """
     try:
         if entity_name is None:
             # Definitely a folder (or project)
-            # TODO: find a good way to check if folder exists and expected=folder
             return False, project, folderpath, entity_name
         elif is_hashid(entity_name):
+            # entity is ID, try to describe
             describe = {}
             if project != dxpy.WORKSPACE_ID:
                 describe['project'] = project
@@ -627,8 +625,8 @@ def _check_resolution_needed(project, folderpath, entity_name):
                     del describe['project']
                     try:
                         desc = dxpy.DXHTTPRequest('/' + entity_name + '/describe', {})
-                    except Exception as details:
-                        raise ResolutionError(str(details))
+                    except Exception as details2:
+                        raise ResolutionError(str(details2))
                 else:
                     raise ResolutionError(str(details))
             result = {"id": entity_name, "describe": desc}
@@ -636,6 +634,7 @@ def _check_resolution_needed(project, folderpath, entity_name):
         elif project is None:
             raise ResolutionError('Could not resolve "' + folderpath + '" to a project context.  Please either set a default project using dx select or cd, or add a colon (":") after your project ID or name')
         else:
+            # Need to resolve later
             return True, project, folderpath, entity_name
     except ResolutionError:
         return False, None, None, None
@@ -656,7 +655,8 @@ def validate_results_length(path, details, results):
     :rtype: dict
 
     Validates length of results. Returns a dictionary that is a mapping of "project", "folder", and "name",
-    where "name" corresponds to either a successful resolved ID, or None.
+    where "name" corresponds to either a successfully resolved ID, or None.
+
     If no results are found, or too many are found without
     the ability to select one, then values are Nones.
     If no results are found because the entity is a folder, then only "name" is none, and "folder" is the
@@ -673,7 +673,7 @@ def validate_results_length(path, details, results):
                 raise ResolutionError(msg)
 
             # This is the only possibility left.  Leave the
-            # error-checking for later.  Note that folderpath does
+            # error-checking for later.
             possible_folder = folderpath + '/' + entity_name
             possible_folder, _skip = clean_folder_path(possible_folder, 'folder')
 

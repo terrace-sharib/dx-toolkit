@@ -443,7 +443,7 @@ class ExecutableInputs(object):
         else:
             self.inputs.update(new_inputs)
 
-    def _update_required_resolution_inputs(self):
+    def _update_requires_resolution_inputs(self):
         results = resolve_multiple_existing_paths(self.requires_resolution.values())
         for input_name in self.requires_resolution:
             input_value = self.requires_resolution[input_name]
@@ -632,7 +632,7 @@ class ExecutableInputs(object):
                     raise DXCLIError('An input was found that did not conform to the syntax: -i<input name>=<input value>')
                 self.add(self.executable._get_input_name(name) if \
                          self._desc.get('class') == 'workflow' else name, value)
-            self._update_required_resolution_inputs()
+            self._update_requires_resolution_inputs()
 
         if self.input_spec is None:
             for i in self.inputs:
