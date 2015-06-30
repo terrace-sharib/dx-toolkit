@@ -413,6 +413,7 @@ class ExecutableInputs(object):
         self.input_spec = collections.OrderedDict() if 'inputSpec' in self._desc or input_spec else None
         self.required_inputs, self.optional_inputs, self.array_inputs = [], [], set()
         self.input_name_prefix = input_name_prefix
+        # Map input name to input value (path to item to be resolved):
         self.requires_resolution = OrderedDefaultdict(list)
 
         if input_spec is None:
@@ -445,8 +446,7 @@ class ExecutableInputs(object):
 
     def _update_requires_resolution_inputs(self):
         results = resolve_multiple_existing_paths(self.requires_resolution.values())
-        for input_name in self.requires_resolution:
-            input_value = self.requires_resolution[input_name]
+        for input_name, input_value in self.requires_resolution.iteritems():
             project = results[input_value]['project']
             folderpath = results[input_value]['folder']
             entity_result = results[input_value]['name']

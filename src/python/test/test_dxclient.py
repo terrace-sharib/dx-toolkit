@@ -1335,7 +1335,7 @@ class TestDXClientRun(DXTestCase):
         # Test usage on over 1000 inputs (Takes a few minutes)
         command = "dx run " + applet_id
         many_names, many_ids = [], []
-        for i in range(1010):
+        for i in range(3010):
             r_name = "one_of_many_records" + str(i)
             r_id = dxpy.api.record_new({"project": self.project,
                                         "dxapi": "1.0.0",
@@ -1349,7 +1349,10 @@ class TestDXClientRun(DXTestCase):
         job_desc = dxpy.describe(job_id)
 
         self.assertEquals(job_desc['input']['input300']['$dnanexus_link']['id'], many_ids[300])
-        self.assertEquals(job_desc['input']['input1005']['$dnanexus_link']['id'], many_ids[1005])
+        self.assertEquals(job_desc['input']['input1050']['$dnanexus_link']['id'], many_ids[1050])
+        self.assertEquals(job_desc['input']['input2334']['$dnanexus_link']['id'], many_ids[2334])
+        self.assertEquals(job_desc['input']['input3005']['$dnanexus_link']['id'], many_ids[3005])
+        self.assertNotEqual(job_desc['input']['input1000']['$dnanexus_link']['id'], many_ids[2000])
         self.assertEquals(job_desc['input']['inputglob']['$dnanexus_link']['id'], glob_id)
 
         # Should return differently formatted input if record cannot be resolved (global or not)

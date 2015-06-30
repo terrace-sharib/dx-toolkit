@@ -39,11 +39,11 @@ def resolve_data_objects(objects, project=None, folder=None):
     :param folder: Folder path within the project; a data object's folderpath defaults to this if not specifically
                    provided per object; if unspecified, then folderpath defaults to "/"
     :type folder: string
-    :returns: List of results parallel to input data objects, where each entry is a list of 0 or more resolved
-              object dictionaries
+    :returns: List of results parallel to input data objects, where each entry is a list containing 0 or more dicts,
+              each corresponding to a resolved object
     :rtype: List of lists of dictionaries
 
-    Each returned element is dictionary with keys "project" and "id", with values
+    Each returned element is a dictionary with keys "project" and "id", with values
     of DNAnexus IDs for project and resolved object, respectively.
     Number of results for each objects may be 0, 1, or more.
     """
@@ -57,8 +57,7 @@ def resolve_data_objects(objects, project=None, folder=None):
 
     # Call API method /system/resolveDataObjects in batches of 1000
     for i in range(0, len(objects), 1000):  # Count by 1000's, get next batch of 1000
-        to_resolve = objects[i:(i+1000)]
-        args['objects'] = to_resolve
+        args.update({'objects': objects[i:(i+1000)]})
         results.extend(dxpy.api.system_resolve_data_objects(args)['results'])
     return results
 
