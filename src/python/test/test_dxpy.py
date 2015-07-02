@@ -1039,6 +1039,19 @@ class TestDXRecord(unittest.TestCase):
         with self.assertRaises(TypeError):
             dxrecord = dxpy.new_dxrecord(foo=1)
 
+    def test_custom_describe_fields(self):
+        dxrecord = dxpy.new_dxrecord(name="recordname", tags=["tag"], details={}, folder="/")
+        self.assertEqual(dxrecord.describe(fields={"name", "tags"}),
+                         {"id": dxrecord.get_id(), "name": "recordname", "tags": ["tag"]})
+        self.assertEqual(dxrecord.describe(fields={"name", "tags"}, default_fields=False),
+                         {"id": dxrecord.get_id(), "name": "recordname", "tags": ["tag"]})
+        describe_with_custom_fields = dxrecord.describe(fields={"name", "properties"}, default_fields=True)
+        self.assertIn('name', describe_with_custom_fields)
+        self.assertIn('modified', describe_with_custom_fields)
+        self.assertIn('properties', describe_with_custom_fields)
+        self.assertNotIn('details', describe_with_custom_fields)
+
+
 @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
 class TestDXAppletJob(unittest.TestCase):
     def setUp(self):
@@ -2026,6 +2039,15 @@ class TestDataobjectFunctions(unittest.TestCase):
         dxjob = dxpy.DXJob('job-123456789012345678901234')
         self.assertEqual(dxpy.dxlink(dxjob.get_output_ref('output')),
                          dxjob.get_output_ref('output'))
+
+        # is_dxlink works as expected
+        self.assertFalse(dxpy.is_dxlink(None))
+        self.assertFalse(dxpy.is_dxlink({}))
+        self.assertFalse(dxpy.is_dxlink({"$dnanexus_link": None}))
+        self.assertFalse(dxpy.is_dxlink({"$dnanexus_link": {}}))
+        self.assertTrue(dxpy.is_dxlink({"$dnanexus_link": "x"}))
+        self.assertTrue(dxpy.is_dxlink({"$dnanexus_link": {"id": None}}))
+        self.assertTrue(dxpy.is_dxlink({"$dnanexus_link": {"job": None}}))
 
     def test_get_handler(self):
         dxpy.set_workspace_id(self.second_proj_id)
