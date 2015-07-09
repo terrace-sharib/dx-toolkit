@@ -46,6 +46,9 @@ def download_one_file(project, file_desc, dest_filename, args):
         print("Skipping file {name} ({id}) because it is not closed".format(**file_desc), file=sys.stderr)
         return
 
+    if (project is None or project == 0):
+        err_exit(fill("Error: project ID for data object {name} ({id})".format(**file_desc), file=sys.stderr))
+
     try:
         show_progress = args.show_progress
     except AttributeError:
@@ -142,8 +145,7 @@ def download(args):
             matching_files = [matching_files]
 
         matching_folders = []
-        if project is not None:
-            # project may be none if path is an ID and there is no project context
+        if project is not None and project != 0:
             colon_pos = get_first_pos_of_char(":", path)
             if colon_pos >= 0:
                 path = path[colon_pos + 1:]
@@ -155,6 +157,14 @@ def download(args):
                 # The list of subfolders is {'/', '/A', '/B'}.
                 # Remove '/', otherwise we will download everything twice.
                 matching_folders.remove('/')
+        else:
+            # project may be none if path is an ID and there is no project context
+            describe = {}
+            desc = try_call(dxpy.DXHTTPRequest, '/' + path + '/describe', describe, **resolver_kwargs)
+            if 'project' in describe:
+                project = describe['project']
+            else:
+                err_exit(fill('Error: could not resolve project ID for {path}'.format(path=path)))
 
         if len(matching_files) == 0 and len(matching_folders) == 0:
             err_exit(fill('Error: {path} is neither a file nor a folder name'.format(path=path)))
