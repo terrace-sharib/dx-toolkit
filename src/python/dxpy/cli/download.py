@@ -145,7 +145,8 @@ def download(args):
             matching_files = [matching_files]
 
         matching_folders = []
-        if project is not None and project != 0:
+        # project may be none if path is an ID and there is no project context
+        if project is not None:
             colon_pos = get_first_pos_of_char(":", path)
             if colon_pos >= 0:
                 path = path[colon_pos + 1:]
@@ -157,17 +158,22 @@ def download(args):
                 # The list of subfolders is {'/', '/A', '/B'}.
                 # Remove '/', otherwise we will download everything twice.
                 matching_folders.remove('/')
-        else:
-            # project may be none if path is an ID and there is no project context
-            describe = {}
-            desc = try_call(dxpy.DXHTTPRequest, '/' + path + '/describe', describe, **resolver_kwargs)
-            if 'project' in describe:
-                project = describe['project']
-            else:
-                err_exit(fill('Error: could not resolve project ID for {path}'.format(path=path)))
 
         if len(matching_files) == 0 and len(matching_folders) == 0:
             err_exit(fill('Error: {path} is neither a file nor a folder name'.format(path=path)))
+
+        # Call dx describe if project ID == None
+        # matching_files list may contain multiple items since resolve_existing_path takes globs as inputs.
+        # Break after one iteration since all the items in matching_files should resolve to the same project.
+        for matched_file in matching_files:
+            # file already accessible in project specified by user
+            if matched_file['project'] == project:
+                break
+            describe = {'project': matching_files['project']}
+            desc = try_call(dxpy.DXHTTPRequest, '/' + path + '/describe', describe, **resolver_kwargs)
+            project = describe['project']
+            break
+
         files_to_get[project].extend(matching_files)
         folders_to_get[project].extend(((f, strip_prefix) for f in matching_folders))
         count += len(matching_files) + len(matching_folders)
