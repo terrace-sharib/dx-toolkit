@@ -46,7 +46,7 @@ def download_one_file(project, file_desc, dest_filename, args):
         print("Skipping file {name} ({id}) because it is not closed".format(**file_desc), file=sys.stderr)
         return
 
-    if (project is None or project == 0):
+    if (project is None):
         err_exit(fill("Error: project ID for data object {name} ({id})".format(**file_desc), file=sys.stderr))
 
     try:
@@ -169,9 +169,9 @@ def download(args):
             # file already accessible in project specified by user
             if matched_file['project'] == project:
                 break
-            describe = {'project': matching_files['project']}
+            describe = {'project': matching_file['project']}
             desc = try_call(dxpy.DXHTTPRequest, '/' + path + '/describe', describe, **resolver_kwargs)
-            project = describe['project']
+            project = desc['project']
             break
 
         files_to_get[project].extend(matching_files)

@@ -18,6 +18,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp> //include all types plus i/o
+#include <boost/format.hpp>
 #include "dxfile.h"
 #include "../utils.h"
 #include "SimpleHttp.h"
@@ -146,6 +147,15 @@ namespace dx {
     gcount_ = 0;
     JSON req(JSON_HASH);
     req["preauthenticated"] = false;
+
+    // /file-xxxx/download requires project ID
+    // use proj_ as a hint when calling describe
+    JSON desc = describe_((boost::format("{\"project: %s\"}") % proj_).str());
+    const string proj = desc["project"].get<string>();
+    if (proj == "")
+      throw DXFileError("ERROR: Cannot call DXFile::fileDownload() without corresponding project id");
+    req["project"] = proj;
+
     const JSON dlResp = fileDownload(dxid_, req);
     const string url = dlResp["url"].get<string>();
 
@@ -196,9 +206,18 @@ namespace dx {
     lq_next_result_ = lq_query_start_;
     lq_results_.clear();
     lq_headers.clear();
-    
+
     JSON req(JSON_HASH);
     req["preauthenticated"] = false;
+
+    // /file-xxxx/download requires project ID
+    // use proj_ as a hint when calling describe
+    JSON desc = describe_((boost::format("{\"project: %s\"}") % proj_).str());
+    const string proj = desc["project"].get<string>();
+    if (proj == "")
+      throw DXFileError("ERROR: Cannot call DXFile::fileDownload() without corresponding project id");
+    req["project"] = proj;
+
     const JSON dlResp = fileDownload(dxid_, req);
     lq_url = dlResp["url"].get<string>();
     lq_headers = dlResp["headers"];
@@ -437,7 +456,7 @@ namespace dx {
       // Create thread pool (if not already created)
       if (writeThreads.size() == 0)
         createWriteThreads_();
-      
+
       // add upload request for this part to blocking queue
       uploadPartRequestsQueue.produce(make_pair(buffer_.str(), cur_part_));
       buffer_.str(string()); // clear the buffer
@@ -478,23 +497,23 @@ namespace dx {
     JSON input_params(JSON_OBJECT);
     if (index >= 1)
       input_params["index"] = index;
-  
+
     int MAX_TRIES = 5;
-    
+
     for (int tries = 1; true; ++tries) {
       // we exit this loop in one of the two cases:
       //  1) Total number of tries are exhausted (in which case we "throw")
       //  2) Request is completed (in which case we "break" from the loop)
 
       HttpHeaders req_headers;
-      
+
       const JSON resp = fileUpload(dxid_, input_params);
       for (JSON::const_object_iterator it = resp["headers"].object_begin(); it != resp["headers"].object_end(); ++it)
         req_headers[it->first] = it->second.get<string>();
-      
+
       req_headers["Content-Length"] = boost::lexical_cast<string>(n);
       req_headers["Content-Type"] = ""; // this is necessary because libcurl otherwise adds "Content-Type: application/x-www-form-urlencoded"
-      req_headers["Content-MD5"] = getHexifiedMD5(reinterpret_cast<const unsigned char*>(ptr), n); // Add the content MD5 header 
+      req_headers["Content-MD5"] = getHexifiedMD5(reinterpret_cast<const unsigned char*>(ptr), n); // Add the content MD5 header
       HttpRequest resp2;
       try {
         DXLOG(logDEBUG) << "In uploadPart(), index = " << index << ", calling makeHTTPRequestForFileReadAndWrite() ...";
