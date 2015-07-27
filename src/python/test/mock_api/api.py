@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function, unicode_literals, division, absolute_import
 
 import os, sys, random, hashlib, argparse, io, struct
 from flask import Flask, request, jsonify

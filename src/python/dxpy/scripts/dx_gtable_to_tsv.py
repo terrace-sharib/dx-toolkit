@@ -16,6 +16,8 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from __future__ import print_function, unicode_literals, division, absolute_import
+
 import os, sys, argparse, csv
 import dxpy
 from dxpy.utils.resolver import ResolutionError, resolve_existing_path

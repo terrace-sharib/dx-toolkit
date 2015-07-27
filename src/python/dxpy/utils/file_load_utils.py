@@ -80,6 +80,8 @@ will download into the execution environment:
 
 '''
 
+from __future__ import print_function, unicode_literals, division, absolute_import
+
 import json
 import pipes
 import os

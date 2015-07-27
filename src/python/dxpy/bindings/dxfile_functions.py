@@ -22,7 +22,7 @@ The following helper functions are useful shortcuts for interacting with File ob
 
 '''
 
-from __future__ import (print_function, unicode_literals)
+from __future__ import print_function, unicode_literals, division, absolute_import
 
 import os, sys, math, mmap, stat
 

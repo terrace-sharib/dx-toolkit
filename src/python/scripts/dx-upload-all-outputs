@@ -32,6 +32,9 @@ Overview
    (c) Upload everything that is in the output directory
    (d) Generate a $HOME/job_output.json file that describes it.
 '''
+
+from __future__ import print_function, unicode_literals, division, absolute_import
+
 import concurrent.futures
 import os
 import stat

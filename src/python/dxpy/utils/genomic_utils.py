@@ -14,6 +14,8 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from __future__ import print_function, unicode_literals, division, absolute_import
+
 import re
 from ..compat import USING_PYTHON2, str
 

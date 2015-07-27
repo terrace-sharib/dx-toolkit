@@ -16,6 +16,8 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from __future__ import print_function, unicode_literals, division, absolute_import
+
 import json, argparse
 
 parser = argparse.ArgumentParser(description='Creates a DNAnexus link from an object ID or "<project ID>:<object ID>" string.  The result is of the form {"$dnanexus_link": "<object ID>"} or {"$dnanexus_link": {"project": <project ID>, "id": <object ID>}}, as appropriate.')

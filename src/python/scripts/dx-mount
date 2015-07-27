@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals, division, absolute_import
 
 import os, sys
 
@@ -256,8 +256,8 @@ class DXFS(LoggingMixIn, Operations):
         path = os.path.join(dataobject["folder"], dataobject["name"])
         self._create(path,
                      mode,
-                     ctime=dataobject['created']/1000,
-                     mtime=dataobject['modified']/1000,
+                     ctime=dataobject['created']//1000,
+                     mtime=dataobject['modified']//1000,
                      size=_get_size(dataobject),
                      dxid=dataobject['id'],
                      describe=dataobject)

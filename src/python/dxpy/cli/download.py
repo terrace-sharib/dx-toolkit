@@ -17,7 +17,9 @@
 '''
 This module handles download commands for the dx command-line client.
 '''
-from __future__ import (print_function, unicode_literals)
+
+from __future__ import print_function, unicode_literals, division, absolute_import
+
 import pprint
 
 import os

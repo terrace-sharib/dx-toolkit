@@ -16,6 +16,8 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from __future__ import print_function, unicode_literals, division, absolute_import
+
 import sys, os, argparse, json, pipes, shutil
 from collections import OrderedDict
 import re
@@ -282,11 +284,11 @@ with open(os.path.join(args.name, 'dxapp.json'), 'w') as fd:
 with open(os.path.join(args.name, 'run.py'), 'w') as fd:
     fd.write(code)
 
-print 'Created applet directory successfully'
+print('Created applet directory successfully')
 if re.search("[^a-zA-Z0-9.\_\-]", args.name) is None and re.match("app-", args.name) is None:
-    print 'You can also build this as an ' + BOLD() + 'app' + ENDC() + ' with:'
-    print '  dx build --create-app --no-temp-build-project ' + pipes.quote(args.name)
+    print('You can also build this as an ' + BOLD() + 'app' + ENDC() + ' with:')
+    print('  dx build --create-app --no-temp-build-project ' + pipes.quote(args.name))
 else:
-    print fill('NOTE: The "name" field in your ' + pipes.quote(os.path.join(args.name, 'dxapp.json')) + ' file contains disallowed characters and cannot be built as an ' + BOLD() + 'app' + ENDC() + ' unless this is changed.')
-print 'You can build this as an ' + BOLD() + 'applet' + ENDC() + ' with:'
-print '  dx build ' + pipes.quote(args.name)
+    print(fill('NOTE: The "name" field in your ' + pipes.quote(os.path.join(args.name, 'dxapp.json')) + ' file contains disallowed characters and cannot be built as an ' + BOLD() + 'app' + ENDC() + ' unless this is changed.'))
+print('You can build this as an ' + BOLD() + 'applet' + ENDC() + ' with:')
+print('  dx build ' + pipes.quote(args.name))
