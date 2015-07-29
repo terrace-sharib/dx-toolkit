@@ -127,6 +127,10 @@ from __future__ import (print_function, unicode_literals)
 
 import os, sys, json, time, logging, platform, collections, ssl, traceback
 import errno
+
+distpackages = b"/usr/lib/python2.7/dist-packages"
+sys.path = filter(lambda x: x!= distpackages,sys.path) + [distpackages]
+
 import requests
 import socket
 
