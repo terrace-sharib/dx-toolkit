@@ -1249,7 +1249,15 @@ def _validate_new_user_input(args):
     if args.org is None:
         args_dict = vars(args)
         for arg_with_org in args_with_org:
-            if args_dict[arg_with_org]:
+            raise_err = False
+
+            if (arg_with_org == "no_app_access" and
+                    args_dict[arg_with_org] is False):
+                raise_err = True
+            elif args_dict[arg_with_org]:
+                raise_err = True
+
+            if raise_err:
                 raise DXCLIError("Cannot specify --" + arg_with_org +
                                  " without specifying --org")
 
