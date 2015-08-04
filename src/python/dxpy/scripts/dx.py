@@ -1294,7 +1294,6 @@ def _get_org_invite_args(args):
 
 
 def new_user(args):
-    print(args)
     _validate_new_user_input(args)
 
     # Create user account.
@@ -1310,7 +1309,10 @@ def new_user(args):
     if args.brief:
         print("user-" + args.username)
     else:
-        print(fill(res["message"]))
+        msg_prefix = "Account creation succeeded (user-{u}). ".format(
+            u=args.username
+        )
+        print(fill(msg_prefix + res["message"]))
 
     if args.org is not None:
         # Invite new user to org.
@@ -1319,14 +1321,6 @@ def new_user(args):
             res = dxpy.api.org_invite(args.org, org_invite_args)
         except Exception as e2:
             raise e2
-
-        if args.brief:
-            print(res["id"])
-        else:
-            msg = "user-{username} has been invited to {org}".format(
-                username=args.username, org=args.org
-            )
-            print(fill(msg))
 
 
 def new_project(args):
