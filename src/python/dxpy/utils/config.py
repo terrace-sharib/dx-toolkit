@@ -98,7 +98,18 @@ class DXConfig(MutableMapping):
             warn("WARNING: Expected _DX_DEBUG to be an integer, but got", environ["_DX_DEBUG"])
             dxpy._DEBUG = 0
 
-        self._user_conf_dir = expanduser(environ.get("DX_USER_CONF_DIR", "~/.dnanexus_config"))
+        user_conf_dir = environ.get("DX_USER_CONF_DIR",
+                                    os.path.join(environ.get("XDG_CONFIG_HOME", "~/.config"), "dnanexus"))
+        self._user_conf_dir = expanduser(user_conf_dir)
+
+        if os.path.exists(expanduser("~/.dnanexus_config")) and not os.path.exists(self._user_conf_dir):
+            try:
+                if not os.path.exists(os.path.dirname(self._user_conf_dir)):
+                    os.makedirs(os.path.dirname(self._user_conf_dir))
+                os.rename(expanduser("~/.dnanexus_config"), self._user_conf_dir)
+                os.symlink(self._user_conf_dir, expanduser("~/.dnanexus_config"))
+            except Exception as e:
+                warn("Error in user config migration: {}".format(e))
 
         dxpy._UPGRADE_NOTIFY = os.path.join(self._user_conf_dir, ".upgrade_notify")
         # If last upgrade notification was less than 24 hours ago, disable it
