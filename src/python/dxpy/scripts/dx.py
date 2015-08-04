@@ -1235,6 +1235,100 @@ def describe(args):
     except:
         err_exit()
 
+
+def _validate_new_user_input(args):
+    # TODO: Support interactive specification of `args.username`.
+    # TODO: Support interactive specification of `args.email`.
+
+    if args.first is None and args.last is None:
+        raise DXCLIError("At least one of --first/--last must be specified")
+
+    # TODO: Is there way to obtain these from the parser?
+    args_with_org = ["level", "bill_to", "create_permission", "app_access",
+                     "project_access", "no_email"]
+    if args.org is None:
+        args_dict = vars(args)
+        for arg_with_org in args_with_org:
+            if args_dict[arg_with_org]:
+                raise DXCLIError("Cannot specify --" + arg_with_org +
+                                 " without specifying --org")
+
+
+def _get_user_new_args(args):
+    """
+    PRECONDITION: `_validate_new_user_input()` has been called on `args`.
+    """
+    user_new_args = {"username": args.username,
+                     "email": args.email}
+    if args.first is not None:
+        user_new_args["first"] = args.first
+    if args.last is not None:
+        user_new_args["last"] = args.last
+    if args.middle is not None:
+        user_new_args["middle"] = args.middle
+    if args.token_duration is not None:
+        user_new_args["tokenDuration"] = args.token_duration
+    if args.occupation is not None:
+        user_new_args["occupation"] = args.occupation
+    if args.bill_to is True:
+        user_new_args["billTo"] = args.org
+    return user_new_args
+
+
+def _get_org_invite_args(args):
+    """
+    PRECONDITION: `_validate_new_user_input()` has been called on `args`, and
+    `args.username` is a well-formed and valid username.
+    """
+    org_invite_args = {"invitee": "user-" + args.username}
+    if args.level is not None:
+        org_invite_args["level"] = args.level
+    org_invite_args["createProjectsAndApps"] = args.create_permission
+    if args.app_access is not None:
+        org_invite_args["appAccess"] = args.app_access
+    if args.project_access is not None:
+        org_invite_args["projectAccess"] = args.project_access
+    if args.no_email:
+        org_invite_args["suppressEmailNotification"] = args.no_email
+    return org_invite_args
+
+
+def new_user(args):
+    print(args)
+    _validate_new_user_input(args)
+
+    # Create user account.
+    user_new_args = _get_user_new_args(args)
+    res = None
+    try:
+        res = dxpy.DXHTTPRequest(dxpy.get_auth_server_name() + "/user/new",
+                                 user_new_args,
+                                 prepend_srv=False)
+    except Exception as e:
+        raise e
+
+    if args.brief:
+        print("user-" + args.username)
+    else:
+        print(fill(res["message"]))
+
+    if args.org is not None:
+        # Invite new user to org.
+        org_invite_args = _get_org_invite_args(args)
+        try:
+            res = dxpy.api.org_invite(args.org, org_invite_args)
+        except Exception as e2:
+            raise e2
+
+        if args.brief:
+            print(res["id"])
+        else:
+            msg = "user-{username} has been invited to {org}".format(
+                username=args.username, org=args.org
+            )
+            print(fill(msg))
+
+
 def new_project(args):
     if args.name == None:
         if INTERACTIVE_CLI:
@@ -3938,6 +4032,91 @@ parser_new = subparsers.add_parser('new', help='Create a new project or data obj
 subparsers_new = parser_new.add_subparsers(parser_class=DXArgumentParser)
 subparsers_new.metavar = 'class'
 register_subparser(parser_new, categories='data')
+
+parser_new_user = subparsers_new.add_parser(
+    "user",
+    help="Create a new user account",
+    description="Create a new user account",
+    parents=[stdout_args, env_args],
+    prog="dx new user"
+)
+parser_new_user_user_opts = parser_new_user.add_argument_group(
+    "User options",
+    "Options for the new user"
+)
+parser_new_user_user_opts.add_argument(
+    "-u",
+    "--username",
+    required=True,
+    help="Username to be associated with the new user account"
+)
+parser_new_user_user_opts.add_argument(
+    "--email",
+    required=True,
+    help="Email to be associated with the new user account"
+)
+parser_new_user_user_opts.add_argument(
+    "--first",
+    help="First name of the new user"
+)
+parser_new_user_user_opts.add_argument(
+    "--last",
+    help="Last name of the new user"
+)
+parser_new_user_user_opts.add_argument(
+    "--middle",
+    help="Middle name of the new user"
+)
+parser_new_user_user_opts.add_argument(
+    "--token-duration",
+    type=int,
+    help="Time duration for which the newly generated auth token will be " +
+    "active"
+)
+parser_new_user_user_opts.add_argument(
+    "--occupation",
+    help="Occupation of the new user"
+)
+parser_new_user_org_opts = parser_new_user.add_argument_group(
+    "Org options",
+    "Options for the new user in the context of an org"
+)
+parser_new_user_org_opts.add_argument(
+    "--org",
+    help="ID of org to which the new user will be granted membership"
+)
+parser_new_user_org_opts.add_argument(
+    "--level",
+    help="Membership level to the org that will be granted to the new user"
+)
+parser_new_user_org_opts.add_argument(
+    "--bill-to",
+    action="store_true",
+    help='Whether to set the default "billTo" field of the new user to the ' +
+    'org; will grant the new user "createProjectsAndApps" in the org ' +
+    'regardless of whether or not --create-permission is specified'
+)
+parser_new_user_org_opts.add_argument(
+    "--create-permission",
+    action="store_true",
+    help='Whether to grant the new user "createProjectsAndApps" in the org'
+)
+parser_new_user_org_opts.add_argument(
+    "--app-access",
+    help='"appAccess" to grant the new user in the org'
+)
+parser_new_user_org_opts.add_argument(
+    "--project-access",
+    help='"projectAccess" to grant the new user in the org'
+)
+parser_new_user_org_opts.add_argument(
+    "--no-email",
+    action="store_true",
+    help='Whether or not to send an email notification to the new user'
+)
+parser_new_user.set_defaults(func=new_user)
+register_subparser(parser_new_user, subparsers_action=subparsers_new,
+                   categories="other")
 
 parser_new_project = subparsers_new.add_parser('project', help='Create a new project',
                                                description='Create a new project',
