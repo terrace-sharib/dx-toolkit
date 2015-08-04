@@ -1244,7 +1244,7 @@ def _validate_new_user_input(args):
         raise DXCLIError("At least one of --first/--last must be specified")
 
     # TODO: Is there way to obtain these from the parser?
-    args_with_org = ["level", "bill_to", "create_permission", "app_access",
+    args_with_org = ["level", "bill_to", "create_permission", "no_app_access",
                      "project_access", "no_email"]
     if args.org is None:
         args_dict = vars(args)
@@ -1284,8 +1284,8 @@ def _get_org_invite_args(args):
     if args.level is not None:
         org_invite_args["level"] = args.level
     org_invite_args["createProjectsAndApps"] = args.create_permission
-    if args.app_access is True:
-        org_invite_args["appAccess"] = args.app_access
+    if args.no_app_access is False:
+        org_invite_args["appAccess"] = args.no_app_access
     if args.project_access is not None:
         org_invite_args["projectAccess"] = args.project_access
     if args.no_email:
@@ -4102,9 +4102,9 @@ parser_new_user_org_opts.add_argument(
     help='Whether to grant the new user "createProjectsAndApps" in the org'
 )
 parser_new_user_org_opts.add_argument(
-    "--app-access",
-    action="store_true",
-    help='Whether to grant the new user "appAccess" in the org'
+    "--no-app-access",
+    action="store_false",
+    help='Whether to disable "appAccess" for the new user in the org'
 )
 parser_new_user_org_opts.add_argument(
     "--project-access",
