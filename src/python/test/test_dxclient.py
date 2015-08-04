@@ -3113,6 +3113,38 @@ class TestDXClientFind(DXTestCase):
         assert_cmd_gives_ids("dx find jobs "+options3, [job_id])
         assert_cmd_gives_ids("dx find analyses "+options3, [])
 
+
+class TestDXClientNewUser(DXTestCase):
+
+    def _now(self):
+        return str(int(time.time()))
+
+    def _generate_unique_username_email(self):
+        r = random.randint(0, 255)
+        username = "asset_" + self._now() + "_" + str(r)
+        email = username + "@example.com"
+        return username, email
+
+    def setUp(self):
+        # Create org with "userCreationFeaturesEnabled".
+        pass
+
+    def tearDown(self):
+        # Destroy org.
+        pass
+
+    def test_create_user_account_only(self):
+        username, email = self._generate_unique_username_email()
+        run("dx new user --username {u} --email {e} --first {f}".format(
+            u=username, e=email, f="The"))
+
+    def test_create_user_account_and_invite_to_org(self):
+        pass
+
+    def test_create_user_account_and_set_bill_to(self):
+        pass
+
+
 @unittest.skipUnless(testutil.TEST_HTTP_PROXY,
                      'skipping HTTP Proxy support test that needs squid3')
 class TestHTTPProxySupport(DXTestCase):
