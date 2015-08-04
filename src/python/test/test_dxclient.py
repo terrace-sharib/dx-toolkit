@@ -3175,8 +3175,14 @@ class TestDXClientNewUser(DXTestCase):
 
     def test_create_user_account_only(self):
         username, email = self._generate_unique_username_email()
+        first = "Asset"
+        last = "The"
+        middle = "T."
+        token_dur = 0  # TODO: Choose better duration.
+        occupation = "operative"
+
         run("dx new user --username {u} --email {e} --first {f}".format(
-            u=username, e=email, f="The"))
+            u=username, e=email, f=first))
 
     def test_create_user_account_and_invite_to_org(self):
         pass
