@@ -1291,7 +1291,10 @@ def _get_org_invite_args(args):
     org_invite_args = {"invitee": "user-" + args.username}
     if args.level is not None:
         org_invite_args["level"] = args.level
-    org_invite_args["createProjectsAndApps"] = args.create_permission
+    if args.bill_to is True:
+        org_invite_args["createProjectsAndApps"] = True
+    else:
+        org_invite_args["createProjectsAndApps"] = args.create_permission
     if args.no_app_access is False:
         org_invite_args["appAccess"] = args.no_app_access
     if args.project_access is not None:
