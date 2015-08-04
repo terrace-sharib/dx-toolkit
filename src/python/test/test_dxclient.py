@@ -3133,6 +3133,46 @@ class TestDXClientNewUser(DXTestCase):
         # Destroy org.
         pass
 
+    def test_create_user_account_and_set_bill_to_negative(self):
+        username, email = self._generate_unique_username_email()
+        first = "Asset"
+
+        called_process_errors = [
+            "dx new user",
+            "dx new user --username {u}".format(u=username),
+            "dx new user --email {e}".format(e=email),
+            "dx new user --username {u} --email {e} --first {f} \
+                --token-duration {t}".format(u=username, e=email, f=first,
+                                             t="not_an_int"),
+        ]
+        for invalid_cmd in called_process_errors:
+            with self.assertRaises(subprocess.CalledProcessError):
+                run(invalid_cmd)
+
+        dx_cli_errors = [
+            "dx new user --username {u} --email {e}".format(u=username,
+                                                            e=email),
+            "dx new user --username {u} --email {e} --first {f} \
+                --level ADMIN".format(u=username, e=email, f=first),
+            "dx new user --username {u} --email {e} --first {f} \
+                --bill-to".format(u=username, e=email, f=first),
+            "dx new user --username {u} --email {e} --first {f} \
+                --create-permission".format(u=username, e=email, f=first),
+            "dx new user --username {u} --email {e} --first {f} \
+                --app-access".format(u=username, e=email, f=first),
+            "dx new user --username {u} --email {e} --first {f} \
+                --project-access ADMINISTER".format(u=username, e=email,
+                                                    f=first),
+            "dx new user --username {u} --email {e} --first {f} \
+                --no-email".format(u=username, e=email, f=first),
+            "dx new user --username {u} --email {e} --first {f} \
+                --bill-to --no-email".format(u=username, e=email, f=first),
+        ]
+        for invalid_cmd in dx_cli_errors:
+            with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                         "DXCLIError"):
+                run(invalid_cmd)
+
     def test_create_user_account_only(self):
         username, email = self._generate_unique_username_email()
         run("dx new user --username {u} --email {e} --first {f}".format(
