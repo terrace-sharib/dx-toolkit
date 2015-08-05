@@ -4058,7 +4058,7 @@ parser_new_user_user_opts.add_argument(
 parser_new_user_user_opts.add_argument(
     "--email",
     required=True,
-    help="Email to be associated with the new user account"
+    help="Email of the new user"
 )
 parser_new_user_user_opts.add_argument(
     "--first",
@@ -4075,8 +4075,8 @@ parser_new_user_user_opts.add_argument(
 parser_new_user_user_opts.add_argument(
     "--token-duration",
     type=int,
-    help="Time duration for which the newly generated auth token will be " +
-    "active"
+    help="Time duration (ms) for which the newly generated auth token will " +
+    "be valid"
 )
 parser_new_user_user_opts.add_argument(
     "--occupation",
@@ -4088,37 +4088,38 @@ parser_new_user_org_opts = parser_new_user.add_argument_group(
 )
 parser_new_user_org_opts.add_argument(
     "--org",
-    help="ID of org to which the new user will be granted membership"
+    help="ID of the org to which the new user will be granted membership"
 )
 parser_new_user_org_opts.add_argument(
     "--level",
-    help="Membership level to the org that will be granted to the new user"
+    help="Org membership level that will be granted to the new user"
 )
 parser_new_user_org_opts.add_argument(
     "--bill-to",
     action="store_true",
-    help='Whether to set the default "billTo" field of the new user to the ' +
-    'org; will grant the new user "createProjectsAndApps" in the org ' +
-    'regardless of whether or not --create-permission is specified'
+    help='Set the default "billTo" field of the new user to the org and ' +
+    'grant the new user "createProjectsAndApps" in the org, ignoring ' +
+    '--create-permission'
 )
 parser_new_user_org_opts.add_argument(
     "--create-permission",
     action="store_true",
-    help='Whether to grant the new user "createProjectsAndApps" in the org'
+    help='Grant the new user "createProjectsAndApps" in the org; ignored if ' +
+    '--bill-to is set'
 )
 parser_new_user_org_opts.add_argument(
     "--no-app-access",
     action="store_false",
-    help='Whether to disable "appAccess" for the new user in the org'
+    help='Disable "appAccess" for the new user in the org'
 )
 parser_new_user_org_opts.add_argument(
     "--project-access",
-    help='"projectAccess" to grant the new user in the org'
+    help='The "projectAccess" to grant the new user in the org'
 )
 parser_new_user_org_opts.add_argument(
     "--no-email",
     action="store_true",
-    help='Whether or not to send an email notification to the new user'
+    help="Disable org invitation email notification to the new user"
 )
 parser_new_user.set_defaults(func=new_user)
 register_subparser(parser_new_user, subparsers_action=subparsers_new,
