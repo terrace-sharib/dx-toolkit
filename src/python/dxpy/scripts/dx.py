@@ -1249,15 +1249,7 @@ def _validate_new_user_input(args):
     if args.org is None:
         args_dict = vars(args)
         for arg_with_org in args_with_org:
-            raise_err = False
-
-            if (arg_with_org == "no_app_access" and
-                    args_dict[arg_with_org] is False):
-                raise_err = True
-            elif args_dict[arg_with_org]:
-                raise_err = True
-
-            if raise_err:
+            if args_dict[arg_with_org] is not None:
                 raise DXCLIError("Cannot specify --" + arg_with_org +
                                  " without specifying --org")
 
@@ -4097,6 +4089,7 @@ parser_new_user_org_opts.add_argument(
 parser_new_user_org_opts.add_argument(
     "--bill-to",
     action="store_true",
+    default=None,
     help='Set the default "billTo" field of the new user to the org and ' +
     'grant the new user "createProjectsAndApps" in the org, ignoring ' +
     '--create-permission'
@@ -4104,12 +4097,14 @@ parser_new_user_org_opts.add_argument(
 parser_new_user_org_opts.add_argument(
     "--create-permission",
     action="store_true",
+    default=None,
     help='Grant the new user "createProjectsAndApps" in the org; ignored if ' +
     '--bill-to is set'
 )
 parser_new_user_org_opts.add_argument(
     "--no-app-access",
     action="store_false",
+    default=None,
     help='Disable "appAccess" for the new user in the org'
 )
 parser_new_user_org_opts.add_argument(
@@ -4119,6 +4114,7 @@ parser_new_user_org_opts.add_argument(
 parser_new_user_org_opts.add_argument(
     "--no-email",
     action="store_true",
+    default=None,
     help="Disable org invitation email notification to the new user"
 )
 parser_new_user.set_defaults(func=new_user)
