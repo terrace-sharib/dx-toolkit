@@ -3177,6 +3177,10 @@ class TestDXClientNewUser(DXTestCase):
 
         # TODO: Assert other errors returned from apiserver and authserver.
 
+    def test_self_signup_negative(self):
+        # How to unset context?
+        pass
+
     def test_create_user_account_only(self):
         first = "Asset"
         last = "The"
