@@ -3125,6 +3125,11 @@ class TestDXClientNewUser(DXTestCase):
         email = username + "@example.com"
         return username, email
 
+    def _assert_user_desc(self, user_id, exp_user_desc):
+        user_desc = dxpy.api.user_describe(user_id)
+        for field in exp_user_desc:
+            self.assertEqual(user_desc[field], exp_user_desc[field])
+
     def setUp(self):
         org_handle = "dx_new_user_org_{t}".format(t=self._now())
         self.org_id = dxpy.api.org_new({"handle": org_handle,
@@ -3182,21 +3187,13 @@ class TestDXClientNewUser(DXTestCase):
         username, email = self._generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --brief".format(
                       cmd=cmd, u=username, e=email, f=first)).strip()
-        res = run("dx describe {u}".format(u=user_id))
-        lines = res.split("\n")
-        for line in lines:
-            if line.startswith("Name"):
-                assert(re.search(re.compile(first), line))
+        self._assert_user_desc(user_id, {"first": first})
 
         # Basic with last name only.
         username, email = self._generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --last {l} --brief".format(
                       cmd=cmd, u=username, e=email, l=last)).strip()
-        res = run("dx describe {u}".format(u=user_id))
-        lines = res.split("\n")
-        for line in lines:
-            if line.startswith("Name"):
-                assert(re.search(re.compile(last), line))
+        self._assert_user_desc(user_id, {"last": last})
 
         # Basic with all options we can verify.
         # TODO: Test --token-duration and --occupation.
@@ -3204,12 +3201,9 @@ class TestDXClientNewUser(DXTestCase):
         user_id = run("{cmd} --username {u} --email {e} --first {f} --middle {m} --last {l} --brief".format(
                       cmd=cmd, u=username, e=email, f=first, m=middle,
                       l=last)).strip()
-        res = run("dx describe {u}".format(u=user_id))
-        lines = res.split("\n")
-        for line in lines:
-            if line.startswith("Name"):
-                assert(re.search(re.compile(" ".join([first, middle, last])),
-                                 line))
+        self._assert_user_desc(user_id, {"first": first,
+                                         "last": last,
+                                         "middle": middle})
 
     def test_create_user_account_and_invite_to_org(self):
         # TODO: Test --no-email flag.
@@ -3222,11 +3216,7 @@ class TestDXClientNewUser(DXTestCase):
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id)).strip()
-        res = run("dx describe {u}".format(u=user_id))
-        lines = res.split("\n")
-        for line in lines:
-            if line.startswith("Name"):
-                assert(re.search(re.compile(first), line))
+        self._assert_user_desc(user_id, {"first": first})
         exp = {
             "level": "MEMBER",
             "createProjectsAndApps": False,
@@ -3242,11 +3232,7 @@ class TestDXClientNewUser(DXTestCase):
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --create-permission --no-app-access --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="MEMBER", pa="VIEW")).strip()
-        res = run("dx describe {u}".format(u=user_id))
-        lines = res.split("\n")
-        for line in lines:
-            if line.startswith("Name"):
-                assert(re.search(re.compile(first), line))
+        self._assert_user_desc(user_id, {"first": first})
         exp = {
             "level": "MEMBER",
             "createProjectsAndApps": True,
@@ -3263,11 +3249,7 @@ class TestDXClientNewUser(DXTestCase):
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --no-app-access --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="ADMIN", pa="VIEW")).strip()
-        res = run("dx describe {u}".format(u=user_id))
-        lines = res.split("\n")
-        for line in lines:
-            if line.startswith("Name"):
-                assert(re.search(re.compile(first), line))
+        self._assert_user_desc(user_id, {"first": first})
         exp = {
             "level": "ADMIN",
             "user": user_id
@@ -3285,11 +3267,7 @@ class TestDXClientNewUser(DXTestCase):
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="MEMBER", pa="VIEW")).strip()
-        res = run("dx describe {u}".format(u=user_id))
-        lines = res.split("\n")
-        for line in lines:
-            if line.startswith("Name"):
-                assert(re.search(re.compile(first), line))
+        self._assert_user_desc(user_id, {"first": first})
         exp = {
             "level": "MEMBER",
             "createProjectsAndApps": True,
@@ -3304,11 +3282,7 @@ class TestDXClientNewUser(DXTestCase):
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="MEMBER", pa="VIEW")).strip()
-        res = run("dx describe {u}".format(u=user_id))
-        lines = res.split("\n")
-        for line in lines:
-            if line.startswith("Name"):
-                assert(re.search(re.compile(first), line))
+        self._assert_user_desc(user_id, {"first": first})
         exp = {
             "level": "MEMBER",
             "createProjectsAndApps": True,
@@ -3324,11 +3298,7 @@ class TestDXClientNewUser(DXTestCase):
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level ADMIN --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id)).strip()
-        res = run("dx describe {u}".format(u=user_id))
-        lines = res.split("\n")
-        for line in lines:
-            if line.startswith("Name"):
-                assert(re.search(re.compile(first), line))
+        self._assert_user_desc(user_id, {"first": first})
         exp = {
             "level": "ADMIN",
             "user": user_id
