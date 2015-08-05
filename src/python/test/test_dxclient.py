@@ -3133,6 +3133,7 @@ class TestDXClientNewUser(DXTestCase):
     def test_create_user_account_and_set_bill_to_negative(self):
         username, email = self._generate_unique_username_email()
         first = "Asset"
+        last = "The"
         cmd = "dx new user"
 
         called_process_error_opts = [
@@ -3161,8 +3162,8 @@ class TestDXClientNewUser(DXTestCase):
                 ADMINISTER".format(u=username, e=email, f=first),
             "--username {u} --email {e} --first {f} --no-email".format(
                 u=username, e=email, f=first),
-            "--username {u} --email {e} --first {f} \
-                --bill-to --no-email".format(u=username, e=email, f=first),
+            "--username {u} --email {e} --last {l} \
+                --level ADMIN".format(u=username, e=email, l=last),
         ]
         for invalid_opts in dx_cli_error_opts:
             with self.assertRaisesRegexp(subprocess.CalledProcessError,
@@ -3221,6 +3222,11 @@ class TestDXClientNewUser(DXTestCase):
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id)).strip()
+        res = run("dx describe {u}".format(u=user_id))
+        lines = res.split("\n")
+        for line in lines:
+            if line.startswith("Name"):
+                assert(re.search(re.compile(first), line))
         exp = {
             "level": "MEMBER",
             "createProjectsAndApps": False,
@@ -3236,6 +3242,11 @@ class TestDXClientNewUser(DXTestCase):
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --create-permission --no-app-access --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="MEMBER", pa="VIEW")).strip()
+        res = run("dx describe {u}".format(u=user_id))
+        lines = res.split("\n")
+        for line in lines:
+            if line.startswith("Name"):
+                assert(re.search(re.compile(first), line))
         exp = {
             "level": "MEMBER",
             "createProjectsAndApps": True,
@@ -3252,6 +3263,11 @@ class TestDXClientNewUser(DXTestCase):
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --no-app-access --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="ADMIN", pa="VIEW")).strip()
+        res = run("dx describe {u}".format(u=user_id))
+        lines = res.split("\n")
+        for line in lines:
+            if line.startswith("Name"):
+                assert(re.search(re.compile(first), line))
         exp = {
             "level": "ADMIN",
             "user": user_id
@@ -3261,19 +3277,60 @@ class TestDXClientNewUser(DXTestCase):
 
     def test_create_user_account_and_set_bill_to(self):
         first = "Asset"
-        cmd = "dx new user --bill-to"
+        cmd = "dx new user --bill-to"  # Set --bill-to option.
 
         # --create-permission is implied; grant custom org membership level and
         # other permission flags.
         username, email = self._generate_unique_username_email()
-        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --brief".format(
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="MEMBER", pa="VIEW")).strip()
+        res = run("dx describe {u}".format(u=user_id))
+        lines = res.split("\n")
+        for line in lines:
+            if line.startswith("Name"):
+                assert(re.search(re.compile(first), line))
         exp = {
             "level": "MEMBER",
             "createProjectsAndApps": True,
             "appAccess": True,
-            "projectAccess": "CONTRIBUTE",
+            "projectAccess": "VIEW",
+            "user": user_id
+        }
+        res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
+        self.assertEqual(exp, res)
+
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --project-access {pa} --brief".format(
+                      cmd=cmd, u=username, e=email, f=first,
+                      o=self.org_id, l="MEMBER", pa="VIEW")).strip()
+        res = run("dx describe {u}".format(u=user_id))
+        lines = res.split("\n")
+        for line in lines:
+            if line.startswith("Name"):
+                assert(re.search(re.compile(first), line))
+        exp = {
+            "level": "MEMBER",
+            "createProjectsAndApps": True,
+            "appAccess": True,
+            "projectAccess": "VIEW",
+            "user": user_id
+        }
+        res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
+        self.assertEqual(exp, res)
+
+        # Grant ADMIN org membership level.
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level ADMIN --brief".format(
+                      cmd=cmd, u=username, e=email, f=first,
+                      o=self.org_id)).strip()
+        res = run("dx describe {u}".format(u=user_id))
+        lines = res.split("\n")
+        for line in lines:
+            if line.startswith("Name"):
+                assert(re.search(re.compile(first), line))
+        exp = {
+            "level": "ADMIN",
             "user": user_id
         }
         res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
