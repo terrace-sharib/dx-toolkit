@@ -1289,6 +1289,11 @@ def new_user(args):
                              user_new_args,
                              prepend_srv=False)
 
+    if args.org is not None:
+        # Invite new user to org.
+        org_invite_args = _get_org_invite_args(args)
+        res = dxpy.api.org_invite(args.org, org_invite_args)
+
     if args.brief:
         print("user-" + args.username)
     else:
@@ -1296,11 +1301,6 @@ def new_user(args):
             u=args.username
         )
         print(fill(msg_prefix + res["message"]))
-
-    if args.org is not None:
-        # Invite new user to org.
-        org_invite_args = _get_org_invite_args(args)
-        res = dxpy.api.org_invite(args.org, org_invite_args)
 
 
 def new_project(args):
