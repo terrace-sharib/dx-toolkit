@@ -3157,7 +3157,7 @@ class TestDXClientNewUser(DXTestCase):
         dx_cli_error_opts = [
             "--username {u} --email {e} --first {f} \
                 --level ADMIN".format(u=username, e=email, f=first),
-            "--username {u} --email {e} --first {f} --bill-to".format(
+            "--username {u} --email {e} --first {f} --set-bill-to".format(
                 u=username, e=email, f=first),
             "--username {u} --email {e} --first {f} \
                 --create-permission".format(u=username, e=email, f=first),
@@ -3263,7 +3263,7 @@ class TestDXClientNewUser(DXTestCase):
 
     def test_create_user_account_and_set_bill_to(self):
         first = "Asset"
-        cmd = "dx new user --bill-to"  # Set --bill-to option.
+        cmd = "dx new user --set-bill-to"  # Set --set-bill-to option.
 
         # --create-permission is implied; grant custom org membership level and
         # other permission flags.

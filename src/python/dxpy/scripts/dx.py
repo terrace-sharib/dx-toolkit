@@ -1241,8 +1241,8 @@ def _validate_new_user_input(args):
     # TODO: Support interactive specification of `args.email`.
 
     # TODO: Is there way to obtain these from the parser?
-    args_with_org = ["level", "bill_to", "create_permission", "no_app_access",
-                     "project_access", "no_email"]
+    args_with_org = ["level", "set_bill_to", "create_permission",
+                     "no_app_access", "project_access", "no_email"]
     if args.org is None:
         for arg_with_org in args_with_org:
             if getattr(args, arg_with_org) is not None:
@@ -1266,7 +1266,7 @@ def _get_user_new_args(args):
         user_new_args["tokenDuration"] = args.token_duration
     if args.occupation is not None:
         user_new_args["occupation"] = args.occupation
-    if args.bill_to is True:
+    if args.set_bill_to is True:
         user_new_args["billTo"] = args.org
     return user_new_args
 
@@ -1279,7 +1279,7 @@ def _get_org_invite_args(args):
     org_invite_args = {"invitee": "user-" + args.username}
     if args.level is not None:
         org_invite_args["level"] = args.level
-    if args.bill_to is True:
+    if args.set_bill_to is True:
         org_invite_args["createProjectsAndApps"] = True
     else:
         org_invite_args["createProjectsAndApps"] = args.create_permission
@@ -4038,7 +4038,7 @@ parser_new_user_user_opts.add_argument("--occupation", help="Occupation")
 parser_new_user_org_opts = parser_new_user.add_argument_group("Org options", "Optionally invite the new user to an org with the specified parameters")
 parser_new_user_org_opts.add_argument("--org", help="ID of the org")
 parser_new_user_org_opts.add_argument("--level", choices=["ADMIN", "MEMBER"], help="Org membership level that will be granted to the new user")
-parser_new_user_org_opts.add_argument("--bill-to", action="store_true", default=None, help='Set the default "billTo" field of the new user to the org; implies --create-permission')
+parser_new_user_org_opts.add_argument("--set-bill-to", action="store_true", default=None, help='Set the default "billTo" field of the new user to the org; implies --create-permission')
 parser_new_user_org_opts.add_argument("--create-permission", action="store_true", default=None, help='Grant the new user "createProjectsAndApps" in the org')
 parser_new_user_org_opts.add_argument("--no-app-access", action="store_false", default=None, help='Disable "appAccess" for the new user in the org')
 parser_new_user_org_opts.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], help='The "projectAccess" to grant the new user in the org')
