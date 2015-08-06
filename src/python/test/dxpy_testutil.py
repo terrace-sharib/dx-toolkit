@@ -195,10 +195,10 @@ class DXTestCase(unittest.TestCase):
             del dxpy.config['DX_CLI_WD']
 
     def tearDown(self):
-        try:
-            dxpy.api.project_destroy(self.project, {"terminateJobs": True})
-        except Exception as e:
-            print("Failed to remove test project:", str(e))
+        # try:
+        #     dxpy.api.project_destroy(self.project, {"terminateJobs": True})
+        # except Exception as e:
+        #     print("Failed to remove test project:", str(e))
         if 'DX_PROJECT_CONTEXT_ID' in dxpy.config:
             del dxpy.config['DX_PROJECT_CONTEXT_ID']
         if 'DX_CLI_WD' in dxpy.config:

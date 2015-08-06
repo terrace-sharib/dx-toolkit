@@ -1284,9 +1284,23 @@ class TestDXClientRun(DXTestCase):
                 "interpreter": "bash",
                 "code": """
 main() {
-  REC=`dx new record myoutput --brief`
-  FIRSTJOB=`dx-jobutil-new-job inner_applet -iinrecord=$REC`
-  dx-jobutil-new-job inner_applet -iinrecord=$FIRSTJOB:outrecord
+  REC=`dx new record myrecord --close --brief`
+  FIRSTJOB=`dx-jobutil-new-job innerfn -iinrecord=$REC`
+  SECONDJOB=`dx-jobutil-new-job innerfn -iinrecord=$FIRSTJOB:outrecord`
+  INPUTLEN=`dx describe --json $SECONDJOB | jq ".input | length"`
+  echo "input length: $INPUTLEN"
+  if [ "$INPUTLEN" != "1" ]
+  then
+    exit 1
+  else
+    echo "OK"
+  fi
+}
+
+innerfn() {
+  echo "inrecord: $inrecord"
+  INRECORD_ID=`dx-jobutil-parse-link "$inrecord"`
+  dx-jobutil-add-output --class record outrecord $INRECORD_ID
 }
 """
                 }
