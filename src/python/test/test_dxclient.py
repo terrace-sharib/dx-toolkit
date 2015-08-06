@@ -1277,22 +1277,26 @@ class TestDXClientRun(DXTestCase):
         applet_id = dxpy.api.applet_new({
             "project": self.project,
             "dxapi": "0.0.1",
-            "inputSpec": [{"name": "num0", "class": "int"},
-                          {"name": "num1", "class": "int"}],
-            "outputSpec": [{"name": "num", "class": "int"}],
-            "runSpec": {"interpreter": "bash",
-                        "code": "dx-jobutil-add-output num 32"}
+            "inputSpec": [{"name": "inrecord", "class": "record"}],
+            "outputSpec": [{"name": "outrecord", "class": "record"}],
+            "runSpec": {
+                "interpreter": "bash",
+                "code": "REC=`dx new record myoutput --brief`; echo $REC; " +
+                  "dx-jobutil-add-output --class record outrecord $REC"
+                }
         })["id"]
 
-        job_id = run("dx run {applet} -inum0=32 -inum1=64 --brief".format(applet=applet_id)).strip()
-        job_desc = dxpy.describe(job_id)
-        self.assertEquals(job_desc["input"]["num0"], 32)
-        self.assertEquals(job_desc["input"]["num1"], 64)
+        input_record = dxpy.new_dxrecord()
 
-        job_with_jbor_id = run("dx run {applet} -inum0={job}:{o} -inum1=64 --brief".format(applet=applet_id, job=job_id, o="num")).strip()
+        job_id = run("dx run {applet} -iinrecord={recid} --brief".format(applet=applet_id, recid=input_record.get_id())).strip()
+        job_desc = dxpy.describe(job_id)
+        self.assertEquals(job_desc["input"]["inrecord"],
+                          {"$dnanexus_link": input_record.get_id()})
+
+        job_with_jbor_id = run("dx run {applet} -iinrecord={job}:{o} --brief".format(applet=applet_id, job=job_id, o="outrecord")).strip()
         job_with_jbor_desc = dxpy.describe(job_with_jbor_id)
-        self.assertEquals(job_with_jbor_desc["input"]["num0"], {"$dnanexus_link": {"field": "num", "job": job_id}})
-        self.assertEquals(job_with_jbor_desc["input"]["num1"], 64)
+        self.assertEquals(job_with_jbor_desc["input"]["inrecord"],
+                          {"$dnanexus_link": {"field": "outrecord", "job": job_id}})
 
     def test_dx_resolve_check_resolution_needed(self):
         # If no entity_name is given, no entity_name should be returned
