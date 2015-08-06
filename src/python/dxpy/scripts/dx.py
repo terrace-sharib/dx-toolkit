@@ -4026,93 +4026,23 @@ subparsers_new = parser_new.add_subparsers(parser_class=DXArgumentParser)
 subparsers_new.metavar = 'class'
 register_subparser(parser_new, categories='data')
 
-parser_new_user = subparsers_new.add_parser(
-    "user",
-    help="Create a new user account",
-    description="Create a new user account",
-    parents=[stdout_args, env_args],
-    prog="dx new user"
-)
-parser_new_user_user_opts = parser_new_user.add_argument_group(
-    "User options",
-    "Options for the new user"
-)
-parser_new_user_user_opts.add_argument(
-    "-u",
-    "--username",
-    required=True,
-    help="Username to be associated with the new user account"
-)
-parser_new_user_user_opts.add_argument(
-    "--email",
-    required=True,
-    help="Email of the new user"
-)
-parser_new_user_user_opts.add_argument(
-    "--first",
-    help="First name of the new user"
-)
-parser_new_user_user_opts.add_argument(
-    "--last",
-    help="Last name of the new user"
-)
-parser_new_user_user_opts.add_argument(
-    "--middle",
-    help="Middle name of the new user"
-)
-parser_new_user_user_opts.add_argument(
-    "--token-duration",
-    type=int,
-    help="Time duration (ms) for which the newly generated auth token will " +
-    "be valid"
-)
-parser_new_user_user_opts.add_argument(
-    "--occupation",
-    help="Occupation of the new user"
-)
-parser_new_user_org_opts = parser_new_user.add_argument_group(
-    "Org options",
-    "Options for the new user in the context of an org"
-)
-parser_new_user_org_opts.add_argument(
-    "--org",
-    help="ID of the org to which the new user will be granted membership"
-)
-parser_new_user_org_opts.add_argument(
-    "--level",
-    help="Org membership level that will be granted to the new user"
-)
-parser_new_user_org_opts.add_argument(
-    "--bill-to",
-    action="store_true",
-    default=None,
-    help='Set the default "billTo" field of the new user to the org and ' +
-    'grant the new user "createProjectsAndApps" in the org, ignoring ' +
-    '--create-permission'
-)
-parser_new_user_org_opts.add_argument(
-    "--create-permission",
-    action="store_true",
-    default=None,
-    help='Grant the new user "createProjectsAndApps" in the org; ignored if ' +
-    '--bill-to is set'
-)
-parser_new_user_org_opts.add_argument(
-    "--no-app-access",
-    action="store_false",
-    default=None,
-    help='Disable "appAccess" for the new user in the org'
-)
-parser_new_user_org_opts.add_argument(
-    "--project-access",
-    help='The "projectAccess" to grant the new user in the org'
-)
-parser_new_user_org_opts.add_argument(
-    "--no-email",
-    action="store_true",
-    default=None,
-    help="Disable org invitation email notification to the new user"
-)
+parser_new_user = subparsers_new.add_parser("user", help="Create a new user account", description="Create a new user account", parents=[stdout_args, env_args], prog="dx new user")
+parser_new_user_user_opts = parser_new_user.add_argument_group("User options")
+parser_new_user_user_opts.add_argument("-u", "--username", required=True, help="Username")
+parser_new_user_user_opts.add_argument("--email", required=True, help="Email address")
+parser_new_user_user_opts.add_argument("--first", help="First name")
+parser_new_user_user_opts.add_argument("--middle", help="Middle name")
+parser_new_user_user_opts.add_argument("--last", help="Last name")
+parser_new_user_user_opts.add_argument("--token-duration", type=int, help="Time duration (ms) for which the newly generated auth token for the new user will be valid")
+parser_new_user_user_opts.add_argument("--occupation", help="Occupation")
+parser_new_user_org_opts = parser_new_user.add_argument_group("Org options", "Optionally invite the new user to an org with the specified parameters")
+parser_new_user_org_opts.add_argument("--org", help="ID of the org")
+parser_new_user_org_opts.add_argument("--level", help="Org membership level that will be granted to the new user")
+parser_new_user_org_opts.add_argument("--bill-to", action="store_true", default=None, help='Set the default "billTo" field of the new user to the org; implies --create-permission')
+parser_new_user_org_opts.add_argument("--create-permission", action="store_true", default=None, help='Grant the new user "createProjectsAndApps" in the org')
+parser_new_user_org_opts.add_argument("--no-app-access", action="store_false", default=None, help='Disable "appAccess" for the new user in the org')
+parser_new_user_org_opts.add_argument("--project-access", help='The "projectAccess" to grant the new user in the org')
+parser_new_user_org_opts.add_argument("--no-email", action="store_true", default=None, help="Disable org invitation email notification to the new user")
 parser_new_user.set_defaults(func=new_user)
 register_subparser(parser_new_user, subparsers_action=subparsers_new,
                    categories="other")
