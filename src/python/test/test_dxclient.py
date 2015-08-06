@@ -3154,10 +3154,23 @@ class TestDXClientNewUser(DXTestCase):
 
         dx_api_error_opts = [
             "--username {u} --email {e}".format(u=username, e=email),
+            "--username {u} --email bad_email".format(u=username),
+            "--username bu --email {e}".format(e=email),
+            "--username {u} --email {e} --first {f} --org does_not_exist --set-bill-to".format(
+                u=username, e=email, f=first),
         ]
         for invalid_opts in dx_api_error_opts:
             with self.assertRaisesRegexp(subprocess.CalledProcessError,
                                          "DXAPIError"):
+                run(" ".join([cmd, invalid_opts]))
+
+        resource_not_found_opts = [
+            "--username {u} --email {e} --first {f} --org does_not_exist".format(
+                u=username, e=email, f=first),
+        ]
+        for invalid_opts in resource_not_found_opts:
+            with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                         "ResourceNotFound"):
                 run(" ".join([cmd, invalid_opts]))
 
         dx_cli_error_opts = [
@@ -3169,7 +3182,6 @@ class TestDXClientNewUser(DXTestCase):
                                          "DXCLIError"):
                 run(" ".join([cmd, invalid_opts]))
 
-        # TODO: Assert other errors returned from apiserver and authserver.
 
     def test_self_signup_negative(self):
         # How to unset context?
