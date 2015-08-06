@@ -1239,7 +1239,8 @@ def describe(args):
 def _validate_new_user_input(args):
     # TODO: Support interactive specification of `args.username`.
     # TODO: Support interactive specification of `args.email`.
-    pass
+    if args.set_bill_to is True and args.org is None:
+        raise DXCLIError("--set-bill-to cannot be set unless --org is set")
 
 
 def _get_user_new_args(args):
