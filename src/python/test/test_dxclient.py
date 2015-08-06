@@ -1273,6 +1273,25 @@ class TestDXClientRun(DXTestCase):
         dxpy.api.project_destroy(self.other_proj_id, {'terminateJobs': True})
         super(TestDXClientRun, self).tearDown()
 
+    def test_bug(self):
+        command = ("""
+        dx-jobutil-new-job create_test_meta -ijar=file-BfXxGf80J8VYB38QJkpJXyGj '-imanifest={"$dnanexus_link": "record-Bg1PBjQ0PJ1zXqp185g9X19Y"}' -itriad_id:string=job-Bg1PBjj0PJ1XjVq4yQKGgq9z -irollup=job-Bg1Pbz00PJ1b12Ky6VG39ppJ:rollup -iqmm_result=job-Bg1Pf2Q0PJ1zYjkk7VG2K9yj:current_qmm_result -imodel_optimal=job-Bg1Pf2Q0PJ1zYjkk7VG2K9yj:model_optimal -iproduct=PANORAMA
+        """).strip()
+        applet_id = dxpy.api.applet_new({"project": self.project,
+                                         "dxapi": "1.0.0",
+                                         "inputSpec": [{"name": "rollup", "class": "int"}],
+                                         "outputSpec": [],
+                                         "runSpec": {"interpreter": "bash",
+                                                     "code": "echo 'hello'"}
+                                         })['id']
+        other_applet_id = dxpy.api.applet_new({"project": self.project,
+                                         "dxapi": "1.0.0",
+                                         "inputSpec": [],
+                                         "outputSpec": [{"name": "rollup"}],
+                                         "runSpec": {"interpreter": "bash",
+                                                     "code": "echo 'hello'"}
+                                         })['id']
+
     def test_dx_resolve(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "dxapi": "1.0.0",
