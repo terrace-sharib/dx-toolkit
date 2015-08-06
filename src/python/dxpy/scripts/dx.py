@@ -1285,13 +1285,9 @@ def new_user(args):
 
     # Create user account.
     user_new_args = _get_user_new_args(args)
-    res = None
-    try:
-        res = dxpy.DXHTTPRequest(dxpy.get_auth_server_name() + "/user/new",
-                                 user_new_args,
-                                 prepend_srv=False)
-    except Exception as e:
-        raise e
+    res = dxpy.DXHTTPRequest(dxpy.get_auth_server_name() + "/user/new",
+                             user_new_args,
+                             prepend_srv=False)
 
     if args.brief:
         print("user-" + args.username)
@@ -1304,10 +1300,7 @@ def new_user(args):
     if args.org is not None:
         # Invite new user to org.
         org_invite_args = _get_org_invite_args(args)
-        try:
-            res = dxpy.api.org_invite(args.org, org_invite_args)
-        except Exception as e2:
-            raise e2
+        res = dxpy.api.org_invite(args.org, org_invite_args)
 
 
 def new_project(args):
