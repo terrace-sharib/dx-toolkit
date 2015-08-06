@@ -1244,9 +1244,8 @@ def _validate_new_user_input(args):
     args_with_org = ["level", "bill_to", "create_permission", "no_app_access",
                      "project_access", "no_email"]
     if args.org is None:
-        args_dict = vars(args)
         for arg_with_org in args_with_org:
-            if args_dict[arg_with_org] is not None:
+            if getattr(args, arg_with_org) is not None:
                 raise DXCLIError("Cannot specify --" + arg_with_org +
                                  " without specifying --org")
 
