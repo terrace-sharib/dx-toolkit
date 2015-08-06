@@ -1274,29 +1274,34 @@ class TestDXClientRun(DXTestCase):
         super(TestDXClientRun, self).tearDown()
 
     def test_dx_run_resolves_jbors(self):
+        inner_applet_id = dxpy.api.applet_new({
+            "project": self.project,
+            "dxapi": "0.0.1",
+            "name": "inner_applet",
+            "inputSpec": [{"name": "inrecord", "class": "record"}],
+            "outputSpec": [{"name": "outrecord", "class": "record"}],
+            "runSpec": {"interpreter": "bash", "code": ""}
+        })["id"]
+
         applet_id = dxpy.api.applet_new({
             "project": self.project,
             "dxapi": "0.0.1",
-            "inputSpec": [{"name": "inrecord", "class": "record"}],
-            "outputSpec": [{"name": "outrecord", "class": "record"}],
+            "name": "applet_test_jbor_resolution",
+            "inputSpec": [{"name": "testapplet", "class": "applet"}],
+            "outputSpec": [],
             "runSpec": {
                 "interpreter": "bash",
-                "code": "REC=`dx new record myoutput --brief`; echo $REC; " +
-                  "dx-jobutil-add-output --class record outrecord $REC"
+                "code": """
+REC=`dx new record myoutput --brief`
+FIRSTJOB=`dx-jobutil-new-job inner_applet -iinrecord=$REC`
+dx-jobutil-new-job inner_applet -iinrecord=$FIRSTJOB:outrecord
+"""
                 }
         })["id"]
 
-        input_record = dxpy.new_dxrecord()
-
-        job_id = run("dx run {applet} -iinrecord={recid} --brief".format(applet=applet_id, recid=input_record.get_id())).strip()
-        job_desc = dxpy.describe(job_id)
-        self.assertEquals(job_desc["input"]["inrecord"],
-                          {"$dnanexus_link": input_record.get_id()})
-
-        job_with_jbor_id = run("dx run {applet} -iinrecord={job}:{o} --brief".format(applet=applet_id, job=job_id, o="outrecord")).strip()
-        job_with_jbor_desc = dxpy.describe(job_with_jbor_id)
-        self.assertEquals(job_with_jbor_desc["input"]["inrecord"],
-                          {"$dnanexus_link": {"field": "outrecord", "job": job_id}})
+        dxapplet = dxpy.DXApplet(applet_id)
+        job = dxapplet.run({"testapplet": {"$dnanexus_link": inner_applet_id}})
+        job.wait_on_done()
 
     def test_dx_resolve(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
