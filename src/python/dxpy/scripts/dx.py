@@ -1240,9 +1240,6 @@ def _validate_new_user_input(args):
     # TODO: Support interactive specification of `args.username`.
     # TODO: Support interactive specification of `args.email`.
 
-    if args.first is None and args.last is None:
-        raise DXCLIError("At least one of --first/--last must be specified")
-
     # TODO: Is there way to obtain these from the parser?
     args_with_org = ["level", "bill_to", "create_permission", "no_app_access",
                      "project_access", "no_email"]

@@ -3148,13 +3148,13 @@ class TestDXClientNewUser(DXTestCase):
             "--username {u} --email {e} --first {f} \
                 --token-duration {t}".format(u=username, e=email, f=first,
                                              t="not_an_int"),
+            "--username {u} --email {e}".format(u=username, e=email),
         ]
         for invalid_opts in called_process_error_opts:
             with self.assertRaises(subprocess.CalledProcessError):
                 run(" ".join([cmd, invalid_opts]))
 
         dx_cli_error_opts = [
-            "--username {u} --email {e}".format(u=username, e=email),
             "--username {u} --email {e} --first {f} \
                 --level ADMIN".format(u=username, e=email, f=first),
             "--username {u} --email {e} --first {f} --bill-to".format(
