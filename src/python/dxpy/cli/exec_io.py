@@ -555,6 +555,10 @@ class ExecutableInputs(object):
                         self.inputs[input_name].append(parsed_input_value)
                     else:
                         self.inputs[input_name] = parsed_input_value
+            if isinstance(self.inputs[input_name], list):
+                self.inputs[input_name].append(input_value)
+            else:
+                self.inputs[input_name] = input_value
         else:
             # Input class is known.  Respect the "array" class.
             val_substrings = split_unescaped(':', input_value)
