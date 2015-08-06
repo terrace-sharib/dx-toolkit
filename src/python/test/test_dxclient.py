@@ -1273,6 +1273,27 @@ class TestDXClientRun(DXTestCase):
         dxpy.api.project_destroy(self.other_proj_id, {'terminateJobs': True})
         super(TestDXClientRun, self).tearDown()
 
+    def test_dx_run_resolves_jbors(self):
+        applet_id = dxpy.api.applet_new({
+            "project": self.project,
+            "dxapi": "0.0.1",
+            "inputSpec": [{"name": "num0", "class": "int"},
+                          {"name": "num1", "class": "int"}],
+            "outputSpec": [{"name": "num", "class": "int"}],
+            "runSpec": {"interpreter": "bash",
+                        "code": "dx-jobutil-add-output num 32"}
+        })["id"]
+
+        job_id = run("dx run {applet} -inum0=32 -inum1=64 --brief".format(applet=applet_id)).strip()
+        job_desc = dxpy.describe(job_id)
+        self.assertEquals(job_desc["input"]["num0"], 32)
+        self.assertEquals(job_desc["input"]["num1"], 64)
+
+        job_with_jbor_id = run("dx run {applet} -inum0={job}:{o} -inum1=64 --brief".format(applet=applet_id, job=job_id, o="num")).strip()
+        job_with_jbor_desc = dxpy.describe(job_with_jbor_id)
+        self.assertEquals(job_with_jbor_desc["input"]["num0"], {"$dnanexus_link": {"field": "num", "job": job_id}})
+        self.assertEquals(job_with_jbor_desc["input"]["num1"], 64)
+
     def test_dx_resolve_check_resolution_needed(self):
         # If no entity_name is given, no entity_name should be returned
         self.assertEquals(check_resolution("some_path", "project_id", "/", None), (False, "project_id", "/", None))
