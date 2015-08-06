@@ -4037,11 +4037,11 @@ parser_new_user_user_opts.add_argument("--token-duration", type=int, help="Time 
 parser_new_user_user_opts.add_argument("--occupation", help="Occupation")
 parser_new_user_org_opts = parser_new_user.add_argument_group("Org options", "Optionally invite the new user to an org with the specified parameters")
 parser_new_user_org_opts.add_argument("--org", help="ID of the org")
-parser_new_user_org_opts.add_argument("--level", help="Org membership level that will be granted to the new user")
+parser_new_user_org_opts.add_argument("--level", choices=["ADMIN", "MEMBER"], help="Org membership level that will be granted to the new user")
 parser_new_user_org_opts.add_argument("--bill-to", action="store_true", default=None, help='Set the default "billTo" field of the new user to the org; implies --create-permission')
 parser_new_user_org_opts.add_argument("--create-permission", action="store_true", default=None, help='Grant the new user "createProjectsAndApps" in the org')
 parser_new_user_org_opts.add_argument("--no-app-access", action="store_false", default=None, help='Disable "appAccess" for the new user in the org')
-parser_new_user_org_opts.add_argument("--project-access", help='The "projectAccess" to grant the new user in the org')
+parser_new_user_org_opts.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], help='The "projectAccess" to grant the new user in the org')
 parser_new_user_org_opts.add_argument("--no-email", action="store_true", default=None, help="Disable org invitation email notification to the new user")
 parser_new_user.set_defaults(func=new_user)
 register_subparser(parser_new_user, subparsers_action=subparsers_new,
