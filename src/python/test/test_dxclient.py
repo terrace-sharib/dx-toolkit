@@ -3138,7 +3138,6 @@ class TestDXClientNewUser(DXTestCase):
     def test_create_user_account_and_set_bill_to_negative(self):
         username, email = self._generate_unique_username_email()
         first = "Asset"
-        last = "The"
         cmd = "dx new user"
 
         called_process_error_opts = [
@@ -3148,27 +3147,22 @@ class TestDXClientNewUser(DXTestCase):
             "--username {u} --email {e} --first {f} \
                 --token-duration {t}".format(u=username, e=email, f=first,
                                              t="not_an_int"),
-            "--username {u} --email {e}".format(u=username, e=email),
         ]
         for invalid_opts in called_process_error_opts:
             with self.assertRaises(subprocess.CalledProcessError):
                 run(" ".join([cmd, invalid_opts]))
 
+        dx_api_error_opts = [
+            "--username {u} --email {e}".format(u=username, e=email),
+        ]
+        for invalid_opts in dx_api_error_opts:
+            with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                         "DXAPIError"):
+                run(" ".join([cmd, invalid_opts]))
+
         dx_cli_error_opts = [
-            "--username {u} --email {e} --first {f} \
-                --level ADMIN".format(u=username, e=email, f=first),
             "--username {u} --email {e} --first {f} --set-bill-to".format(
                 u=username, e=email, f=first),
-            "--username {u} --email {e} --first {f} \
-                --create-permission".format(u=username, e=email, f=first),
-            "--username {u} --email {e} --first {f} --no-app-access".format(
-                u=username, e=email, f=first),
-            "--username {u} --email {e} --first {f} --project-access \
-                ADMINISTER".format(u=username, e=email, f=first),
-            "--username {u} --email {e} --first {f} --no-email".format(
-                u=username, e=email, f=first),
-            "--username {u} --email {e} --last {l} \
-                --level ADMIN".format(u=username, e=email, l=last),
         ]
         for invalid_opts in dx_cli_error_opts:
             with self.assertRaisesRegexp(subprocess.CalledProcessError,
