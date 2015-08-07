@@ -3134,6 +3134,10 @@ class TestDXClientNewUser(DXTestCase):
         org_handle = "dx_new_user_org_{t}".format(t=self._now())
         self.org_id = dxpy.api.org_new({"handle": org_handle,
                                         "name": "Org to invite to"})["id"]
+        super(TestDXClientNewUser, self).setUp()
+
+    def tearDown(self):
+        super(TestDXClientNewUser, self).tearDown()
 
     def test_create_user_account_and_set_bill_to_negative(self):
         username, email = self._generate_unique_username_email()
