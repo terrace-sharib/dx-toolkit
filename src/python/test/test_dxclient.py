@@ -1318,7 +1318,8 @@ dx-jobutil-add-output outrecord $record0
         self.assertNotIn("record1", job_desc["input"])
 
         # Run with "dx run".
-        job_id = run("dx run {applet_id} -iint0=16 -istring0=input_string -irecord0={record_id} --brief".format(applet_id=applet_id, record_id=record.get_id())).strip()
+        job_id = run("dx run {applet_id} -iint0=16 -istring0=input_string -irecord0={record_id} --brief".format(
+            applet_id=applet_id, record_id=record.get_id())).strip()
         job_desc = dxpy.describe(job_id)
         self.assertEquals(job_desc["input"]["int0"], 16)
         self.assertEquals(job_desc["input"]["string0"], "input_string")
@@ -1328,7 +1329,8 @@ dx-jobutil-add-output outrecord $record0
         self.assertNotIn("string1", job_desc["input"])
         self.assertNotIn("record1", job_desc["input"])
 
-        job_id = run("dx run {applet_id} -iint0:int=16 -istring0:string=input_string -irecord0:record={record_id} --brief".format(applet_id=applet_id, record_id=record.get_id())).strip()
+        job_id = run("dx run {applet_id} -iint0:int=16 -istring0:string=input_string -irecord0:record={record_id} --brief".format(
+            applet_id=applet_id, record_id=record.get_id())).strip()
         job_desc = dxpy.describe(job_id)
         self.assertEquals(job_desc["input"]["int0"], 16)
         self.assertEquals(job_desc["input"]["string0"], "input_string")
@@ -1339,7 +1341,8 @@ dx-jobutil-add-output outrecord $record0
         self.assertNotIn("record1", job_desc["input"])
 
         # Run with "dx run" with JBORs.
-        other_job_id = run("dx run {applet_id} -iint0={job_id}:outint -istring0={job_id}:outstring -irecord0={job_id}:outrecord --brief".format(applet_id=applet_id, job_id=job_id)).strip()
+        other_job_id = run("dx run {applet_id} -iint0={job_id}:outint -istring0={job_id}:outstring -irecord0={job_id}:outrecord --brief".format(
+            applet_id=applet_id, job_id=job_id)).strip()
         job_desc = dxpy.describe(other_job_id)
         self.assertEquals(job_desc["input"]["int0"],
                           {"$dnanexus_link": {"field": "outint",
@@ -1352,7 +1355,8 @@ dx-jobutil-add-output outrecord $record0
                                               "job": job_id}})
 
         # Run with "dx run" with input name mapped to data object name.
-        job_id = run("dx run {applet_id} -iint0=16 -istring0=input_string -irecord0=my_record --brief".format(applet_id=applet_id)).strip()
+        job_id = run("dx run {applet_id} -iint0=16 -istring0=input_string -irecord0=my_record --brief".format(
+            applet_id=applet_id)).strip()
         job_desc = dxpy.describe(job_id)
         self.assertEquals(job_desc["input"]["int0"], 16)
         self.assertEquals(job_desc["input"]["string0"], "input_string")
@@ -1384,8 +1388,7 @@ dx-jobutil-add-output outrecord $record0
         # Run with "dx run".
         job_id = run("dx run {applet_id} -iint0=16 -istring0=input_string -irecord0={record_id} -iint1=32 -istring1=second_input_string -irecord1={second_record_id} --brief".format(
             applet_id=applet_id, record_id=record.get_id(),
-            second_record_id=second_record.get_id())
-        ).strip()
+            second_record_id=second_record.get_id())).strip()
         job_desc = dxpy.describe(job_id)
         self.assertEquals(job_desc["input"]["int0"], 16)
         self.assertEquals(job_desc["input"]["int1"], 32)
@@ -1399,8 +1402,7 @@ dx-jobutil-add-output outrecord $record0
         # Run with "dx run" with JBORs.
         other_job_id = run("dx run {applet_id} -iint0=32 -iint1={job_id}:outint -istring0=second_input_string -istring1={job_id}:outstring -irecord0={second_record_id} -irecord1={job_id}:outrecord --brief".format(
             applet_id=applet_id, job_id=job_id,
-            second_record_id=second_record.get_id()
-        )).strip()
+            second_record_id=second_record.get_id())).strip()
         job_desc = dxpy.describe(other_job_id)
         self.assertEquals(job_desc["input"]["int0"], 32)
         self.assertEquals(job_desc["input"]["string0"], "second_input_string")
