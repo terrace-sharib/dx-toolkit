@@ -1274,7 +1274,7 @@ class TestDXClientRun(DXTestCase):
         super(TestDXClientRun, self).tearDown()
 
     def test_dx_run_applet_with_input_spec(self):
-        record = dxpy.new_dxrecord()
+        record = dxpy.new_dxrecord(name="my_record")
 
         applet_id = dxpy.api.applet_new({
             "project": self.project,
@@ -1351,6 +1351,15 @@ dx-jobutil-add-output outrecord $record0
                           {"$dnanexus_link": {"field": "outrecord",
                                               "job": job_id}})
 
+        # Run with "dx run" with input name mapped to data object name.
+        job_id = run("dx run {applet_id} -iint0=16 -istring0=input_string -irecord0=my_record --brief".format(applet_id=applet_id)).strip()
+        job_desc = dxpy.describe(job_id)
+        self.assertEquals(job_desc["input"]["int0"], 16)
+        self.assertEquals(job_desc["input"]["string0"], "input_string")
+        self.assertEquals(job_desc["input"]["record0"],
+                          {"$dnanexus_link": {"project": self.project,
+                                              "id": record.get_id()}})
+
         #####################################
         # With required and optional inputs #
         #####################################
@@ -1408,7 +1417,7 @@ dx-jobutil-add-output outrecord $record0
                                               "job": job_id}})
 
     def test_dx_run_applet_without_input_spec(self):
-        record = dxpy.new_dxrecord()
+        record = dxpy.new_dxrecord(name="my_record")
 
         applet_id = dxpy.api.applet_new({
             "project": self.project,
@@ -1475,7 +1484,8 @@ dx-jobutil-add-output outrecord $record_id
                           {"$dnanexus_link": {"field": "outrecord",
                                               "job": job_id}})
 
-        # Repeated input names: order of input values preserved.
+        # Run with "dx run" with repeated input names: order of input values
+        # preserved.
         other_job_id = run("dx run {applet_id} -irecord0={record_id} -irecord0={job_id}:outrecord --brief".format(
             applet_id=applet_id, job_id=job_id, record_id=record.get_id()
         )).strip()
@@ -1495,6 +1505,13 @@ dx-jobutil-add-output outrecord $record_id
                                               "job": job_id}})
         self.assertEquals(job_desc["input"]["record0"][1],
                           {"$dnanexus_link": record.get_id()})
+
+        # Run with "dx run" with input name mapped to data object name.
+        job_id = run("dx run {applet_id} -irecord0=my_record --brief".format(applet_id=applet_id)).strip()
+        job_desc = dxpy.describe(job_id)
+        self.assertEquals(job_desc["input"]["record0"],
+                          {"$dnanexus_link": {"project": self.project,
+                                              "id": record.get_id()}})
 
     def test_dx_resolve(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
