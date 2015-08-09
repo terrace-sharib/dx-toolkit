@@ -1274,7 +1274,7 @@ def _get_org_invite_args(args):
     if args.set_bill_to is True:
         org_invite_args["createProjectsAndApps"] = True
     else:
-        org_invite_args["createProjectsAndApps"] = args.create_permission
+        org_invite_args["createProjectsAndApps"] = args.allow_billable_activities
     org_invite_args["appAccess"] = args.app_access
     org_invite_args["projectAccess"] = args.project_access
     org_invite_args["suppressEmailNotification"] = args.no_email
@@ -4019,7 +4019,7 @@ parser_new_user_org_opts = parser_new_user.add_argument_group("Org options", "Op
 parser_new_user_org_opts.add_argument("--org", help="ID of the org")
 parser_new_user_org_opts.add_argument("--level", choices=["ADMIN", "MEMBER"], default="MEMBER", help="Org membership level that will be granted to the new user; default MEMBER")
 parser_new_user_org_opts.add_argument("--set-bill-to", action="store_true", help='Set the default "billTo" field of the new user to the org; implies --create-permission')
-parser_new_user_org_opts.add_argument("--create-permission", action="store_true", help='Grant the new user "createProjectsAndApps" in the org')
+parser_new_user_org_opts.add_argument("--allow-billable-activities", action="store_true", help='Grant the new user "createProjectsAndApps" in the org')
 parser_new_user_org_opts.add_argument("--no-app-access", action="store_false", dest="app_access", help='Disable "appAccess" for the new user in the org')
 parser_new_user_org_opts.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], default="CONTRIBUTE", help='The "projectAccess" to grant the new user in the org; default CONTRIBUTE')
 parser_new_user_org_opts.add_argument("--no-email", action="store_true", help="Disable org invitation email notification to the new user")

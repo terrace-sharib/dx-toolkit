@@ -3243,7 +3243,7 @@ class TestDXClientNewUser(DXTestCase):
 
         # Grant custom org membership level and permission flags.
         username, email = self._generate_unique_username_email()
-        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --create-permission --no-app-access --project-access {pa} --brief".format(
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --allow-billable-activities --no-app-access --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="MEMBER", pa="VIEW")).strip()
         self._assert_user_desc(user_id, {"first": first})
@@ -3275,8 +3275,8 @@ class TestDXClientNewUser(DXTestCase):
         first = "Asset"
         cmd = "dx new user --set-bill-to"  # Set --set-bill-to option.
 
-        # --create-permission is implied; grant custom org membership level and
-        # other permission flags.
+        # --allow-billable-activities is implied; grant custom org membership
+        # level and other permission flags.
         username, email = self._generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
