@@ -1285,15 +1285,13 @@ def new_user(args):
     _validate_new_user_input(args)
 
     # Create user account.
-    user_new_args = _get_user_new_args(args)
     res = dxpy.DXHTTPRequest(dxpy.get_auth_server_name() + "/user/new",
-                             user_new_args,
+                             _get_user_new_args(args),
                              prepend_srv=False)
 
     if args.org is not None:
         # Invite new user to org.
-        org_invite_args = _get_org_invite_args(args)
-        res = dxpy.api.org_invite(args.org, org_invite_args)
+        res = dxpy.api.org_invite(args.org, _get_org_invite_args(args))
 
     if args.brief:
         print("user-" + args.username)
