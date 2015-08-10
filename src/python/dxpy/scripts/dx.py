@@ -1285,9 +1285,15 @@ def new_user(args):
     _validate_new_user_input(args)
 
     # Create user account.
+    #
+    # We prevent retries here because authserver is closing the server-side
+    # connection in certain situations. We cannot simply set `always_retry` to
+    # False here because we receive a 504 error code from the server.
+    # TODO: Allow retries when authserver issue is resolved.
     res = dxpy.DXHTTPRequest(dxpy.get_auth_server_name() + "/user/new",
                              _get_user_new_args(args),
-                             prepend_srv=False)
+                             prepend_srv=False,
+                             max_retries=0)
 
     if args.org is not None:
         # Invite new user to org.
