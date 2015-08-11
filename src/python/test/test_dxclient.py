@@ -3178,7 +3178,17 @@ class TestDXClientNewUser(DXTestCase):
                 run(" ".join([cmd, invalid_opts]))
 
         dx_cli_error_opts = [
+            "--username {u} --email {e} --first {f} --level MEMBER".format(
+                u=username, e=email, f=first),
             "--username {u} --email {e} --first {f} --set-bill-to".format(
+                u=username, e=email, f=first),
+            "--username {u} --email {e} --first {f} --allow-billable-activities".format(
+                u=username, e=email, f=first),
+            "--username {u} --email {e} --first {f} --no-app-access".format(
+                u=username, e=email, f=first),
+            "--username {u} --email {e} --first {f} --project-access VIEW".format(
+                u=username, e=email, f=first),
+            "--username {u} --email {e} --first {f} --no-email".format(
                 u=username, e=email, f=first),
         ]
         for invalid_opts in dx_cli_error_opts:
