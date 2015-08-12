@@ -24,6 +24,7 @@ for more details.
 from __future__ import print_function, unicode_literals, division, absolute_import
 
 import os, sys, json, time
+import platform
 from collections import MutableMapping
 from shutil import rmtree
 
@@ -193,7 +194,10 @@ class DXConfig(MutableMapping):
                 parent_process = parent_process.parent()
             return default_session_dir
         except (ImportError, IOError, AttributeError) as e:
-            warn(fill("Error while retrieving session configuration: " + format_exception(e)))
+            # We don't bundle psutil with Windows, so failure to import
+            # psutil would be expected.
+            if platform.system() != 'Windows':
+                warn(fill("Error while retrieving session configuration: " + format_exception(e)))
         except Exception as e:
             warn(fill("Unexpected error while retrieving session configuration: " + format_exception(e)))
         return self._get_ppid_session_conf_dir(sessions_dir)
@@ -276,7 +280,11 @@ class DXConfig(MutableMapping):
         try:
             os.makedirs(conf_dir, 0o700)
         except OSError:
-            os.chmod(conf_dir, 0o700)
+            try:
+                os.chmod(conf_dir, 0o700)
+            except OSError as e:
+                warn(fill("Error while writing configuration data: " + format_exception(e)))
+                return
 
         env_jsonfile_path = os.path.join(conf_dir, "environment.json")
         # Make sure the file has 600 permissions
