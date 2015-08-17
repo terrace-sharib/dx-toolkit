@@ -147,15 +147,6 @@ namespace dx {
     gcount_ = 0;
     JSON req(JSON_HASH);
     req["preauthenticated"] = false;
-
-    // /file-xxxx/download requires project ID
-    // use proj_ as a hint when calling describe
-    JSON desc = describe_((boost::format("{\"project: %s\"}") % proj_).str());
-    const string proj = desc["project"].get<string>();
-    if (proj == "")
-      throw DXFileError("ERROR: Cannot call DXFile::fileDownload() without corresponding project id");
-    req["project"] = proj;
-
     const JSON dlResp = fileDownload(dxid_, req);
     const string url = dlResp["url"].get<string>();
 
@@ -209,15 +200,6 @@ namespace dx {
 
     JSON req(JSON_HASH);
     req["preauthenticated"] = false;
-
-    // /file-xxxx/download requires project ID
-    // use proj_ as a hint when calling describe
-    JSON desc = describe_((boost::format("{\"project: %s\"}") % proj_).str());
-    const string proj = desc["project"].get<string>();
-    if (proj == "")
-      throw DXFileError("ERROR: Cannot call DXFile::fileDownload() without corresponding project id");
-    req["project"] = proj;
-
     const JSON dlResp = fileDownload(dxid_, req);
     lq_url = dlResp["url"].get<string>();
     lq_headers = dlResp["headers"];
