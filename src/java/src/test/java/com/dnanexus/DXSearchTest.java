@@ -312,20 +312,20 @@ public class DXSearchTest {
     @Test
     public void testFindDataObjectsQuerySerialization() throws IOException {
         Assert.assertEquals(
-                DXJSON.parseJson("{\"scope\": {\"project\":\"project-000000000000000000000000\"}}"),
+                DXJSON.parseJson("{\"scope\": {\"project\":\"project-000000000000000000000001\"}}"),
                 mapper.valueToTree(DXSearch.findDataObjects()
-                        .inProject(DXProject.getInstance("project-000000000000000000000000"))
+                        .inProject(DXProject.getInstance("project-000000000000000000000001"))
                         .buildRequestHash()));
         Assert.assertEquals(
-                DXJSON.parseJson("{\"scope\": {\"project\":\"project-000000000000000000000000\", \"folder\": \"/my/subfolder\", \"recurse\": false}}"),
+                DXJSON.parseJson("{\"scope\": {\"project\":\"project-000000000000000000000001\", \"folder\": \"/my/subfolder\", \"recurse\": false}}"),
                 mapper.valueToTree(DXSearch
                         .findDataObjects()
-                        .inFolder(DXProject.getInstance("project-000000000000000000000000"),
+                        .inFolder(DXProject.getInstance("project-000000000000000000000001"),
                                 "/my/subfolder").buildRequestHash()));
         Assert.assertEquals(
-                DXJSON.parseJson("{\"scope\": {\"project\": \"project-000000000000000000000000\"}, \"name\": \"dnanexus\"}"),
+                DXJSON.parseJson("{\"scope\": {\"project\": \"project-000000000000000000000001\"}, \"name\": \"dnanexus\"}"),
                 mapper.valueToTree(DXSearch.findDataObjects()
-                        .inProject(DXProject.getInstance("project-000000000000000000000000"))
+                        .inProject(DXProject.getInstance("project-000000000000000000000001"))
                         .nameMatchesExactly("dnanexus").buildRequestHash()));
         Assert.assertEquals(
                 DXJSON.parseJson("{\"name\": \"dnanexus\"}"),
@@ -410,7 +410,7 @@ public class DXSearchTest {
 
         try {
             DXSearch.findDataObjects()
-                    .inProject(DXProject.getInstance("project-000000000000000000000000"))
+                    .inProject(DXProject.getInstance("project-000000000000000000000001"))
                     .inProject(DXProject.getInstance("project-111100000000000000000000"));
             Assert.fail("Expected double setting of inProject to fail");
         } catch (IllegalStateException e) {
@@ -418,8 +418,8 @@ public class DXSearchTest {
         }
         try {
             DXSearch.findDataObjects()
-                    .inFolder(DXProject.getInstance("project-000000000000000000000000"), "/1")
-                    .inFolder(DXProject.getInstance("project-000000000000000000000000"), "/2");
+                    .inFolder(DXProject.getInstance("project-000000000000000000000001"), "/1")
+                    .inFolder(DXProject.getInstance("project-000000000000000000000001"), "/2");
             Assert.fail("Expected double setting of inFolder to fail");
         } catch (IllegalStateException e) {
             // Expected
@@ -682,9 +682,9 @@ public class DXSearchTest {
                 mapper.valueToTree(DXSearch.findExecutions().launchedBy("user-user1")
                         .buildRequestHash()));
         Assert.assertEquals(
-                DXJSON.parseJson("{\"project\":\"project-000000000000000000000000\"}"),
+                DXJSON.parseJson("{\"project\":\"project-000000000000000000000001\"}"),
                 mapper.valueToTree(DXSearch.findExecutions()
-                        .inProject(DXProject.getInstance("project-000000000000000000000000"))
+                        .inProject(DXProject.getInstance("project-000000000000000000000001"))
                         .buildRequestHash()));
 
         Assert.assertEquals(
@@ -808,9 +808,9 @@ public class DXSearchTest {
 
         // Setting multiple fields
         Assert.assertEquals(
-                DXJSON.parseJson("{\"launchedBy\":\"user-user1\", \"project\":\"project-000000000000000000000000\"}"),
+                DXJSON.parseJson("{\"launchedBy\":\"user-user1\", \"project\":\"project-000000000000000000000001\"}"),
                 mapper.valueToTree(DXSearch.findExecutions().launchedBy("user-user1")
-                        .inProject(DXProject.getInstance("project-000000000000000000000000"))
+                        .inProject(DXProject.getInstance("project-000000000000000000000001"))
                         .buildRequestHash()));
 
         // Setting the same field more than once is disallowed

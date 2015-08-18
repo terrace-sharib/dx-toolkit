@@ -18,7 +18,6 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp> //include all types plus i/o
-#include <boost/format.hpp>
 #include "dxfile.h"
 #include "../utils.h"
 #include "SimpleHttp.h"

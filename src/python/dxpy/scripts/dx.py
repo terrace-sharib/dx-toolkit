@@ -1695,7 +1695,7 @@ def cat(args):
         try:
             dxfile = dxpy.DXFile(entity_result['id'], project=project)
             while True:
-                chunk = dxfile.read(1024*1024, project=project)
+                chunk = dxfile.read(1024*1024)
                 if len(chunk) == 0:
                     break
                 sys.stdout.buffer.write(chunk)
