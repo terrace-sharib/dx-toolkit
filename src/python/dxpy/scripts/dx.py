@@ -743,8 +743,8 @@ def ls(args):
             # Listing the folder was successful
 
             if args.verbose:
-                print(UNDERLINE() + 'Project:' + ENDC() + ' ' + dxproj.describe()['name'] + ' (' + project + ')')
-                print(UNDERLINE() + 'Folder :' + ENDC() + ' ' + folderpath)
+                print(UNDERLINE('Project:') + ' ' + dxproj.describe()['name'] + ' (' + project + ')')
+                print(UNDERLINE('Folder :') + ' ' + folderpath)
 
             if not args.obj:
                 folders_to_print = ['/.', '/..'] if args.all else []
@@ -1234,6 +1234,81 @@ def describe(args):
             raise DXCLIError("No matches found for " + args.path)
     except:
         err_exit()
+
+
+def _validate_new_user_input(args):
+    # TODO: Support interactive specification of `args.username`.
+    # TODO: Support interactive specification of `args.email`.
+
+    if args.org is None and len(DXNewUserOrgArgsAction.user_specified_opts) > 0:
+        raise DXCLIError("Cannot specify {opts} without specifying --org".format(
+            opts=DXNewUserOrgArgsAction.user_specified_opts
+        ))
+
+
+def _get_user_new_args(args):
+    """
+    PRECONDITION: `_validate_new_user_input()` has been called on `args`.
+    """
+    user_new_args = {"username": args.username,
+                     "email": args.email}
+    if args.first is not None:
+        user_new_args["first"] = args.first
+    if args.last is not None:
+        user_new_args["last"] = args.last
+    if args.middle is not None:
+        user_new_args["middle"] = args.middle
+    if args.token_duration is not None:
+        user_new_args["tokenDuration"] = args.token_duration
+    if args.occupation is not None:
+        user_new_args["occupation"] = args.occupation
+    if args.set_bill_to is True:
+        user_new_args["billTo"] = args.org
+    return user_new_args
+
+
+def _get_org_invite_args(args):
+    """
+    PRECONDITION: `_validate_new_user_input()` has been called on `args`, and
+    `args.username` is a well-formed and valid username.
+    """
+    org_invite_args = {"invitee": "user-" + args.username}
+    org_invite_args["level"] = args.level
+    if args.set_bill_to is True:
+        org_invite_args["createProjectsAndApps"] = True
+    else:
+        org_invite_args["createProjectsAndApps"] = args.allow_billable_activities
+    org_invite_args["appAccess"] = args.app_access
+    org_invite_args["projectAccess"] = args.project_access
+    org_invite_args["suppressEmailNotification"] = args.no_email
+    return org_invite_args
+
+
+def new_user(args):
+    _validate_new_user_input(args)
+
+    # Create user account.
+    #
+    # We prevent retries here because authserver is closing the server-side
+    # connection in certain situations. We cannot simply set `always_retry` to
+    # False here because we receive a 504 error code from the server.
+    # TODO: Allow retries when authserver issue is resolved.
+    dxpy.DXHTTPRequest(dxpy.get_auth_server_name() + "/user/new",
+                       _get_user_new_args(args),
+                       prepend_srv=False,
+                       max_retries=0)
+
+    if args.org is not None:
+        # Invite new user to org.
+        dxpy.api.org_invite(args.org, _get_org_invite_args(args))
+
+    if args.brief:
+        print("user-" + args.username)
+    else:
+        print(fill("Created new user account (user-{u})".format(
+            u=args.username
+        )))
+
 
 def new_project(args):
     if args.name == None:
@@ -2149,7 +2224,9 @@ def find_projects(args):
                                      level=('VIEW' if args.public else args.level),
                                      describe=(not args.brief),
                                      explicit_perms=(not args.public if not args.public else None),
-                                     public=(args.public if args.public else None))
+                                     public=(args.public if args.public else None),
+                                     created_after=args.created_after,
+                                     created_before=args.created_before)
         if args.json:
             print(json.dumps(list(results), indent=4))
             return
@@ -2454,8 +2531,8 @@ def run_one(args, executable, dest_proj, dest_path, preset_inputs=None, input_na
         else:
             check_for_special_access(executable_desc.get('access'))
         if special_access:
-            print(fill(BOLD() + "WARNING" + ENDC() + ": You have requested that jobs be run under " +
-                       BOLD() + "normal" + ENDC() +
+            print(fill(BOLD("WARNING") + ": You have requested that jobs be run under " +
+                       BOLD("normal") +
                        " priority, which may cause them to be restarted at any point, but " +
                        "the executable you are trying to run has " +
                        "requested extra permissions (" + ", ".join(sorted(special_access)) + ").  " +
@@ -2605,18 +2682,18 @@ def print_run_input_help():
       -f/--input-json-file are provided)
   6) default values set in a workflow or an executable's input spec
 ''')
-    print('SPECIFYING INPUTS BY NAME\n\n' + fill('Use the -i/--input flag to specify each input field by ' + BOLD() + 'name' + ENDC() + ' and ' + BOLD() + 'value' + ENDC() + '.', initial_indent='  ', subsequent_indent='  '))
+    print('SPECIFYING INPUTS BY NAME\n\n' + fill('Use the -i/--input flag to specify each input field by ' + BOLD('name') + ' and ' + BOLD('value') + '.', initial_indent='  ', subsequent_indent='  '))
     print('''
     Syntax :  -i<input name>=<input value>
     Example:  dx run myApp -inum=34 -istr=ABC -igtables=reads1 -igtables=reads2
 ''')
     print(fill('The example above runs an app called "myApp" with 3 inputs called num (class int), str (class string), and gtables (class array:gtable).  (For this method to work, the app must have an input spec so inputs can be interpreted correctly.)  The same input field can be used multiple times if the input class is an array.', initial_indent='  ', subsequent_indent='  '))
-    print('\n' + fill(BOLD() + 'Job-based object references' + ENDC() + ' can also be provided using the <job id>:<output name> syntax:', initial_indent='  ', subsequent_indent='  '))
+    print('\n' + fill(BOLD('Job-based object references') + ' can also be provided using the <job id>:<output name> syntax:', initial_indent='  ', subsequent_indent='  '))
     print('''
     Syntax :  -i<input name>=<job id>:<output name>
     Example:  dx run mapper -ireads=job-B0fbxvGY00j9jqGQvj8Q0001:reads
 ''')
-    print(fill('You can ' + BOLD() + 'extract an element of an array output' + ENDC() +
+    print(fill('You can ' + BOLD('extract an element of an array output') +
                ' using the <job id>:<output name>.<element> syntax:',
                initial_indent='  ', subsequent_indent='  '))
     print('''
@@ -2624,14 +2701,14 @@ def print_run_input_help():
     Example:  dx run mapper -ireadsfile=job-B0fbxvGY00j9jqGQvj8Q0001:reads.1
               # Extracts second element of array output
 ''')
-    print(fill('When executing ' + BOLD() + 'workflows' + ENDC() + ', stage inputs can be specified using the <stage key>.<input name>=<value> syntax:', initial_indent='  ', subsequent_indent='  '))
+    print(fill('When executing ' + BOLD('workflows') + ', stage inputs can be specified using the <stage key>.<input name>=<value> syntax:', initial_indent='  ', subsequent_indent='  '))
     print('''
     Syntax :  -i<stage key>.<input name>=<input value>
     Example:  dx run my_workflow -i1.reads="My reads file"
 
 SPECIFYING JSON INPUT
 ''')
-    print(fill('JSON input can be used directly using the -j/--input-json or -f/--input-json-file flags.  When running an ' + BOLD() + 'app' + ENDC() + ' or ' + BOLD() + 'applet' + ENDC() + ', the keys should be the input field names for the app or applet.  When running a ' + BOLD() + 'workflow' + ENDC() + ', the keys should be the input field names for each stage, prefixed by the stage key and a period, e.g. "1.reads" for the "reads" input of stage "1".', initial_indent='  ', subsequent_indent='  ') + '\n')
+    print(fill('JSON input can be used directly using the -j/--input-json or -f/--input-json-file flags.  When running an ' + BOLD('app') + ' or ' + BOLD('applet') + ', the keys should be the input field names for the app or applet.  When running a ' + BOLD('workflow') + ', the keys should be the input field names for each stage, prefixed by the stage key and a period, e.g. "1.reads" for the "reads" input of stage "1".', initial_indent='  ', subsequent_indent='  ') + '\n')
     parser.exit(0)
 
 def run(args):
@@ -2902,9 +2979,9 @@ def watch(args):
         args.job_info = False
     elif args.format is None:
         if args.job_ids:
-            args.format = BLUE() + u"{job_name} ({job})" + ENDC() + " {level_color}{level}" + ENDC() + " {msg}"
+            args.format = BLUE("{job_name} ({job})") + " {level_color}{level}" + ENDC() + " {msg}"
         else:
-            args.format = BLUE() + u"{job_name}" + ENDC() + " {level_color}{level}" + ENDC() + " {msg}"
+            args.format = BLUE("{job_name}") + " {level_color}{level}" + ENDC() + " {msg}"
         if args.timestamps:
             args.format = u"{timestamp} " + args.format
 
@@ -3196,6 +3273,37 @@ class PrintCategoryHelp(argparse.Action):
         print('  ' + '\n  '.join(sorted(APP_CATEGORIES)))
         parser.exit(0)
 
+
+# Callable "action" class used by the "dx new user" parser for org-related
+# arguments to allow us to distinguish between user-specified arguments and
+# default arguments. If an argument has a `default` that is a bool, then its
+# `nargs` will be 0.
+#
+# PRECONDITION: If an argument has a `default` that is a bool, then specifying
+# that argument on the command-line must imply the logical opposite of its
+# `default`.
+class DXNewUserOrgArgsAction(argparse.Action):
+    user_specified_opts = []
+
+    def __init__(self, option_strings, dest, required=False, default=None,
+                 nargs=None, **kwargs):
+        if isinstance(default, bool):
+            nargs = 0
+        super(DXNewUserOrgArgsAction, self).__init__(
+            option_strings=option_strings, dest=dest, required=required,
+            default=default, nargs=nargs, **kwargs
+        )
+
+    # __call__ is only invoked when the user specifies this `option_string` on
+    # the command-line.
+    def __call__(self, parser, namespace, values, option_string):
+        DXNewUserOrgArgsAction.user_specified_opts.append(option_string)
+        if isinstance(self.default, bool):
+            setattr(namespace, self.dest, not self.default)
+        else:
+            setattr(namespace, self.dest, values)
+
+
 class DXArgumentParser(argparse.ArgumentParser):
     def _print_message(self, message, file=None):
         if message:
@@ -3408,7 +3516,7 @@ select_project_action = parser_select.add_argument('project', help='Name or ID o
                                                    nargs='?', default=None)
 select_project_action.completer = DXPathCompleter(expected='project', include_current_proj=False)
 parser_select.add_argument('--name', help='Name of the project (wildcard patterns supported)')
-parser_select.add_argument('--level', choices=['LIST', 'VIEW', 'UPLOAD', 'CONTRIBUTE', 'ADMINISTER'],
+parser_select.add_argument('--level', choices=['VIEW', 'UPLOAD', 'CONTRIBUTE', 'ADMINISTER'],
                            help='Minimum level of permissions expected', default='CONTRIBUTE')
 parser_select.add_argument('--public', help='Include ONLY public projects (will automatically set --level to VIEW)',
                            action='store_true')
@@ -3769,7 +3877,7 @@ parser_update_stage.set_defaults(func=workflow_cli.update_stage)
 register_subparser(parser_update_stage, subparsers_action=subparsers_update, categories='workflow')
 
 parser_install = subparsers.add_parser('install', help='Install an app',
-                                       description='Install an app by name.  To see a list of apps you can install, hit <TAB> twice after "dx install" or run "' + BOLD() + 'dx find apps' + ENDC() + '" to see a list of available apps.', prog='dx install',
+                                       description='Install an app by name.  To see a list of apps you can install, hit <TAB> twice after "dx install" or run "' + BOLD('dx find apps') + '" to see a list of available apps.', prog='dx install',
                                        parents=[env_args])
 install_app_action = parser_install.add_argument('app', help='ID or name of app to install')
 install_app_action.completer = DXAppCompleter(installed=False)
@@ -3785,7 +3893,7 @@ parser_uninstall.set_defaults(func=uninstall)
 register_subparser(parser_uninstall, categories='exec')
 
 parser_run = subparsers.add_parser('run', help='Run an applet, app, or workflow', add_help=False,
-                                   description=(fill('Run an applet, app, or workflow.  To see a list of executables you can run, hit <TAB> twice after "dx run" or run "' + BOLD() + 'dx find apps' + ENDC() + '" to see a list of available apps.') + '\n\n' + fill('If any inputs are required but not specified, an interactive mode for selecting inputs will be launched.  Inputs can be set in multiple ways.  Run "dx run --input-help" for more details.')),
+                                   description=(fill('Run an applet, app, or workflow.  To see a list of executables you can run, hit <TAB> twice after "dx run" or run "' + BOLD('dx find apps') + '" to see a list of available apps.') + '\n\n' + fill('If any inputs are required but not specified, an interactive mode for selecting inputs will be launched.  Inputs can be set in multiple ways.  Run "' + BOLD('dx run --input-help') + '" for more details.') + '\n\n' + fill('Run "' + BOLD('dx run --instance-type-help') + '" to see a list of specifications for computers available to run executables.')),
                                    prog='dx run',
                                    formatter_class=argparse.RawTextHelpFormatter,
                                    parents=[exec_input_args, stdout_args, env_args, extra_args,
@@ -3853,10 +3961,16 @@ parser_run.add_argument('--watch', help="Watch the job after launching it; sets 
 parser_run.add_argument('--allow-ssh', action='append', nargs='?', metavar='ADDRESS',
                         help=fill('Configure the job to allow SSH access; sets --priority high. If an argument is ' +
                                   'supplied, it is interpreted as an IP or hostname mask to allow connections from, ' +
-                                  'e.g. "--allow-ssh 1.2.3.4 --allow-ssh berkeley.edu"'))
-parser_run.add_argument('--ssh', help="Configure the job to allow SSH access and connect to it after launching; sets --priority high", action='store_true')
+                                  'e.g. "--allow-ssh 1.2.3.4 --allow-ssh berkeley.edu"',
+                                  width_adjustment=-24))
+parser_run.add_argument('--ssh',
+                        help=fill("Configure the job to allow SSH access and connect to it after launching; " +
+                                  "sets --priority high",
+                                  width_adjustment=-24),
+                        action='store_true')
 parser_run.add_argument('--debug-on', action='append', choices=['AppError', 'AppInternalError', 'ExecutionError'],
-                        help="Configure the job to hold for debugging when any of the listed errors occur")
+                        help=fill("Configure the job to hold for debugging when any of the listed errors occur",
+                                  width_adjustment=-24))
 parser_run.add_argument('--input-help',
                         help=fill('Print help and examples for how to specify inputs',
                                   width_adjustment=-24),
@@ -3938,6 +4052,27 @@ parser_new = subparsers.add_parser('new', help='Create a new project or data obj
 subparsers_new = parser_new.add_subparsers(parser_class=DXArgumentParser)
 subparsers_new.metavar = 'class'
 register_subparser(parser_new, categories='data')
+
+parser_new_user = subparsers_new.add_parser("user", help="Create a new user account", description="Create a new user account", parents=[stdout_args, env_args], prog="dx new user")
+parser_new_user_user_opts = parser_new_user.add_argument_group("User options")
+parser_new_user_user_opts.add_argument("-u", "--username", required=True, help="Username")
+parser_new_user_user_opts.add_argument("--email", required=True, help="Email address")
+parser_new_user_user_opts.add_argument("--first", help="First name")
+parser_new_user_user_opts.add_argument("--middle", help="Middle name")
+parser_new_user_user_opts.add_argument("--last", help="Last name")
+parser_new_user_user_opts.add_argument("--token-duration", type=int, help="Time duration (ms) for which the newly generated auth token for the new user will be valid")
+parser_new_user_user_opts.add_argument("--occupation", help="Occupation")
+parser_new_user_org_opts = parser_new_user.add_argument_group("Org options", "Optionally invite the new user to an org with the specified parameters")
+parser_new_user_org_opts.add_argument("--org", help="ID of the org")
+parser_new_user_org_opts.add_argument("--level", choices=["ADMIN", "MEMBER"], default="MEMBER", action=DXNewUserOrgArgsAction, help="Org membership level that will be granted to the new user; default MEMBER")
+parser_new_user_org_opts.add_argument("--set-bill-to", default=False, action=DXNewUserOrgArgsAction, help='Set the default "billTo" field of the new user to the org; implies --create-permission')
+parser_new_user_org_opts.add_argument("--allow-billable-activities", default=False, action=DXNewUserOrgArgsAction, help='Grant the new user "createProjectsAndApps" in the org')
+parser_new_user_org_opts.add_argument("--no-app-access", default=True, action=DXNewUserOrgArgsAction, dest="app_access", help='Disable "appAccess" for the new user in the org')
+parser_new_user_org_opts.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], default="CONTRIBUTE", action=DXNewUserOrgArgsAction, help='The "projectAccess" to grant the new user in the org; default CONTRIBUTE')
+parser_new_user_org_opts.add_argument("--no-email", default=False, action=DXNewUserOrgArgsAction, help="Disable org invitation email notification to the new user")
+parser_new_user.set_defaults(func=new_user)
+register_subparser(parser_new_user, subparsers_action=subparsers_new,
+                   categories="other")
 
 parser_new_project = subparsers_new.add_parser('project', help='Create a new project',
                                                description='Create a new project',
@@ -4220,11 +4355,17 @@ parser_find_projects = subparsers_find.add_parser('projects', help='Find project
                                                   parents=[stdout_args, json_arg, delim_arg, env_args, find_by_properties_and_tags_args],
                                                   prog='dx find projects')
 parser_find_projects.add_argument('--name', help='Name of the project')
-parser_find_projects.add_argument('--level', choices=['LIST', 'VIEW', 'UPLOAD', 'CONTRIBUTE', 'ADMINISTER'],
+parser_find_projects.add_argument('--level', choices=['VIEW', 'UPLOAD', 'CONTRIBUTE', 'ADMINISTER'],
                                   help='Minimum level of permissions expected')
 parser_find_projects.add_argument('--public',
                                   help='Include ONLY public projects (will automatically set --level to VIEW)',
                                   action='store_true')
+parser_find_projects.add_argument('--created-after',
+                                  help='Date (e.g. 2012-01-01) or integer timestamp after which the project was ' +
+                                  'created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
+parser_find_projects.add_argument('--created-before',
+                                  help='Date (e.g. 2012-01-01) or integer timestamp after which the project was ' +
+                                  'created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
 parser_find_projects.set_defaults(func=find_projects)
 register_subparser(parser_find_projects, subparsers_action=subparsers_find, categories='data')
 

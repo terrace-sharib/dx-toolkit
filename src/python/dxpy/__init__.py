@@ -136,7 +136,25 @@ from .compat import USING_PYTHON2, expanduser
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
-logging.getLogger('dxpy.packages.requests.packages.urllib3.connectionpool').setLevel(logging.ERROR)
+
+
+def configure_urllib3():
+    from requests.packages import urllib3
+    from requests.packages.urllib3.packages.ssl_match_hostname import match_hostname
+
+    # Disable verbose urllib3 warnings and log messages
+    urllib3.disable_warnings(category=urllib3.exceptions.InsecurePlatformWarning)
+    logging.getLogger('dxpy.packages.requests.packages.urllib3.connectionpool').setLevel(logging.ERROR)
+
+    # Trust DNAnexus S3 upload tunnel
+    def _match_hostname(cert, hostname):
+        if hostname == "ul.cn.dnanexus.com":
+            hostname = "s3.amazonaws.com"
+        match_hostname(cert, hostname)
+
+    urllib3.connection.match_hostname = _match_hostname
+
+configure_urllib3()
 
 from . import exceptions
 from .toolkit_version import version as TOOLKIT_VERSION
@@ -320,8 +338,10 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
 
     url = APISERVER + resource if prepend_srv else resource
     method = method.upper() # Convert method name to uppercase, to ease string comparisons later
-    if _DEBUG >= 2:
+    if _DEBUG >= 3:
         print(method, url, "=>\n" + json.dumps(data, indent=2), file=sys.stderr)
+    elif _DEBUG == 2:
+        print(method, url, "=>", json.dumps(data), file=sys.stderr)
     elif _DEBUG > 0:
         from repr import Repr
         print(method, url, "=>", Repr().repr(data), file=sys.stderr)
@@ -407,12 +427,16 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                     if response.headers.get('content-type', '').startswith('application/json'):
                         try:
                             content = json.loads(content)
-                            if _DEBUG >= 2:
-                                t = int(response.elapsed.total_seconds()*1000)
-                                print(method, url, "<=", response.status_code, "(%dms)"%t, "\n" + json.dumps(content, indent=2), file=sys.stderr)
+                            t = int(response.elapsed.total_seconds() * 1000)
+                            if _DEBUG >= 3:
+                                print(method, url, "<=", response.status_code, "(%dms)" % t,
+                                      "\n" + json.dumps(content, indent=2), file=sys.stderr)
+                            elif _DEBUG == 2:
+                                print(method, url, "<=", response.status_code, "(%dms)" % t, json.dumps(content),
+                                      file=sys.stderr)
                             elif _DEBUG > 0:
-                                t = int(response.elapsed.total_seconds()*1000)
-                                print(method, url, "<=", response.status_code, "(%dms)"%t, Repr().repr(content), file=sys.stderr)
+                                print(method, url, "<=", response.status_code, "(%dms)" % t, Repr().repr(content),
+                                      file=sys.stderr)
                             return content
                         except ValueError:
                             # If a streaming API call (no content-length

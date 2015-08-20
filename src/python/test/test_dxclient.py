@@ -27,10 +27,12 @@ import requests
 
 import dxpy
 from dxpy.scripts import dx_build_app
-from dxpy_testutil import DXTestCase, check_output, temporary_project, select_project, cd
+from dxpy_testutil import (DXTestCase, check_output, temporary_project, select_project, cd,
+                           override_environment)
 import dxpy_testutil as testutil
 from dxpy.exceptions import DXAPIError, DXSearchError, EXPECTED_ERR_EXIT_STATUS
 from dxpy.compat import str, sys_encoding
+from dxpy.utils.resolver import ResolutionError, _check_resolution_needed as check_resolution
 
 @contextmanager
 def chdir(dirname=None):
@@ -47,16 +49,6 @@ def run(command, **kwargs):
     output = check_output(command, shell=True, **kwargs)
     print(output)
     return output
-
-def overrideEnvironment(**kwargs):
-    env = os.environ.copy()
-    for key in kwargs:
-        if kwargs[key] is None:
-            if key in env:
-                del env[key]
-        else:
-            env[key] = kwargs[key]
-    return env
 
 
 def create_file_in_project(fname, trg_proj_id, folder=None):
@@ -689,7 +681,7 @@ class TestDXClient(DXTestCase):
             wd = tempfile.mkdtemp()
 
             def get_dx_ssh_config():
-                dx_ssh_config = pexpect.spawn("dx ssh_config", env=overrideEnvironment(HOME=wd))
+                dx_ssh_config = pexpect.spawn("dx ssh_config", env=override_environment(HOME=wd))
                 dx_ssh_config.logfile = sys.stdout
                 dx_ssh_config.setwinsize(20, 90)
                 return dx_ssh_config
@@ -761,7 +753,7 @@ class TestDXClient(DXTestCase):
             wd = tempfile.mkdtemp()
             os.mkdir(os.path.join(wd, ".dnanexus_config"))
 
-            dx_ssh_config = pexpect.spawn("dx ssh_config", env=overrideEnvironment(HOME=wd))
+            dx_ssh_config = pexpect.spawn("dx ssh_config", env=override_environment(HOME=wd))
             dx_ssh_config.logfile = sys.stdout
             dx_ssh_config.setwinsize(20, 90)
             dx_ssh_config.expect("Select an SSH key pair")
@@ -788,7 +780,7 @@ class TestDXClient(DXTestCase):
                                                     project=self.project))["id"]
 
             dx = pexpect.spawn("dx run {} --yes --ssh".format(sleep_applet),
-                               env=overrideEnvironment(HOME=wd))
+                               env=override_environment(HOME=wd))
             dx.logfile = sys.stdout
             dx.setwinsize(20, 90)
             dx.expect("Waiting for job")
@@ -811,7 +803,7 @@ class TestDXClient(DXTestCase):
             dx.expect(("dnanexus@%s" % job_id), timeout=10)
 
             # Make sure the job can be connected to using 'dx ssh <job id>'
-            dx2 = pexpect.spawn("dx ssh " + job_id, env=overrideEnvironment(HOME=wd))
+            dx2 = pexpect.spawn("dx ssh " + job_id, env=override_environment(HOME=wd))
             dx2.logfile = sys.stdout
             dx2.setwinsize(20, 90)
             dx2.expect("Waiting for job")
@@ -841,7 +833,7 @@ class TestDXClient(DXTestCase):
                                                     project=self.project))["id"]
 
             job_id = run("dx run {} --yes --brief --debug-on AppInternalError".format(crash_applet),
-                         env=overrideEnvironment(HOME=wd)).strip()
+                         env=override_environment(HOME=wd)).strip()
             elapsed = 0
             while True:
                 job_desc = dxpy.describe(job_id)
@@ -852,7 +844,7 @@ class TestDXClient(DXTestCase):
                 if elapsed > 1200:
                     raise Exception("Timeout while waiting for job to enter debug hold")
 
-            dx = pexpect.spawn("dx ssh " + job_id, env=overrideEnvironment(HOME=wd))
+            dx = pexpect.spawn("dx ssh " + job_id, env=override_environment(HOME=wd))
             dx.logfile = sys.stdout
             dx.setwinsize(20, 90)
             dx.expect("dnanexus@", timeout=1200)
@@ -866,7 +858,7 @@ class TestDXClient(DXTestCase):
         username = dxpy.user_info()['username']
 
         def get_dx_login(opts=""):
-            dx_login = pexpect.spawn("dx login" + opts, env=overrideEnvironment(HOME=wd))
+            dx_login = pexpect.spawn("dx login" + opts, env=override_environment(HOME=wd))
             dx_login.logfile = sys.stdout
             dx_login.setwinsize(20, 90)
             return dx_login
@@ -902,7 +894,7 @@ class TestDXClient(DXTestCase):
         self.assertEqual(dx_login.exitstatus, EXPECTED_ERR_EXIT_STATUS)
 
     def test_dx_with_bad_job_id_env(self):
-        env = overrideEnvironment(DX_JOB_ID="foobar")
+        env = override_environment(DX_JOB_ID="foobar")
         run("dx env", env=env)
 
 class TestDXWhoami(DXTestCase):
@@ -1261,8 +1253,7 @@ class TestDXClientDescribe(DXTestCase):
 
         run("dx describe " + app_new_output2["id"])
 
-@unittest.skipUnless(testutil.TEST_RUN_JOBS,
-                     'skipping tests that would run jobs')
+
 class TestDXClientRun(DXTestCase):
     def setUp(self):
         self.other_proj_id = run("dx new project other --brief").strip()
@@ -1271,6 +1262,378 @@ class TestDXClientRun(DXTestCase):
     def tearDown(self):
         dxpy.api.project_destroy(self.other_proj_id, {'terminateJobs': True})
         super(TestDXClientRun, self).tearDown()
+
+    def test_dx_run_applet_with_input_spec(self):
+        record = dxpy.new_dxrecord(name="my_record")
+
+        applet_id = dxpy.api.applet_new({
+            "project": self.project,
+            "dxapi": "0.0.1",
+            "inputSpec": [
+                {"name": "int0", "class": "int"},
+                {"name": "int1", "class": "int", "optional": True},
+                {"name": "string0", "class": "string"},
+                {"name": "string1", "class": "string", "optional": True},
+                {"name": "record0", "class": "record"},
+                {"name": "record1", "class": "record", "optional": True},
+            ],
+            "outputSpec": [
+                {"name": "outint", "class": "int"},
+                {"name": "outstring", "class": "string"},
+                {"name": "outrecord", "class": "record"},
+            ],
+            "runSpec": {"interpreter": "bash",
+                        "code": """
+dx-jobutil-add-output outint $int0
+dx-jobutil-add-output outstring $string0
+dx-jobutil-add-output outrecord $record0
+"""
+                        }})["id"]
+        applet = dxpy.DXApplet(applet_id)
+
+        #############################
+        # With only required inputs #
+        #############################
+
+        # Run with applet handler.
+        job = applet.run({"int0": 16, "string0": "input_string",
+                          "record0": {"$dnanexus_link": record.get_id()}})
+        job_desc = job.describe()
+        exp = {"int0": 16, "string0": "input_string",
+               "record0": {"$dnanexus_link": record.get_id()}}
+        self.assertEquals(job_desc["input"], exp)
+
+        # Run with "dx run".
+        job_id = run("dx run {applet_id} -iint0=16 -istring0=input_string -irecord0={record_id} --brief".format(
+            applet_id=applet_id, record_id=record.get_id())).strip()
+        job_desc = dxpy.describe(job_id)
+        self.assertEquals(job_desc["input"], exp)
+
+        job_id = run("dx run {applet_id} -iint0:int=16 -istring0:string=input_string -irecord0:record={record_id} --brief".format(
+            applet_id=applet_id, record_id=record.get_id())).strip()
+        job_desc = dxpy.describe(job_id)
+        self.assertEquals(job_desc["input"], exp)
+
+        # Run with "dx run" with JBORs.
+        other_job_id = run("dx run {applet_id} -iint0={job_id}:outint -istring0={job_id}:outstring -irecord0={job_id}:outrecord --brief".format(
+            applet_id=applet_id, job_id=job_id)).strip()
+        job_desc = dxpy.describe(other_job_id)
+        exp = {"int0": {"$dnanexus_link": {"field": "outint",
+                                           "job": job_id}},
+               "string0": {"$dnanexus_link": {"field": "outstring",
+                                              "job": job_id}},
+               "record0": {"$dnanexus_link": {"field": "outrecord",
+                                              "job": job_id}}}
+        self.assertEquals(job_desc["input"], exp)
+
+        # Run with "dx run" with input name mapped to data object name.
+        job_id = run("dx run {applet_id} -iint0=16 -istring0=input_string -irecord0=my_record --brief".format(
+            applet_id=applet_id)).strip()
+        job_desc = dxpy.describe(job_id)
+        exp = {"int0": 16, "string0": "input_string",
+               "record0": {"$dnanexus_link": {"project": self.project,
+                                              "id": record.get_id()}}}
+        self.assertEquals(job_desc["input"], exp)
+
+        #####################################
+        # With required and optional inputs #
+        #####################################
+
+        second_record = dxpy.new_dxrecord()
+
+        # Run with applet handler.
+        job = applet.run({"int0": 16, "string0": "input_string",
+                          "record0": {"$dnanexus_link": record.get_id()},
+                          "int1": 32, "string1": "second_input_string",
+                          "record1": {"$dnanexus_link": second_record.get_id()}})
+        job_desc = job.describe()
+        exp = {"int0": 16, "int1": 32, "string0": "input_string",
+               "string1": "second_input_string",
+               "record0": {"$dnanexus_link": record.get_id()},
+               "record1": {"$dnanexus_link": second_record.get_id()}}
+        self.assertEquals(job_desc["input"], exp)
+
+        # Run with "dx run".
+        job_id = run("dx run {applet_id} -iint0=16 -istring0=input_string -irecord0={record_id} -iint1=32 -istring1=second_input_string -irecord1={second_record_id} --brief".format(
+            applet_id=applet_id, record_id=record.get_id(),
+            second_record_id=second_record.get_id())).strip()
+        job_desc = dxpy.describe(job_id)
+        self.assertEquals(job_desc["input"], exp)
+
+        # Run with "dx run" with JBORs.
+        other_job_id = run("dx run {applet_id} -iint0=32 -iint1={job_id}:outint -istring0=second_input_string -istring1={job_id}:outstring -irecord0={second_record_id} -irecord1={job_id}:outrecord --brief".format(
+            applet_id=applet_id, job_id=job_id,
+            second_record_id=second_record.get_id())).strip()
+        job_desc = dxpy.describe(other_job_id)
+        exp = {"int0": 32,
+               "int1": {"$dnanexus_link": {"field": "outint",
+                                           "job": job_id}},
+               "string0": "second_input_string",
+               "string1": {"$dnanexus_link": {"field": "outstring",
+                                              "job": job_id}},
+               "record0": {"$dnanexus_link": second_record.get_id()},
+               "record1": {"$dnanexus_link": {"field": "outrecord",
+                                              "job": job_id}}}
+        self.assertEquals(job_desc["input"], exp)
+
+    def test_dx_run_applet_without_input_spec(self):
+        record = dxpy.new_dxrecord(name="my_record")
+
+        applet_id = dxpy.api.applet_new({
+            "project": self.project,
+            "dxapi": "0.0.1",
+            "outputSpec": [
+                {"name": "outint", "class": "int"},
+                {"name": "outstring", "class": "string"},
+                {"name": "outrecord", "class": "record"},
+            ],
+            "runSpec": {"interpreter": "bash",
+                        "code": """
+record_id=`dx new record --close --brief`
+dx-jobutil-add-output outint 32
+dx-jobutil-add-output outstring output_string
+dx-jobutil-add-output outrecord $record_id
+"""
+                        }})["id"]
+        applet = dxpy.DXApplet(applet_id)
+
+        # Run with applet handler.
+        job = applet.run({"int0": 16, "string0": "input_string",
+                          "record0": {"$dnanexus_link": record.get_id()}})
+        job_desc = job.describe()
+        exp = {"int0": 16, "string0": "input_string",
+               "record0": {"$dnanexus_link": record.get_id()}}
+        self.assertEquals(job_desc["input"], exp)
+
+        # Run with "dx run".
+        job_id = run("dx run {applet_id} -iint0=16 -istring0=input_string -irecord0={record_id} --brief".format(applet_id=applet_id, record_id=record.get_id())).strip()
+        job_desc = dxpy.describe(job_id)
+        self.assertEquals(job_desc["input"], exp)
+
+        job_id = run("dx run {applet_id} -iint0:int=16 -istring0:string=input_string -irecord0:record={record_id} --brief".format(applet_id=applet_id, record_id=record.get_id())).strip()
+        job_desc = dxpy.describe(job_id)
+        self.assertEquals(job_desc["input"], exp)
+
+        # Run with "dx run" with JBORs.
+        other_job_id = run("dx run {applet_id} -iint0={job_id}:outint -istring0={job_id}:outstring -irecord0={job_id}:outrecord --brief".format(applet_id=applet_id, job_id=job_id)).strip()
+        job_desc = dxpy.describe(other_job_id)
+        exp = {"int0": {"$dnanexus_link": {"field": "outint",
+                                           "job": job_id}},
+               "string0": {"$dnanexus_link": {"field": "outstring",
+                                              "job": job_id}},
+               "record0": {"$dnanexus_link": {"field": "outrecord",
+                                              "job": job_id}}}
+        self.assertEquals(job_desc["input"], exp)
+
+        other_job_id = run("dx run {applet_id} -irecord0={record_id} -irecord1={job_id}:outrecord --brief".format(
+            applet_id=applet_id, job_id=job_id, record_id=record.get_id()
+        )).strip()
+        job_desc = dxpy.describe(other_job_id)
+        exp = {"record0": {"$dnanexus_link": record.get_id()},
+               "record1": {"$dnanexus_link": {"field": "outrecord",
+                                              "job": job_id}}}
+        self.assertEquals(job_desc["input"], exp)
+
+        # Run with "dx run" with repeated input names: order of input values
+        # preserved.
+        other_job_id = run("dx run {applet_id} -irecord0={record_id} -irecord0={job_id}:outrecord --brief".format(
+            applet_id=applet_id, job_id=job_id, record_id=record.get_id()
+        )).strip()
+        job_desc = dxpy.describe(other_job_id)
+        exp = {"record0": [{"$dnanexus_link": record.get_id()},
+                           {"$dnanexus_link": {"field": "outrecord",
+                                               "job": job_id}}]}
+        self.assertEquals(job_desc["input"], exp)
+
+        other_job_id = run("dx run {applet_id} -irecord0={job_id}:outrecord -irecord0={record_id} --brief".format(
+            applet_id=applet_id, job_id=job_id, record_id=record.get_id()
+        )).strip()
+        job_desc = dxpy.describe(other_job_id)
+        exp = {"record0": [{"$dnanexus_link": {"field": "outrecord",
+                                               "job": job_id}},
+                           {"$dnanexus_link": record.get_id()}]}
+        self.assertEquals(job_desc["input"], exp)
+
+        # Run with "dx run" with input name mapped to data object name.
+        job_id = run("dx run {applet_id} -irecord0=my_record --brief".format(applet_id=applet_id)).strip()
+        job_desc = dxpy.describe(job_id)
+        exp = {"record0": {"$dnanexus_link": {"project": self.project,
+                                              "id": record.get_id()}}}
+        self.assertEquals(job_desc["input"], exp)
+
+    def test_dx_resolve(self):
+        applet_id = dxpy.api.applet_new({"project": self.project,
+                                         "dxapi": "1.0.0",
+                                         "runSpec": {"interpreter": "bash",
+                                                     "code": "echo 'hello'"}
+                                         })['id']
+        record_id0 = dxpy.api.record_new({"project": self.project,
+                                          "dxapi": "1.0.0",
+                                          "name": "resolve_record0"})['id']
+        record_id1 = dxpy.api.record_new({"project": self.project,
+                                          "dxapi": "1.0.0",
+                                          "name": "resolve_record1"})['id']
+        record_id2 = dxpy.api.record_new({"project": self.project,
+                                          "dxapi": "1.0.0",
+                                          "name": "resolve_record2"})['id']
+        glob_id = dxpy.api.record_new({"project": self.project,
+                                       "dxapi": "1.0.0",
+                                       "name": "glob_resolve_record"})['id']
+
+        job_id = run("dx run " + applet_id + " -iinput0=resolve_record0 -iinput1=resolve_record1 " +
+                     "-iinput2=glob_resolve* -iint0=5 -iint1=15 --brief -y").strip()
+        job_desc = dxpy.describe(job_id)
+
+        self.assertEquals(job_desc['input']['input0']['$dnanexus_link']['id'], record_id0)
+        self.assertEquals(job_desc['input']['input1']['$dnanexus_link']['id'], record_id1)
+        self.assertEquals(job_desc['input']['input2']['$dnanexus_link']['id'], glob_id)
+        self.assertEquals(job_desc['input']['int0'], 5)
+        self.assertEquals(job_desc['input']['int1'], 15)
+
+        # If multiple entities are provided with the same input name, then their resolved result should
+        # appear in a list, in the order in which they were provided, no matter the method of resolution
+        job_id = run("dx run " + applet_id + " -iinput0=resolve_record0 -iinput0=25 -iinput0=glob_resolve* " +
+                     "-iinput0=resolve_record1 -iinput1=" + record_id0 + " -iinput1=50 -iinput1=resolve_record1 " +
+                     "--brief -y").strip()
+        job_desc = dxpy.describe(job_id)
+
+        self.assertEquals(len(job_desc['input']['input0']), 4)
+        self.assertEquals(job_desc['input']['input0'][0]['$dnanexus_link']['id'], record_id0)
+        self.assertEquals(job_desc['input']['input0'][1], 25)
+        self.assertEquals(job_desc['input']['input0'][2]['$dnanexus_link']['id'], glob_id)
+        self.assertEquals(job_desc['input']['input0'][3]['$dnanexus_link']['id'], record_id1)
+        self.assertEquals(len(job_desc['input']['input1']), 3)
+        self.assertEquals(job_desc['input']['input1'][0]['$dnanexus_link'], record_id0)
+        self.assertEquals(job_desc['input']['input1'][1], 50)
+        self.assertEquals(job_desc['input']['input1'][2]['$dnanexus_link']['id'], record_id1)
+
+        # If a record cannot be resolved, then the return value should just be the record name passed in
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=cannot_resolve " +
+                     "-iinput1=resolve_record0 -iint0=10").strip()
+        job_desc = dxpy.describe(job_id)
+
+        self.assertEquals(job_desc['input']['input0'], "cannot_resolve")
+        self.assertEquals(job_desc['input']['input1']['$dnanexus_link']['id'], record_id0)
+        self.assertEquals(job_desc['input']['int0'], 10)
+
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=glob_cannot_resolve*").strip()
+        job_desc = dxpy.describe(job_id)
+
+        self.assertEquals(job_desc['input']['input0'], "glob_cannot_resolve*")
+
+        # Should simply use given name if it corresponds to multiple records (glob or not);
+        # length validation errors out, but exec_io catches it
+        dup_record_id = dxpy.api.record_new({"project": self.project,
+                                             "dxapi": "1.0.0",
+                                             "name": "resolve_record0"})['id']
+
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=resolve_record0").strip()
+        job_desc = dxpy.describe(job_id)
+
+        self.assertEquals(job_desc['input']['input0'], "resolve_record0")
+
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=resolve_record*").strip()
+        job_desc = dxpy.describe(job_id)
+
+        self.assertEquals(job_desc['input']['input0'], "resolve_record*")
+
+        applet_id = dxpy.api.applet_new({"project": self.project,
+                                         "dxapi": "1.0.0",
+                                         "inputSpec": [
+                                            {"name": "input0", "class": "record"},
+                                            {"name": "input1", "class": "array:record", "optional": True},
+                                            {"name": "int0", "class": "int"},
+                                            {"name": "int1", "class": "array:int", "optional": True},
+                                            {"name": "bool0", "class": "array:boolean", "optional": True}
+                                         ],
+                                         "outputSpec": [],
+                                         "runSpec": {"interpreter": "bash",
+                                                     "code": "echo 'hello'"}
+                                         })['id']
+
+        # Try with applet that has an input spec
+        job_id = run("dx run " + applet_id + " --brief -y -iinput0=resolve_record1 -iint0=10 " +
+                     "-iinput1=resolve_record2 -iinput1=resolve_record1 -iint1=0 -iint1=1 -iint1=2 " +
+                     "-ibool0=true -ibool0=0").strip()
+        job_desc = dxpy.describe(job_id)
+
+        self.assertEquals(job_desc['input']['input0']['$dnanexus_link']['id'], record_id1)
+        self.assertEquals(job_desc['input']['input1'][0]['$dnanexus_link']['id'], record_id2)
+        self.assertEquals(job_desc['input']['input1'][1]['$dnanexus_link']['id'], record_id1)
+        self.assertEquals(job_desc['input']['int0'], 10)
+        self.assertEquals(job_desc['input']['int1'], [0, 1, 2])
+        self.assertEquals(job_desc['input']['bool0'], [True, False])
+
+        # Workflows should show same behavior as applets
+        workflow_id = run("dx new workflow myworkflow --output-folder /foo --brief").strip()
+        stage_id = dxpy.api.workflow_add_stage(workflow_id,
+                                               {"editVersion": 0, "executable": applet_id})['stage']
+
+        record_id = dxpy.api.record_new({"project": self.project,
+                                         "dxapi": "1.0.0",
+                                         "name": "myrecord"})['id']
+
+        analysis_id = run("dx run " + workflow_id + " -i" + stage_id + ".input0=myrecord -i" +
+                          stage_id + ".int0=77 -y --brief").strip()
+        analysis_desc = dxpy.describe(analysis_id)
+
+        self.assertEquals(analysis_desc['input'][stage_id + '.input0']['$dnanexus_link']['id'], record_id)
+        self.assertEquals(analysis_desc['input'][stage_id + '.int0'], 77)
+
+    def test_dx_resolve_check_resolution_needed(self):
+        # If no entity_name is given, no entity_name should be returned
+        self.assertEquals(check_resolution("some_path", "project_id", "/", None), (False, "project_id", "/", None))
+        self.assertEquals(check_resolution("some_path", self.project, "/", None), (False, self.project, "/", None))
+
+        record_id = dxpy.api.record_new({"project": self.project,
+                                         "dxapi": "1.0.0",
+                                         "name": "myrecord"})['id']
+
+        self.assertEquals(check_resolution("some_path", self.project, "/", "myrecord"),
+                          (True, self.project, "/", "myrecord"))
+
+        self.assertEquals(check_resolution("some_path", "not_a_real_project_id", "/", "notarealrecord"),
+                          (True, "not_a_real_project_id", "/", "notarealrecord"))
+
+        # If the entity is a DX ID, but not an expected class, the result should be False, None, None, None
+        result = check_resolution("some_path", self.project, "/", record_id, expected_classes=["file"])
+        self.assertEquals(result, (False, None, None, None))
+
+        # If entity_id is a hash, there is no need to resolve, and the describe
+        # output is returned (should work no matter what project is given)
+        result = check_resolution("some_path", self.project, "/", record_id, expected_classes=["record"])
+        self.assertEquals(result[:3], (False, self.project, "/"))
+        desc_output = result[3]
+        self.assertEquals(desc_output["describe"]["project"], self.project)
+        self.assertEquals(desc_output["describe"]["name"], "myrecord")
+        self.assertEquals(desc_output["id"], record_id)
+        desc_output = check_resolution("some_path", None, "/", record_id, enclose_in_list=True)[3][0]
+        self.assertEquals(desc_output["describe"]["project"], self.project)
+        self.assertEquals(desc_output["describe"]["name"], "myrecord")
+        self.assertEquals(desc_output["id"], record_id)
+
+        # Describing entity_id should work even if the project hint is wrong
+        result = check_resolution("some_path", self.project, "/", record_id, describe={"project": self.other_proj_id,
+                                                                                       "fields": {"sponsored": True}})
+        self.assertEquals(result[:3], (False, self.project, "/"))
+        desc_output = result[3]
+        self.assertEquals(desc_output["describe"]["sponsored"], False)
+        self.assertEquals(desc_output["id"], record_id)
+
+        # Even if the given project is not a real project ID, the correct project ID
+        # should be in the describe output
+        desc_output = check_resolution("some_path", "not_a_real_project_id", "/", record_id)[3]
+        self.assertEquals(desc_output["describe"]["project"], self.project)
+        self.assertEquals(desc_output["describe"]["name"], "myrecord")
+        self.assertEquals(desc_output["id"], record_id)
+
+        # If no project is specified and entity_name is not a hash, then a ResolutionError
+        # should be raised
+        with self.assertRaisesRegexp(ResolutionError, 'Could not resolve "some_path"'):
+            check_resolution("some_path", None, "/", "myrecord")
+        # ResolutionError also raised if describing an entity ID fails
+        with self.assertRaisesRegexp(ResolutionError, "The entity record-\d+ could not be found"):
+            check_resolution("some_path", self.project, "/", "record-123456789012345678901234")
 
     def test_dx_run_depends_on_success(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
@@ -1361,6 +1724,8 @@ class TestDXClientRun(DXTestCase):
         # by ID will still work
         run("dx run " + dxworkflow.get_id() + " -y")
 
+    @unittest.skipUnless(testutil.TEST_RUN_JOBS,
+                         'skipping tests that would run jobs')
     def test_dx_run_jbor_array_ref(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "name": "myapplet",
@@ -1420,6 +1785,8 @@ dx-jobutil-add-output record_array $second_record --array
         self.assertIn(remote_job_output[1]["$dnanexus_link"], local_output)
         self.assertNotIn(remote_job_output[0]["$dnanexus_link"], local_output)
 
+    @unittest.skipUnless(testutil.TEST_RUN_JOBS,
+                         'skipping tests that would run jobs')
     def test_dx_run_priority(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "name": "myapplet",
@@ -1515,14 +1882,15 @@ dx-jobutil-add-output record_array $second_record --array
         workflow_id = run("dx new workflow myworkflow --brief").strip()
         run("dx add stage {workflow} {applet}".format(workflow=workflow_id,
                                                       applet=extra_perms_applet))
+
         # no warning when run at high priority
         dx_run_output = run("dx run myworkflow --priority high -y")
         for string in ["WARNING", "developer", "Internet", "write access"]:
             self.assertNotIn(string, dx_run_output)
         # and check that priority was set properly
-        time.sleep(1)
-        analysis_id = run("dx find analyses -n 1 --brief").strip()
+        analysis_id = next(dxpy.find_executions(classname='analysis', limit=1))['id']
         self.assertEqual(dxpy.describe(analysis_id)["priority"], "high")
+
         # get warnings when run at normal priority
         dx_run_output = run("dx run myworkflow --priority normal -y")
         for string in ["WARNING", "write access"]:
@@ -1530,8 +1898,7 @@ dx-jobutil-add-output record_array $second_record --array
         for string in ["developer", "Internet"]:
             self.assertNotIn(string, dx_run_output)
         # and check that priority was set properly
-        time.sleep(1)
-        analysis_id = run("dx find analyses -n 1 --brief").strip()
+        analysis_id = next(dxpy.find_executions(classname='analysis', limit=1))['id']
         self.assertEqual(dxpy.describe(analysis_id)["priority"], "normal")
 
     def test_dx_run_tags_and_properties(self):
@@ -1766,6 +2133,8 @@ dx-jobutil-add-output record_array $second_record --array
                          {'some_ep': {'instanceType': 'mem2_hdd2_x2'}})
         check_new_job_metadata(new_job_desc, orig_job_desc, overridden_fields=['systemRequirements'])
 
+    @unittest.skipUnless(testutil.TEST_RUN_JOBS,
+                         'skipping tests that would run jobs')
     def test_dx_describe_job_with_resolved_jbors(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
                                          "dxapi": "1.0.0",
@@ -2718,6 +3087,20 @@ class TestDXClientFind(DXTestCase):
             self.assertEqual(len(json_output), 1)
             self.assertEqual(json_output[0]['id'], unique_project.get_id())
 
+    def test_dx_find_projects_by_created(self):
+        created_project_name = 'dx find projects test ' + str(time.time())
+        with temporary_project(created_project_name) as unique_project:
+            self.assertEqual(run("dx find projects --created-after=-1d --brief --name " +
+                             pipes.quote(created_project_name)), unique_project.get_id() + '\n')
+            self.assertEqual(run("dx find projects --created-before=" + str(int(time.time()+1000)) +
+                             " --brief --name " + pipes.quote(created_project_name)),
+                             unique_project.get_id() + '\n')
+            self.assertEqual(run("dx find projects --created-after=-1d --created-before=" +
+                             str(int(time.time()+1000)) + " --brief --name " +
+                             pipes.quote(created_project_name)), unique_project.get_id() + '\n')
+            self.assertEqual(run("dx find projects --created-after=" + str(int(time.time()+1000)) + " --name " +
+                             pipes.quote(created_project_name)), "")
+
     def test_dx_find_projects_by_tag(self):
         other_project_id = run("dx new project other --brief").strip()
         try:
@@ -2938,6 +3321,226 @@ class TestDXClientFind(DXTestCase):
         assert_cmd_gives_ids("dx find jobs "+options3, [job_id])
         assert_cmd_gives_ids("dx find analyses "+options3, [])
 
+
+@unittest.skipUnless(testutil.TEST_WITH_AUTHSERVER,
+                     'skipping tests that require a running authserver')
+class TestDXClientNewUser(DXTestCase):
+
+    def _now(self):
+        return str(int(time.time()))
+
+    def _generate_unique_username_email(self):
+        r = random.randint(0, 255)
+        username = "asset_" + self._now() + "_" + str(r)
+        email = username + "@example.com"
+        return username, email
+
+    def _assert_user_desc(self, user_id, exp_user_desc):
+        user_desc = dxpy.api.user_describe(user_id)
+        for field in exp_user_desc:
+            self.assertEqual(user_desc[field], exp_user_desc[field])
+
+    def setUp(self):
+        org_handle = "dx_new_user_org_{t}".format(t=self._now())
+        self.org_id = dxpy.api.org_new({"handle": org_handle,
+                                        "name": "Org to invite to"})["id"]
+        super(TestDXClientNewUser, self).setUp()
+
+    def tearDown(self):
+        super(TestDXClientNewUser, self).tearDown()
+
+    def test_create_user_account_and_set_bill_to_negative(self):
+        username, email = self._generate_unique_username_email()
+        first = "Asset"
+        cmd = "dx new user"
+
+        called_process_error_opts = [
+            "",
+            "--username {u}".format(u=username),
+            "--email {e}".format(e=email),
+            "--username {u} --email {e} --first {f} \
+                --token-duration {t}".format(u=username, e=email, f=first,
+                                             t="not_an_int"),
+        ]
+        for invalid_opts in called_process_error_opts:
+            with self.assertRaises(subprocess.CalledProcessError):
+                run(" ".join([cmd, invalid_opts]))
+
+        dx_api_error_opts = [
+            "--username {u} --email {e}".format(u=username, e=email),
+            "--username {u} --email bad_email".format(u=username),
+            "--username bu --email {e}".format(e=email),
+            "--username {u} --email {e} --first {f} --org does_not_exist --set-bill-to".format(
+                u=username, e=email, f=first),
+        ]
+        for invalid_opts in dx_api_error_opts:
+            with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                         "DXAPIError"):
+                run(" ".join([cmd, invalid_opts]))
+
+        resource_not_found_opts = [
+            "--username {u} --email {e} --first {f} --org does_not_exist".format(
+                u=username, e=email, f=first),
+        ]
+        for invalid_opts in resource_not_found_opts:
+            with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                         "ResourceNotFound"):
+                run(" ".join([cmd, invalid_opts]))
+
+        dx_cli_error_opts = [
+            "--username {u} --email {e} --first {f} --level MEMBER".format(
+                u=username, e=email, f=first),
+            "--username {u} --email {e} --first {f} --set-bill-to".format(
+                u=username, e=email, f=first),
+            "--username {u} --email {e} --first {f} --allow-billable-activities".format(
+                u=username, e=email, f=first),
+            "--username {u} --email {e} --first {f} --no-app-access".format(
+                u=username, e=email, f=first),
+            "--username {u} --email {e} --first {f} --project-access VIEW".format(
+                u=username, e=email, f=first),
+            "--username {u} --email {e} --first {f} --no-email".format(
+                u=username, e=email, f=first),
+        ]
+        for invalid_opts in dx_cli_error_opts:
+            with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                         "DXCLIError"):
+                run(" ".join([cmd, invalid_opts]))
+
+
+    def test_self_signup_negative(self):
+        # How to unset context?
+        pass
+
+    def test_create_user_account_only(self):
+        first = "Asset"
+        last = "The"
+        middle = "T."
+        cmd = "dx new user"
+
+        # Basic with first name only.
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --brief".format(
+                      cmd=cmd, u=username, e=email, f=first)).strip()
+        self._assert_user_desc(user_id, {"first": first})
+
+        # Basic with last name only.
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --last {l} --brief".format(
+                      cmd=cmd, u=username, e=email, l=last)).strip()
+        self._assert_user_desc(user_id, {"last": last})
+
+        # Basic with all options we can verify.
+        # TODO: Test --token-duration and --occupation.
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --middle {m} --last {l} --brief".format(
+                      cmd=cmd, u=username, e=email, f=first, m=middle,
+                      l=last)).strip()
+        self._assert_user_desc(user_id, {"first": first,
+                                         "last": last,
+                                         "middle": middle})
+
+    def test_create_user_account_and_invite_to_org(self):
+        # TODO: Test --no-email flag.
+
+        first = "Asset"
+        cmd = "dx new user"
+
+        # Grant default org membership level and permission flags.
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --brief".format(
+                      cmd=cmd, u=username, e=email, f=first,
+                      o=self.org_id)).strip()
+        self._assert_user_desc(user_id, {"first": first})
+        exp = {
+            "level": "MEMBER",
+            "createProjectsAndApps": False,
+            "appAccess": True,
+            "projectAccess": "CONTRIBUTE",
+            "user": user_id
+        }
+        res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
+        self.assertEqual(exp, res)
+
+        # Grant custom org membership level and permission flags.
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --allow-billable-activities --no-app-access --project-access {pa} --brief".format(
+                      cmd=cmd, u=username, e=email, f=first,
+                      o=self.org_id, l="MEMBER", pa="VIEW")).strip()
+        self._assert_user_desc(user_id, {"first": first})
+        exp = {
+            "level": "MEMBER",
+            "createProjectsAndApps": True,
+            "appAccess": False,
+            "projectAccess": "VIEW",
+            "user": user_id
+        }
+        res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
+        self.assertEqual(exp, res)
+
+        # Grant ADMIN org membership level; ignore all other org permission
+        # options.
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --no-app-access --project-access {pa} --brief".format(
+                      cmd=cmd, u=username, e=email, f=first,
+                      o=self.org_id, l="ADMIN", pa="VIEW")).strip()
+        self._assert_user_desc(user_id, {"first": first})
+        exp = {
+            "level": "ADMIN",
+            "user": user_id
+        }
+        res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
+        self.assertEqual(exp, res)
+
+    def test_create_user_account_and_set_bill_to(self):
+        first = "Asset"
+        cmd = "dx new user --set-bill-to"  # Set --set-bill-to option.
+
+        # --allow-billable-activities is implied; grant custom org membership
+        # level and other permission flags.
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --project-access {pa} --brief".format(
+                      cmd=cmd, u=username, e=email, f=first,
+                      o=self.org_id, l="MEMBER", pa="VIEW")).strip()
+        self._assert_user_desc(user_id, {"first": first})
+        exp = {
+            "level": "MEMBER",
+            "createProjectsAndApps": True,
+            "appAccess": True,
+            "projectAccess": "VIEW",
+            "user": user_id
+        }
+        res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
+        self.assertEqual(exp, res)
+
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --project-access {pa} --brief".format(
+                      cmd=cmd, u=username, e=email, f=first,
+                      o=self.org_id, l="MEMBER", pa="VIEW")).strip()
+        self._assert_user_desc(user_id, {"first": first})
+        exp = {
+            "level": "MEMBER",
+            "createProjectsAndApps": True,
+            "appAccess": True,
+            "projectAccess": "VIEW",
+            "user": user_id
+        }
+        res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
+        self.assertEqual(exp, res)
+
+        # Grant ADMIN org membership level.
+        username, email = self._generate_unique_username_email()
+        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level ADMIN --brief".format(
+                      cmd=cmd, u=username, e=email, f=first,
+                      o=self.org_id)).strip()
+        self._assert_user_desc(user_id, {"first": first})
+        exp = {
+            "level": "ADMIN",
+            "user": user_id
+        }
+        res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
+        self.assertEqual(exp, res)
+
+
 @unittest.skipUnless(testutil.TEST_HTTP_PROXY,
                      'skipping HTTP Proxy support test that needs squid3')
 class TestHTTPProxySupport(DXTestCase):
@@ -3013,7 +3616,7 @@ class TestDXBuildApp(DXTestCase):
         return os.path.join(self.temp_file_path, app_name)
 
     def test_help_without_security_context(self):
-        env = overrideEnvironment(DX_SECURITY_CONTEXT=None, DX_APISERVER_HOST=None,
+        env = override_environment(DX_SECURITY_CONTEXT=None, DX_APISERVER_HOST=None,
                                   DX_APISERVER_PORT=None, DX_APISERVER_PROTOCOL=None)
         run("dx build -h", env=env)
 
@@ -3536,7 +4139,7 @@ class TestDXBuildApp(DXTestCase):
         # Set the project context to a nonexistent project. This
         # shouldn't have any effect since building an app is supposed to
         # be hygienic.
-        env = overrideEnvironment(DX_PROJECT_CONTEXT_ID='project-B00000000000000000000000')
+        env = override_environment(DX_PROJECT_CONTEXT_ID='project-B00000000000000000000000')
         run("dx build --create-app --json " + app_dir, env=env)
 
     def test_invalid_execdepends(self):
@@ -4442,95 +5045,6 @@ FOO.12345678\t0\t1\t54932369\t60\t7M1D93M\t*\t0\t0\tTAATAAGGTTGTTGTTGTTGTT\t1:1A
         self.assertEquals(run('dx-mappings-to-sam {g}'.format(g=mappings_table.get_id())),
                           self.expected_sam)
 
-class TestDXJobutilAddOutput(DXTestCase):
-    dummy_hash = "123456789012345678901234"
-    data_obj_classes = ['file', 'record', 'gtable', 'applet', 'workflow']
-    dummy_ids = [obj_class + '-' + dummy_hash for obj_class in data_obj_classes]
-    dummy_job_id = "job-" + dummy_hash
-    dummy_analysis_id = "analysis-123456789012345678901234"
-    test_cases = ([["32", 32],
-                   ["3.4", 3.4],
-                   ["true", True],
-                   ["'32 tables'", "32 tables"],
-                   ['\'{"foo": "bar"}\'', {"foo": "bar"}],
-                   [dummy_job_id + ":foo", {"job": dummy_job_id,
-                                            "field": "foo"}],
-                   [dummy_analysis_id + ":bar",
-                    {"$dnanexus_link": {"analysis": dummy_analysis_id,
-                                        "field": "bar"}}]] +
-                  [[dummy_id, {"$dnanexus_link": dummy_id}] for dummy_id in dummy_ids] +
-                  [["'" + json.dumps({"$dnanexus_link": dummy_id}) + "'",
-                    {"$dnanexus_link": dummy_id}] for dummy_id in dummy_ids])
-
-    def test_auto(self):
-        with tempfile.NamedTemporaryFile() as f:
-            # initialize the file with valid JSON
-            f.write('{}')
-            f.flush()
-            local_filename = f.name
-            cmd_prefix = "dx-jobutil-add-output -o " + local_filename + " "
-            for i, tc in enumerate(self.test_cases):
-                run(cmd_prefix + str(i) + " " + tc[0])
-            f.seek(0)
-            result = json.load(f)
-            for i, tc in enumerate(self.test_cases):
-                self.assertEqual(result[str(i)], tc[1])
-
-    def test_auto_array(self):
-        with tempfile.NamedTemporaryFile() as f:
-            # initialize the file with valid JSON
-            f.write('{}')
-            f.flush()
-            local_filename = f.name
-            cmd_prefix = "dx-jobutil-add-output --array -o " + local_filename + " "
-            for i, tc in enumerate(self.test_cases):
-                run(cmd_prefix + str(i) + " " + tc[0])
-                run(cmd_prefix + str(i) + " " + tc[0])
-            f.seek(0)
-            result = json.load(f)
-            for i, tc in enumerate(self.test_cases):
-                self.assertEqual(result[str(i)], [tc[1], tc[1]])
-
-    def test_class_specific(self):
-        with tempfile.NamedTemporaryFile() as f:
-            # initialize the file with valid JSON
-            f.write('{}')
-            f.flush()
-            local_filename = f.name
-            cmd_prefix = "dx-jobutil-add-output -o " + local_filename + " "
-            class_test_cases = [["boolean", "t", True],
-                                ["boolean", "1", True],
-                                ["boolean", "0", False]]
-            for i, tc in enumerate(class_test_cases):
-                run(cmd_prefix + " ".join([str(i), "--class " + tc[0], tc[1]]))
-            f.seek(0)
-            result = json.load(f)
-            for i, tc in enumerate(class_test_cases):
-                self.assertEqual(result[str(i)], tc[2])
-
-    def test_class_parsing_errors(self):
-        with tempfile.NamedTemporaryFile() as f:
-            # initialize the file with valid JSON
-            f.write('{}')
-            f.flush()
-            local_filename = f.name
-            cmd_prefix = "dx-jobutil-add-output -o " + local_filename + " "
-            error_test_cases = ([["int", "3.4"],
-                                 ["int", "foo"],
-                                 ["float", "foo"],
-                                 ["boolean", "something"],
-                                 ["hash", "{]"],
-                                 ["jobref", "thing"],
-                                 ["analysisref", "thing"]] +
-                                [[classname,
-                                  "'" +
-                                  json.dumps({"dnanexus_link": classname + "-" + self.dummy_hash}) +
-                                  "'"] for classname in self.data_obj_classes])
-            for i, tc in enumerate(error_test_cases):
-                with self.assertSubprocessFailure(stderr_regexp='Value could not be parsed',
-                                                  exit_code=3):
-                    run(cmd_prefix + " ".join([str(i), "--class " + tc[0], tc[1]]))
-
 
 @unittest.skipUnless(testutil.TEST_TCSH, 'skipping tests that require tcsh to be installed')
 class TestTcshEnvironment(unittest.TestCase):
@@ -4689,8 +5203,8 @@ class TestDXCp(DXTestCase):
 
         # The file {p1}:/{f} exists, however, {p1}/{f} does not. We
         # want to see an error message that reflects this.
-        expected_err_msg = "ResolutionError: The folder could not be found in {p2}".format(
-            p2=self.project)
+        expected_err_msg = "ResolutionError: The folder /{p1} could not be found in {p2}".format(
+            p1=self.proj_id1, p2=self.project)
         with self.assertSubprocessFailure(stderr_regexp=expected_err_msg, exit_code=3):
             run("dx cp {p1}/{f} {p2}:/".format(p1=self.proj_id1, f=fname1, p2=self.proj_id2))
 

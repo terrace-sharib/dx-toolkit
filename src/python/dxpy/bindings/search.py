@@ -29,7 +29,7 @@ from . import DXApplet, DXApp, DXWorkflow, DXProject, DXJob, DXAnalysis
 from ..exceptions import DXError, DXSearchError
 
 
-def resolve_data_objects(objects, project=None, folder=None):
+def resolve_data_objects(objects, project=None, folder=None, batchsize=1000):
     """
     :param objects: Data object specifications, each with fields "name"
                     (required), "folder", and "project"
@@ -40,6 +40,11 @@ def resolve_data_objects(objects, project=None, folder=None):
     :param folder: Folder path within the project; a data object's folder
                    path defaults to this if not specified for that object
     :type folder: string
+    :param batchsize: Number of objects to resolve in each batch call to
+                      system_resolve_data_objects; defaults to 1000 and is
+                      only used for testing (must be a positive integer not
+                      exceeding 1000)
+    :type batchsize: int
     :returns: List of results parallel to input objects, where each
               entry is a list containing 0 or more dicts, each corresponding
               to a resolved object
@@ -48,6 +53,8 @@ def resolve_data_objects(objects, project=None, folder=None):
     Each returned element is a list of dictionaries with keys "project" and
     "id". The number of dictionaries for each element may be 0, 1, or more.
     """
+    if not isinstance(batchsize, int) or batchsize <= 0 or batchsize > 1000:
+        raise ValueError("batchsize for resolve_data_objects must be a positive integer not exceeding 1000")
     args = {}
     if project:
         args.update({'project': project})
@@ -56,9 +63,9 @@ def resolve_data_objects(objects, project=None, folder=None):
 
     results = []
 
-    # Call API method /system/resolveDataObjects in batches of 1000
-    for i in range(0, len(objects), 1000):
-        args.update({'objects': objects[i:(i+1000)]})
+    # Call API method /system/resolveDataObjects in groups of size batchsize
+    for i in range(0, len(objects), batchsize):
+        args.update({'objects': objects[i:(i+batchsize)]})
         results.extend(dxpy.api.system_resolve_data_objects(args)['results'])
     return results
 
@@ -252,6 +259,7 @@ def find_data_objects(classname=None, state=None, visibility=None,
 
     return _find(dxpy.api.system_find_data_objects, query, limit, return_handler, first_page_size, **kwargs)
 
+
 def find_executions(classname=None, launched_by=None, executable=None, project=None,
                     state=None, origin_job=None, parent_job=None, no_parent_job=False,
                     parent_analysis=None, no_parent_analysis=False, root_execution=None,
@@ -260,6 +268,10 @@ def find_executions(classname=None, launched_by=None, executable=None, project=N
                     first_page_size=100, return_handler=False, include_subjobs=True,
                     **kwargs):
     '''
+    :param classname:
+        Class with which to restrict the search, i.e. one of "job",
+        "analysis"
+    :type classname: string
     :param launched_by: User ID of the user who launched the execution's origin execution
     :type launched_by: string
     :param executable: ID of the applet or app that spawned this execution, or a corresponding remote object handler
@@ -415,7 +427,8 @@ def find_analyses(*args, **kwargs):
 
 def find_projects(name=None, name_mode='exact', properties=None, tags=None,
                   level=None, describe=False, explicit_perms=None,
-                  public=None, billed_to=None, limit=None, return_handler=False, first_page_size=100, **kwargs):
+                  public=None, created_after=None, created_before=None, billed_to=None,
+                  limit=None, return_handler=False, first_page_size=100, **kwargs):
     """
     :param name: Name of the project (also see *name_mode*)
     :type name: string
@@ -437,6 +450,12 @@ def find_projects(name=None, name_mode='exact', properties=None, tags=None,
     :type explicit_perms: boolean or None
     :param public: Filter on the project being public. If True, matching projects must be public. If False, matching projects must not be public. (default is None, for no filter)
     :type public: boolean or None
+    :param created_after: Timestamp after which each result was created
+        (see note accompanying :meth:`find_data_objects()` for interpretation)
+    :type created_after: int or string
+    :param created_before: Timestamp before which each result was created
+        (see note accompanying :meth:`find_data_objects()` for interpretation)
+    :type created_before: int or string
     :param billed_to: Entity ID (user or organization) that pays for the project's storage costs
     :type billed_to: string
     :param limit: The maximum number of results to be returned (if not specified, the number of results is unlimited)
@@ -478,6 +497,12 @@ def find_projects(name=None, name_mode='exact', properties=None, tags=None,
         query['explicitPermission'] = explicit_perms
     if public is not None:
         query['public'] = public
+    if created_after is not None or created_before is not None:
+        query["created"] = {}
+        if created_after is not None:
+            query["created"]["after"] = dxpy.utils.normalize_time_input(created_after)
+        if created_before is not None:
+            query["created"]["before"] = dxpy.utils.normalize_time_input(created_before)
     if billed_to is not None:
         query['billTo'] = billed_to
     if limit is not None:

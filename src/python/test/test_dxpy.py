@@ -1233,33 +1233,31 @@ def main(number):
                                                 "name": "stagename",
                                                 "executable": dxapplet.get_id()})['stage']
         # control (no request)
-        dxanalysis = dxworkflow.run({})
-        time.sleep(2)
-        dxjob = dxpy.DXJob(dxanalysis.describe()['stages'][0]['execution']['id'])
+        analysis_describe = testutil.analysis_describe_with_retry(dxworkflow.run({}))
+        dxjob = dxpy.DXJob(analysis_describe['stages'][0]['execution']['id'])
         self.assertEqual(dxjob.describe()['instanceType'], self.default_inst_type)
 
         # request for all stages and all entry points
-        dxanalysis = dxworkflow.run({}, instance_type="mem2_hdd2_x1")
-        time.sleep(2)
-        dxjob = dxpy.DXJob(dxanalysis.describe()['stages'][0]['execution']['id'])
+        analysis_describe = testutil.analysis_describe_with_retry(dxworkflow.run({}, instance_type="mem2_hdd2_x1"))
+        dxjob = dxpy.DXJob(analysis_describe['stages'][0]['execution']['id'])
         self.assertEqual(dxjob.describe()['instanceType'], 'mem2_hdd2_x1')
 
         # request for all stages, overriding some entry points
-        dxanalysis = dxworkflow.run({}, instance_type={"*": "mem2_hdd2_x1", "foo": "mem2_hdd2_x2"})
-        time.sleep(2)
-        dxjob = dxpy.DXJob(dxanalysis.describe()['stages'][0]['execution']['id'])
+        analysis_describe = testutil.analysis_describe_with_retry(
+            dxworkflow.run({}, instance_type={"*": "mem2_hdd2_x1", "foo": "mem2_hdd2_x2"}))
+        dxjob = dxpy.DXJob(analysis_describe['stages'][0]['execution']['id'])
         self.assertEqual(dxjob.describe()['instanceType'], 'mem2_hdd2_x1')
 
         # request for the stage specifically, for all entry points
-        dxanalysis = dxworkflow.run({}, stage_instance_types={stage_id: "mem2_hdd2_x2"})
-        time.sleep(2)
-        dxjob = dxpy.DXJob(dxanalysis.describe()['stages'][0]['execution']['id'])
+        analysis_describe = testutil.analysis_describe_with_retry(
+            dxworkflow.run({}, stage_instance_types={stage_id: "mem2_hdd2_x2"}))
+        dxjob = dxpy.DXJob(analysis_describe['stages'][0]['execution']['id'])
         self.assertEqual(dxjob.describe()['instanceType'], 'mem2_hdd2_x2')
 
         # request for the stage specifically, overriding some entry points
-        dxanalysis = dxworkflow.run({}, stage_instance_types={stage_id: {"*": "mem2_hdd2_x2", "foo": "mem2_hdd2_x1"}})
-        time.sleep(2)
-        dxjob = dxpy.DXJob(dxanalysis.describe()['stages'][0]['execution']['id'])
+        analysis_describe = testutil.analysis_describe_with_retry(
+            dxworkflow.run({}, stage_instance_types={stage_id: {"*": "mem2_hdd2_x2", "foo": "mem2_hdd2_x1"}}))
+        dxjob = dxpy.DXJob(analysis_describe['stages'][0]['execution']['id'])
         self.assertEqual(dxjob.describe()['instanceType'], 'mem2_hdd2_x2')
 
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
@@ -1292,16 +1290,13 @@ def main(number):
                                                                       second_stage_id: "quux"},
                                                        rerun_stages=['*'])
 
-        time.sleep(2) # allow time for jobs to be created so we can inspect their metadata
-
-        # make assertions
-        desc = control_dxanalysis.describe()
+        desc = testutil.analysis_describe_with_retry(control_dxanalysis)
         self.assertEqual(desc['stages'][0]['execution']['folder'], '/output/foo')
         self.assertEqual(desc['stages'][1]['execution']['folder'], '/myoutput')
-        desc = override_folders_dxanalysis.describe()
+        desc = testutil.analysis_describe_with_retry(override_folders_dxanalysis)
         self.assertEqual(desc['stages'][0]['execution']['folder'], '/foo')
         self.assertEqual(desc['stages'][1]['execution']['folder'], '/output/bar')
-        desc = use_default_folder_dxanalysis.describe()
+        desc = testutil.analysis_describe_with_retry(use_default_folder_dxanalysis)
         self.assertEqual(desc['stages'][0]['execution']['folder'], '/output/baz')
         self.assertEqual(desc['stages'][1]['execution']['folder'], '/output/quux')
 
@@ -1880,6 +1875,20 @@ class TestDXSearch(unittest.TestCase):
                 break
         self.assertTrue(found_proj)
 
+        created = dxproject.created
+        matching_ids = (result["id"] for result in dxpy.find_projects(created_before=created + 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in dxpy.find_projects(created_after=created - 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in
+                        dxpy.find_projects(created_before=created + 1000, created_after=created - 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in dxpy.find_projects(created_before=created - 1000))
+        self.assertNotIn(dxproject.id, matching_ids)
+
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
     def test_find_executions(self):
         dxapplet = dxpy.DXApplet()
@@ -1908,18 +1917,8 @@ class TestDXSearch(unittest.TestCase):
         dxapplet.run(applet_input=prog_input)
         dxjob = dxapplet.run(applet_input=prog_input, tags=["foo", "bar"], properties={"foo": "baz"})
 
-        # Wait for job to be created
-        executions = [stage['execution']['id'] for stage in dxanalysis.describe()['stages']]
-        t = 0
-        while len(executions) > 0:
-            try:
-                dxpy.api.job_describe(executions[len(executions) - 1], {})
-                executions.pop()
-            except DXAPIError:
-                t += 1
-                if t > 20:
-                    raise Exception("Timeout while waiting for job to be created for an analysis stage")
-                time.sleep(1)
+        # Wait for jobs to be created
+        testutil.analysis_describe_with_retry(dxanalysis)
 
         me = None
         common_conditions = {'executable': dxapplet,
@@ -2101,7 +2100,8 @@ class TestDataobjectFunctions(unittest.TestCase):
         self.assertEqual(handler.get_proj_id(), self.proj_id)
 
         # Handle project IDs
-        dxproject = dxpy.get_handler(self.proj_id)
+        handler = dxpy.get_handler(self.proj_id)
+        self.assertEqual(handler._dxid, self.proj_id)
 
         # Handle apps
         handler = dxpy.get_handler("app-foo")
@@ -2120,6 +2120,20 @@ class TestDataobjectFunctions(unittest.TestCase):
         self.assertIsNone(handler._name)
         self.assertIsNone(handler._alias)
 
+        # Test that we parse the "app" part out correctly when the app
+        # name itself has a hyphen in it
+        app_with_hyphen_in_name = "app-swiss-army-knife"
+        handler = dxpy.get_handler(app_with_hyphen_in_name)
+        self.assertIsNone(handler._dxid)
+        self.assertEqual(handler._name, "swiss-army-knife")
+        self.assertEqual(handler._alias, "default")
+
+        handler = dxpy.get_handler(app_with_hyphen_in_name + "/1.0.0")
+        self.assertIsNone(handler._dxid)
+        self.assertEqual(handler._name, "swiss-army-knife")
+        self.assertEqual(handler._alias, "1.0.0")
+
+
 class TestResolver(unittest.TestCase):
     def setUp(self):
         setUpTempProjects(self)
@@ -2134,6 +2148,33 @@ class TestResolver(unittest.TestCase):
             resolve_existing_path('', allow_empty_string=False)
         proj_id, path, entity_id = resolve_existing_path(':')
         self.assertEqual(proj_id, dxpy.WORKSPACE_ID)
+
+    def test_resolution_batching(self):
+        from dxpy.bindings.search import resolve_data_objects
+        record_id0 = dxpy.api.record_new({"project": self.proj_id,
+                                          "dxapi": "1.0.0",
+                                          "name": "resolve_record0"})['id']
+        record_id1 = dxpy.api.record_new({"project": self.proj_id,
+                                          "dxapi": "1.0.0",
+                                          "name": "resolve_record1"})['id']
+        record_id2 = dxpy.api.record_new({"project": self.proj_id,
+                                          "dxapi": "1.0.0",
+                                          "name": "resolve_record2"})['id']
+        results = resolve_data_objects([{"name": "resolve_record0"},
+                                        {"name": "resolve_record1"},
+                                        {"name": "resolve_record2"}],
+                                       self.proj_id, "/", batchsize=2)
+        self.assertEqual(results[0][0]["id"], record_id0)
+        self.assertEqual(results[1][0]["id"], record_id1)
+        self.assertEqual(results[2][0]["id"], record_id2)
+
+        results = resolve_data_objects([{"name": "resolve_record0"},
+                                        {"name": "resolve_record1"},
+                                        {"name": "resolve_record2"}],
+                                       self.proj_id, "/", batchsize=4)
+        self.assertEqual(results[0][0]["id"], record_id0)
+        self.assertEqual(results[1][0]["id"], record_id1)
+        self.assertEqual(results[2][0]["id"], record_id2)
 
 if __name__ == '__main__':
     if dxpy.AUTH_HELPER is None:
