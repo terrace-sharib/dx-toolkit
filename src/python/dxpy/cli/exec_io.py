@@ -462,7 +462,6 @@ class ExecutableInputs(object):
                 if entity_result is not None:
                     if isinstance(entity_result, basestring):
                         # Case: -ifoo=job-012301230123012301230123
-                        # Case: -ifoo=my_string
                         input_value = entity_result
                     elif is_hashid(input_value):
                         input_value = {'$dnanexus_link': entity_result['id']}
