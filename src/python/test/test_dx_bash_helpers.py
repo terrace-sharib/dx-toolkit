@@ -570,6 +570,10 @@ class TestDXJobutilNewJob(DXTestCase):
             ("-ifoo:file=first_record", None),  # Error
             ("-ifoo:int=foo", None),  # Error
             ("-ifoo:int=24.5", None),  # Error
+            # string
+            ("-ifoo=input_string", {"foo": "input_string"}),
+            # string that looks like a job ID
+            ("-ifoo=job-012301230123012301230123", {"foo": "job-012301230123012301230123"}),
 
             # Array inputs
 
