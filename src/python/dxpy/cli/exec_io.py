@@ -460,7 +460,11 @@ class ExecutableInputs(object):
             entity_result = results[input_value]['name']
             if input_class is None:
                 if entity_result is not None:
-                    if is_hashid(input_value):
+                    if isinstance(entity_result, basestring):
+                        # Case: -ifoo=job-012301230123012301230123
+                        # Case: -ifoo=my_string
+                        input_value = entity_result
+                    elif is_hashid(input_value):
                         input_value = {'$dnanexus_link': entity_result['id']}
                     elif 'describe' in entity_result:
                         # Then findDataObjects was called (returned describe hash)

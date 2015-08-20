@@ -889,10 +889,12 @@ def resolve_multiple_existing_paths(paths):
     to_resolve_in_batch_inputs = []  # Project, folderpath, and entity name
     for path in paths:
         project, folderpath, entity_name = resolve_path(path, expected='entity')
-        must_resolve, project, folderpath, entity_name = _check_resolution_needed(path,
-                                                                                  project,
-                                                                                  folderpath,
-                                                                                  entity_name)
+        try:
+            must_resolve, project, folderpath, entity_name = _check_resolution_needed(
+                path, project, folderpath, entity_name)
+        except:
+            must_resolve = False
+
         if must_resolve:
             if is_glob_pattern(entity_name):
                 # TODO: Must call findDataObjects because resolveDataObjects does not support glob patterns
@@ -954,14 +956,18 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
     of the hash ID, it will return None for all fields.
     '''
     project, folderpath, entity_name = resolve_path(path, expected, allow_empty_string=allow_empty_string)
-    must_resolve, project, folderpath, entity_name = _check_resolution_needed(path,
-                                                                              project,
-                                                                              folderpath,
-                                                                              entity_name,
-                                                                              expected_classes=expected_classes,
-                                                                              describe=describe,
-                                                                              enclose_in_list=(not ask_to_resolve or
-                                                                                               allow_mult))
+
+    try:
+        must_resolve, project, folderpath, entity_name = _check_resolution_needed(
+            path,
+            project,
+            folderpath,
+            entity_name,
+            expected_classes=expected_classes,
+            describe=describe,
+            enclose_in_list=(not ask_to_resolve or allow_mult))
+    except:
+        must_resolve = False
 
     if must_resolve:
         results = _resolve_global_entity(project, folderpath, entity_name, describe=describe, visibility=visibility)
