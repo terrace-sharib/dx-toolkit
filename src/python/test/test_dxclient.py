@@ -3582,6 +3582,28 @@ class TestDXClientMembership(DXTestCase):
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
+    def test_add_membership_with_options(self):
+        cmd = "dx add membership {o} -u {u} --level {l}"
+
+        username = self._new_user()
+        run("{cmd} --no-app-access --project-access NONE".format(cmd=cmd.format(
+            o=self.org_id, u=username, l="ADMIN")))
+        user_id = "user-" + username
+        exp_membership = {"user": user_id, "level": "ADMIN"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        username = self._new_user()
+        user_id = "user-" + username
+        run("{cmd} --allow-billable-activities --no-app-access --project-access NONE".format(cmd=cmd.format(
+            o=self.org_id, u=username, l="MEMBER")))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": True,
+                          "appAccess": False,
+                          "projectAccess": "NONE"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
     def test_add_membership_negative(self):
         cmd = "dx add membership"
 
