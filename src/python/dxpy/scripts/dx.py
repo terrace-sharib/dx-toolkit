@@ -2428,7 +2428,8 @@ def add_membership(args):
     if args.brief:
         print("org-" + args.org_id)
     else:
-        print(fill("Invited user-{u} to {o}".format(u=args.username, o=args.org_id)))
+        print(fill("Invited user-{u} to {o}".format(u=args.username,
+                                                    o=args.org_id)))
 
 
 def install(args):
