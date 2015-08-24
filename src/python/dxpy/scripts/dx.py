@@ -1268,12 +1268,17 @@ def _get_user_new_args(args):
 
 def _get_org_invite_args(args):
     """
-    PRECONDITION: `_validate_new_user_input()` has been called on `args`, and
-    `args.username` is a well-formed and valid username.
+    PRECONDITION:
+        - If /org-x/invite is being called in conjunction with /user/new, then
+          `_validate_new_user_input()` has been called on `args`; otherwise,
+          the parser must perform all the basic input validation.
+        - `args.username` is well-formed and valid (e.g. it does not start with
+          "user-").
     """
     org_invite_args = {"invitee": "user-" + args.username}
     org_invite_args["level"] = args.level
-    if args.set_bill_to is True:
+    if "set_bill_to" in args and args.set_bill_to is True:
+        # /org-x/invite is called in conjunction with /user/new.
         org_invite_args["createProjectsAndApps"] = True
     else:
         org_invite_args["createProjectsAndApps"] = args.allow_billable_activities
@@ -2415,6 +2420,16 @@ def remove_developers(args):
         dxpy.api.app_remove_developers(app_desc['id'], input_params={"developers": args.developers})
     except:
         err_exit()
+
+
+def add_membership(args):
+    dxpy.api.org_invite(args.org_id, _get_org_invite_args(args))
+
+    if args.brief:
+        print("org-" + args.org_id)
+    else:
+        print(fill("Invited user-{u} to {o}".format(u=args.username, o=args.org_id)))
+
 
 def install(args):
     app_desc = try_call(resolve_app, args.app)
@@ -3770,6 +3785,17 @@ add_stage_folder_args.add_argument('--output-folder', help='Path to the output f
 add_stage_folder_args.add_argument('--relative-output-folder', help='A relative folder path for the stage (interpreted as relative to the workflow\'s output folder)')
 parser_add_stage.set_defaults(func=workflow_cli.add_stage)
 register_subparser(parser_add_stage, subparsers_action=subparsers_add, categories='workflow')
+
+parser_add_membership = subparsers_add.add_parser("membership", help="Grant a user membership to an org", description="Grant a user membership to an org", prog="dx add membership", parents=[stdout_args, env_args])
+parser_add_membership.add_argument("org_id", help="ID of the org")
+parser_add_membership.add_argument("-u", "--username", required=True, help="Username")
+parser_add_membership.add_argument("--level", required=True, choices=["ADMIN", "MEMBER"], help="Org membership level that will be granted to the specified user")
+parser_add_membership.add_argument("--allow-billable-activities", default=False, help='Grant the specified user "createProjectsAndApps" in the org')
+parser_add_membership.add_argument("--no-app-access", default=True, dest="app_access", help='Disable "appAccess" for the specified user in the org')
+parser_add_membership.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], default="CONTRIBUTE", help='The "projectAccess" to grant the specified user in the org; default CONTRIBUTE')
+parser_add_membership.add_argument("--no-email", default=False, help="Disable org invitation email notification to the specified user")
+parser_add_membership.set_defaults(func=add_membership)
+register_subparser(parser_add_membership, subparsers_action=subparsers_add, categories="other")
 
 parser_list = subparsers.add_parser('list', help='Print the members of a list',
                                    description='Use this command with one of the availabile subcommands to perform various actions such as printing the list of developers or authorized users of an app.',
