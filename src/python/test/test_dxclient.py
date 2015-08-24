@@ -3536,6 +3536,52 @@ class TestDXClientNewUser(DXTestCase):
         self.assertEqual(exp, res)
 
 
+@unittest.skipUnless(testutil.TEST_WITH_AUTHSERVER,
+                     'skipping tests that require a running authserver')
+class TestDXClientMembership(DXTestCase):
+
+    def _new_user(self, new_user_input):
+        dxpy.DXHTTPRequest(dxpy.get_auth_server_name() + "/user/new",
+                           new_user_input,
+                           prepend_srv=False,
+                           max_retries=0)
+
+    def _org_get_member_access(self, user_id):
+        return dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
+
+    def setUp(self):
+        org_handle = "dx_membership_org_{t}".format(t=int(time.time()))
+        self.org_id = dxpy.api.org_new({"handle": org_handle,
+                                        "name": "Org to management membership in"})["id"]
+        super(TestDXClientMembership, self).setUp()
+
+    def tearDown(self):
+        super(TestDXClientMembership, self).tearDown()
+
+    def test_add_membership_default(self):
+        first = "Asset"
+        cmd = "dx add membership {o} -u {u} --level {l}"
+
+        username, email = generate_unique_username_email()
+        self._new_user({"username": username, "email": email, "first": first})
+        run(cmd.format(o=self.org_id, u=username, l="ADMIN"))
+        user_id = "user-" + username
+        exp_membership = {"user": user_id, "level": "ADMIN"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        username, email = generate_unique_username_email()
+        self._new_user({"username": username, "email": email, "first": first})
+        user_id = "user-" + username
+        run(cmd.format(o=self.org_id, u=username, l="MEMBER"))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": False,
+                          "appAccess": True,
+                          "projectAccess": "CONTRIBUTE"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+
 @unittest.skipUnless(testutil.TEST_HTTP_PROXY,
                      'skipping HTTP Proxy support test that needs squid3')
 class TestHTTPProxySupport(DXTestCase):
