@@ -3550,6 +3550,12 @@ class TestDXClientMembership(DXTestCase):
                            max_retries=0)
         return username
 
+    def _remove_user(self, user_id):
+        dxpy.api.org_remove_member(self.org_id, {"user": user_id})
+
+        with self.assertRaises(DXAPIError):
+            self._org_get_member_access(user_id)
+
     def _org_get_member_access(self, user_id):
         return dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
 
@@ -3572,8 +3578,8 @@ class TestDXClientMembership(DXTestCase):
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
-        username = self._new_user()
-        user_id = "user-" + username
+        self._remove_user(user_id)
+
         run(cmd.format(o=self.org_id, u=username, l="MEMBER"))
         exp_membership = {"user": user_id, "level": "MEMBER",
                           "createProjectsAndApps": False,
@@ -3592,6 +3598,8 @@ class TestDXClientMembership(DXTestCase):
         exp_membership = {"user": user_id, "level": "ADMIN"}
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
+
+        self._remove_user(user_id)
 
         username = self._new_user()
         user_id = "user-" + username
