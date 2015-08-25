@@ -3550,6 +3550,10 @@ class TestDXClientMembership(DXTestCase):
                            max_retries=0)
         return username
 
+    def _add_user(self, user_id):
+        dxpy.api.org_invite(self.org_id,
+                            {"invitee": user_id, "level": "ADMIN"})
+
     def _remove_user(self, user_id):
         dxpy.api.org_remove_member(self.org_id, {"user": user_id})
 
@@ -3624,6 +3628,21 @@ class TestDXClientMembership(DXTestCase):
         for invalid_opts in called_process_error_opts:
             with self.assertRaises(subprocess.CalledProcessError):
                 run(" ".join([cmd, invalid_opts]))
+
+    def test_remove_membership_default(self):
+        username = self._new_user()
+        user_id = "user-" + username
+        self._add_user(user_id)
+
+        exp_membership = {"user": user_id, "level": "ADMIN"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        run("dx remove membership {o} -u {u}".format(o=self.org_id,
+                                                     u=username))
+
+        with self.assertRaisesRegexp("ResourceNotFound"):
+            self._org_get_member_access(user_id)
 
 
 @unittest.skipUnless(testutil.TEST_HTTP_PROXY,
