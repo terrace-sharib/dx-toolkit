@@ -3641,7 +3641,7 @@ class TestDXClientMembership(DXTestCase):
         run("dx remove membership {o} -u {u}".format(o=self.org_id,
                                                      u=username))
 
-        with self.assertRaisesRegexp("ResourceNotFound"):
+        with self.assertRaisesRegexp(DXAPIError, "404"):
             self._org_get_member_access(user_id)
 
 
