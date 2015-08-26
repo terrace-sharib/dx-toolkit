@@ -462,6 +462,7 @@ class ExecutableInputs(object):
                 if entity_result is not None:
                     if isinstance(entity_result, basestring):
                         # Case: -ifoo=job-012301230123012301230123
+                        # Case: -ifoo=analysis-012301230123012301230123
                         assert(is_job_id(entity_result) or
                                (is_analysis_id(entity_result)))
                         input_value = entity_result
