@@ -2463,6 +2463,32 @@ def remove_membership(args):
                                                       o=args.org_id)))
 
 
+def _get_org_set_member_access_args(args):
+    user_id = "user-" + args.username
+    org_set_member_access_input = {user_id: {"level": args.level}}
+    if args.allow_billable_activities is not None:
+        org_set_member_access_input[user_id]["createProjectsAndApps"] = (True if args.allow_billable_activities == "true" else False)
+    if args.app_access is not None:
+        org_set_member_access_input[user_id]["appAccess"] = (True if args.app_access == "true" else False)
+    if args.project_access is not None:
+        org_set_member_access_input[user_id]["projectAccess"] = args.project_access
+    return org_set_member_access_input
+
+
+def update_membership(args):
+    # Will throw ResourceNotFound of the specified user is not currently a
+    # member of the org.
+    dxpy.api.org_get_member_access(args.org_id,
+                                   {"user": "user-" + args.username})
+    result = dxpy.api.org_set_member_access(args.org_id,
+                                            _get_org_set_member_access_args(args))
+    if args.brief:
+        print(result["id"])
+    else:
+        print(fill("Updated membership of user-{u} in {o}".format(
+            u=args.username, o=args.org_id)))
+
+
 def install(args):
     app_desc = try_call(resolve_app, args.app)
 
@@ -3949,6 +3975,16 @@ update_stage_folder_args.add_argument('--output-folder', help='Path to the outpu
 update_stage_folder_args.add_argument('--relative-output-folder', help='A relative folder path for the stage (interpreted as relative to the workflow\'s output folder)')
 parser_update_stage.set_defaults(func=workflow_cli.update_stage)
 register_subparser(parser_update_stage, subparsers_action=subparsers_update, categories='workflow')
+
+parser_update_membership = subparsers_update.add_parser("membership", help="Update the membership of a user in an org", description="Update the membership of a user in an org", prog="dx update membership", parents=[stdout_args, env_args])
+parser_update_membership.add_argument("org_id", help="ID of the org")
+parser_update_membership.add_argument("-u", "--username", required=True, help="Username")
+parser_update_membership.add_argument("--level", required=True, choices=["ADMIN", "MEMBER"], help="The new org membership level of the specified user")
+parser_update_membership.add_argument("--allow-billable-activities", choices=["true", "false"], help='The new "createProjectsAndApps" membership permission of the specified user in the org')
+parser_update_membership.add_argument("--app-access", choices=["true", "false"], help='The new "appAccess" membership permission of the specified user in the org')
+parser_update_membership.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], help='The new "projectAccess" membership permission of the specified user in the org')
+parser_update_membership.set_defaults(func=update_membership)
+register_subparser(parser_update_membership, subparsers_action=subparsers_update, categories="other")
 
 parser_install = subparsers.add_parser('install', help='Install an app',
                                        description='Install an app by name.  To see a list of apps you can install, hit <TAB> twice after "dx install" or run "' + BOLD('dx find apps') + '" to see a list of available apps.', prog='dx install',
