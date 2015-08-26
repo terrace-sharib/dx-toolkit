@@ -1767,6 +1767,9 @@ def cat(args):
         if entity_result['describe']['class'] != 'file':
             parser.exit(1, fill('Error: expected a file object') + '\n')
 
+        # Hackey logic to detect if project was explicitly provided
+        is_project_explicit = ":" in path and path.strip().split(":")[0] != ''
+
         # contains the requested file and is valid in this context.
         describe = {'project': project}
         resolver_kwargs = {}
@@ -1774,15 +1777,20 @@ def cat(args):
                         '/' + entity_result['describe']['id'] + '/describe',
                         describe,
                         **resolver_kwargs)
+
         # hint given to dx describe matches result
-        if project != desc['project']:
+        is_project_valid = project == desc['project']
+
+        if is_project_explicit and not is_project_valid:
             parser.exit(1, fill('Error: project does not contain specified file object') + '\n')
+        if not is_project_explicit and not is_project_valid:
+            project = None
 
         if 'DX_DEBUG_STR' in os.environ:
             with open(os.environ['DX_DEBUG_STR'], "w") as fd:
-                fd.write(project)
-                fd.close()
-
+                if project is not None:
+                    fd.write(project)
+                    fd.close()
         try:
             dxfile = dxpy.DXFile(entity_result['id'], project=project)
             while True:

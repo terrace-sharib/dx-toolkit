@@ -136,8 +136,9 @@ def download(args):
         if args.all or _is_glob(path):
             resolver_kwargs.update({'allow_mult': True, 'all_mult': True})
 
-        # Check if the path explicitly specifies a project ID
-        is_explicit_project = path.lower.startswith("project-")
+        # Hackey logic to detect if project was explicitly provided
+        is_project_explicit = ":" in path and path.strip().split(":")[0] != ''
+        is_project_valid = False
 
         project, folderpath, matching_files = try_call(resolve_existing_path, path, **resolver_kwargs)
         if matching_files is None:
@@ -163,29 +164,28 @@ def download(args):
         if len(matching_files) == 0 and len(matching_folders) == 0:
             err_exit(fill('Error: {path} is neither a file nor a folder name'.format(path=path)))
 
-        # Validate project ID has file
-        if project is not None:
-            is_valid_project = False
-            for matched_file in matching_files:
-                # file already accessible in project specified by user
-                if matched_file['project'] == project:
-                    is_valid_project = True
-                    break
-                # Use dx describe to confirm that the specified project contains the requested file.
-                # If the project returned is the same as the one used as a hint, then we know the project
-                # contains the requested file and is valid in this context.
-                describe = {'project': matched_file['project']}
-                desc = try_call(dxpy.DXHTTPRequest, '/' + path + '/describe', describe, **resolver_kwargs)
-                # hint given to dx describe matches result
-                if matched_file['project'] == desc['project']:
-                    is_valid_project = True
-                    project = matched_file['project']
-                    break
-            # Raise an error if the project was explicitly specified and found to not contain requested file
-            if is_explicit_project and not is_valid_project:
-                err_exit(fill("Error: project {p} does not contain requested file {f}".format(p=project, f=path)))
-        else:
-            project = "project-000000000000000000000000"
+        for matched_file in matching_files:
+            # contains the requested file and is valid in this context.
+            describe = {'project': project}
+            resolver_kwargs = {}
+            desc = try_call(dxpy.DXHTTPRequest,
+                            '/' + matched_file['describe']['id'] + '/describe',
+                            describe,
+                            **resolver_kwargs)
+
+            # hint given to dx describe matches result
+            is_project_valid = project == desc['project']
+
+        if is_project_explicit and not is_project_valid:
+            err_exit(fill('Error: project does not contain specified file object'))
+        if not is_project_explicit and not is_project_valid:
+            project = None
+
+        if 'DX_DEBUG_STR' in os.environ:
+            with open(os.environ['DX_DEBUG_STR'], "w") as fd:
+                if project is not None:
+                    fd.write(project)
+                    fd.close()
 
         files_to_get[project].extend(matching_files)
         folders_to_get[project].extend(((f, strip_prefix) for f in matching_folders))

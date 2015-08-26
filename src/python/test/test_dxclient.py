@@ -1039,7 +1039,7 @@ class TestDXClientUploadDownload(DXTestCase):
             dxpy.config.save()
             self.assertNotIn('DX_PROJECT_CONTEXT_ID', run('dx env --bash'))
 
-            # set environment to proj1
+            # set environment/project context to proj1
             dxpy.config['DX_PROJECT_CONTEXT_ID'] = proj1_id
             dxpy.config.save()
 
@@ -1060,20 +1060,45 @@ class TestDXClientUploadDownload(DXTestCase):
                 project = fd.readline()
             self.assertEqual(project, proj1_id)
 
-            # Failure: project specified by context does not contains file specifed by ID
-            with self.assertSubprocessFailure(stderr_regexp="Error: project does not", exit_code=1):
-                run("dx download -o - {f}".format(f=file2_id), env=os.environ)
+            # Success: project specified by context does not contains file specifed by ID
+            buf = run("dx download -o - {f}".format(f=file2_id), env=os.environ)
+            self.assertEqual(buf, data2)
+            with open(tempFileFd.name, "r") as fd:
+                project = fd.readline()
+            self.assertEqual(project, "")
 
             # Failure: project specified by context does not contains file specifed by name
             with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
                 run("dx download -o - {f}".format(f=file2_name), env=os.environ)
 
+            # Test api call parameters when downloading to local file instead of cat to std out
+
+            # Success: project from context contains file specifed by ID
+            run("dx download -f --no-progress {f}".format(f=file1_id), env=os.environ)
+            with open(tempFileFd.name, "r") as fd:
+                project = fd.readline()
+            self.assertEqual(project, proj1_id)
+
+            # Success: project from context contains file specifed by name
+            run("dx download -f --no-progress {f}".format(f=file1_name), env=os.environ)
+            with open(tempFileFd.name, "r") as fd:
+                project = fd.readline()
+            self.assertEqual(project, proj1_id)
+
+            # Success: project specified by context does not contains file specifed by ID
+            buf = run("dx download -f --no-progress {f}".format(f=file2_id), env=os.environ)
+            with open(tempFileFd.name, "r") as fd:
+                project = fd.readline()
+            self.assertEqual(project, "")
+
+            # Failure: project specified by context does not contains file specifed by name
+            with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
+                run("dx download -f --no-progress {f}".format(f=file2_name), env=os.environ)
+
             # unset environment
             del dxpy.config['DX_PROJECT_CONTEXT_ID']
-            del dxpy.config['DX_DEBUG_STR']
             dxpy.config.save()
             self.assertNotIn('DX_PROJECT_CONTEXT_ID', run('dx env --bash'))
-            self.assertNotIn('DX_DEBUG_STR', run('dx env --bash'))
 
     def test_dx_download_explicit_project(self):
 
@@ -1147,6 +1172,48 @@ class TestDXClientUploadDownload(DXTestCase):
             # Failure: project specified by name does not contain file specifed by name
             with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
                 run("dx download -o - {p}:{f}".format(p=proj1_name, f=file2_name), env=os.environ)
+
+            # Test api call parameters when downloading to local file instead of cat to std out
+
+            # Success: project specified by ID contains file specifed by ID
+            run("dx download -f --no-progress {p}:{f}".format(p=proj2_id, f=file2_id), env=os.environ)
+            with open(tempFileFd.name, "r") as fd:
+                project = fd.readline()
+            self.assertEqual(project, proj2_id)
+
+            # Success: project specified by ID contains file specifed by name
+            run("dx download -f --no-progress {p}:{f}".format(p=proj1_id, f=file1_name), env=os.environ)
+            with open(tempFileFd.name, "r") as fd:
+                project = fd.readline()
+            self.assertEqual(project, proj1_id)
+
+            # Success: project specified by name contains file specifed by ID
+            run("dx download -f --no-progress {p}:{f}".format(p=proj2_name, f=file2_name), env=os.environ)
+            with open(tempFileFd.name, "r") as fd:
+                project = fd.readline()
+            self.assertEqual(project, proj2_id)
+
+            # Success: project specified by name contains file specifed by name
+            run("dx download -f --no-progress {p}:{f}".format(p=proj1_name, f=file1_name))
+            with open(tempFileFd.name, "r") as fd:
+                project = fd.readline()
+            self.assertEqual(project, proj1_id)
+
+            # Failure: project specified by ID does not contain file specifed by ID
+            with self.assertSubprocessFailure(stderr_regexp="Error: project does not", exit_code=1):
+                run("dx download -f --no-progress {p}:{f}".format(p=proj2_id, f=file1_id), env=os.environ)
+
+            # Failure: project specified by ID does not contain file specifed by name
+            with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
+                run("dx download -f --no-progress {p}:{f}".format(p=proj1_id, f=file2_name), env=os.environ)
+
+            # Failure: project specified by name does not contain file specifed by ID
+            with self.assertSubprocessFailure(stderr_regexp="Error: project does not", exit_code=1):
+                run("dx download -f --no-progress {p}:{f}".format(p=proj2_name, f=file1_id), env=os.environ)
+
+            # Failure: project specified by name does not contain file specifed by name
+            with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
+                run("dx download -f --no-progress {p}:{f}".format(p=proj1_name, f=file2_name), env=os.environ)
 
     def test_dx_make_download_url(self):
         testdir = tempfile.mkdtemp()
