@@ -526,8 +526,9 @@ class TestDXJobutilNewJob(DXTestCase):
         test_cases = (
             # string
             ("-ifoo=input_string", {"foo": "input_string"}),
-            # string that looks like a job ID
+            # string that looks like a {job,analysis} ID
             ("-ifoo=job-012301230123012301230123", {"foo": "job-012301230123012301230123"}),
+            ("-ifoo=analysis-012301230123012301230123", {"foo": "analysis-012301230123012301230123"}),
             # int
             ("-ifoo=24", {"foo": 24}),
             # float
