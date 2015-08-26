@@ -1767,6 +1767,22 @@ def cat(args):
         if entity_result['describe']['class'] != 'file':
             parser.exit(1, fill('Error: expected a file object') + '\n')
 
+        # contains the requested file and is valid in this context.
+        describe = {'project': project}
+        resolver_kwargs = {}
+        desc = try_call(dxpy.DXHTTPRequest,
+                        '/' + entity_result['describe']['id'] + '/describe',
+                        describe,
+                        **resolver_kwargs)
+        # hint given to dx describe matches result
+        if project != desc['project']:
+            parser.exit(1, fill('Error: project does not contain specified file object') + '\n')
+
+        if 'DX_DEBUG_STR' in os.environ:
+            with open(os.environ['DX_DEBUG_STR'], "w") as fd:
+                fd.write(project)
+                fd.close()
+
         try:
             dxfile = dxpy.DXFile(entity_result['id'], project=project)
             while True:
