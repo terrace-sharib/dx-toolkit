@@ -956,15 +956,14 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
     of the hash ID, it will return None for all fields.
     '''
     project, folderpath, entity_name = resolve_path(path, expected, allow_empty_string=allow_empty_string)
-
-    must_resolve, project, folderpath, entity_name = _check_resolution_needed(
-        path,
-        project,
-        folderpath,
-        entity_name,
-        expected_classes=expected_classes,
-        describe=describe,
-        enclose_in_list=(not ask_to_resolve or allow_mult))
+    must_resolve, project, folderpath, entity_name = _check_resolution_needed(path,
+                                                                              project,
+                                                                              folderpath,
+                                                                              entity_name,
+                                                                              expected_classes=expected_classes,
+                                                                              describe=describe,
+                                                                              enclose_in_list=(not ask_to_resolve or
+                                                                                               allow_mult))
 
     if must_resolve:
         results = _resolve_global_entity(project, folderpath, entity_name, describe=describe, visibility=visibility)
