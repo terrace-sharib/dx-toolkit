@@ -2423,6 +2423,14 @@ def remove_developers(args):
 
 
 def add_membership(args):
+    try:
+        dxpy.api.org_get_member_access(args.org_id,
+                                       {"user": "user-" + args.username})
+    except:
+        pass
+    else:
+        raise DXCLIError("Cannot add a user who is already a member of the org")
+
     dxpy.api.org_invite(args.org_id, _get_org_invite_args(args))
 
     if args.brief:

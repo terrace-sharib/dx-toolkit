@@ -3629,6 +3629,15 @@ class TestDXClientMembership(DXTestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 run(" ".join([cmd, invalid_opts]))
 
+        username = self._new_user()
+        user_id = "user-" + username
+        self._add_user(user_id)
+
+        # Cannot add a user who is already a member of the org.
+        with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                     "DXCLIError"):
+            run(" ".join([cmd, self.org_id, "-u", username, "--level ADMIN"]))
+
     def test_remove_membership_default(self):
         username = self._new_user()
         user_id = "user-" + username
