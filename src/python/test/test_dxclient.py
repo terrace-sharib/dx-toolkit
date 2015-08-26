@@ -3644,6 +3644,24 @@ class TestDXClientMembership(DXTestCase):
         with self.assertRaisesRegexp(DXAPIError, "404"):
             self._org_get_member_access(user_id)
 
+    def test_remove_membership_negative(self):
+        cmd = "dx remove membership"
+        username = self._new_user()
+
+        # Cannot remove a user who is not currently a member of the org.
+        with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                     "ResourceNotFound"):
+            run(" ".join([cmd, self.org_id, "-u", username]))
+
+        called_process_error_opts = [
+            "",
+            "-u some_username",
+            "org-foo",
+        ]
+        for invalid_opts in called_process_error_opts:
+            with self.assertRaises(subprocess.CalledProcessError):
+                run(" ".join([cmd, invalid_opts]))
+
 
 @unittest.skipUnless(testutil.TEST_HTTP_PROXY,
                      'skipping HTTP Proxy support test that needs squid3')
