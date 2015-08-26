@@ -3706,6 +3706,49 @@ class TestDXClientMembership(DXTestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 run(" ".join([cmd, invalid_opts]))
 
+    def test_add_update_remove_membership(self):
+        username = self._new_user()
+        user_id = "user-" + username
+
+        cmd = "dx add membership {o} -u {u} --level {l} --project-access UPLOAD"
+        run(cmd.format(o=self.org_id, u=username, l="MEMBER"))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": False,
+                          "appAccess": True,
+                          "projectAccess": "UPLOAD"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx update membership {o} -u {u} --level MEMBER --allow-billable-activities true"
+        run(cmd.format(o=self.org_id, u=username))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": True,
+                          "appAccess": True,
+                          "projectAccess": "UPLOAD"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx update membership {o} -u {u} --level ADMIN"
+        run(cmd.format(o=self.org_id, u=username))
+        exp_membership = {"user": user_id, "level": "ADMIN"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx update membership {o} -u {u} --level MEMBER --allow-billable-activities true --project-access CONTRIBUTE --app-access false"
+        run(cmd.format(o=self.org_id, u=username))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": True,
+                          "appAccess": False,
+                          "projectAccess": "CONTRIBUTE"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx remove membership {o} -u {u}"
+        run(cmd.format(o=self.org_id, u=username))
+
+        with self.assertRaisesRegexp(DXAPIError, "404"):
+            self._org_get_member_access(user_id)
+
 
 @unittest.skipUnless(testutil.TEST_HTTP_PROXY,
                      'skipping HTTP Proxy support test that needs squid3')
