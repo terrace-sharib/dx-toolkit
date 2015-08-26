@@ -3701,6 +3701,7 @@ class TestDXClientMembership(DXTestCase):
             "-u some_username --level ADMIN",
             "org-foo --level ADMIN",
             "org-foo -u some_username",
+            "org-foo -u some_username --level NONE",
         ]
         for invalid_opts in called_process_error_opts:
             with self.assertRaises(subprocess.CalledProcessError):
