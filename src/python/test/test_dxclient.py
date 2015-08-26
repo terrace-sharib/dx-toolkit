@@ -3689,6 +3689,26 @@ class TestDXClientMembership(DXTestCase):
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
+    def test_update_membership_negative(self):
+        cmd = "dx update membership"
+        username = self._new_user()
+
+        # Cannot update the membership of a user who is not currently a member
+        # of the org.
+        with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                     "ResourceNotFound"):
+            run(" ".join([cmd, self.org_id, "-u", username, "--level ADMIN"]))
+
+        called_process_error_opts = [
+            "",
+            "-u some_username --level ADMIN",
+            "org-foo --level ADMIN",
+            "org-foo -u some_username",
+        ]
+        for invalid_opts in called_process_error_opts:
+            with self.assertRaises(subprocess.CalledProcessError):
+                run(" ".join([cmd, invalid_opts]))
+
 
 @unittest.skipUnless(testutil.TEST_HTTP_PROXY,
                      'skipping HTTP Proxy support test that needs squid3')
