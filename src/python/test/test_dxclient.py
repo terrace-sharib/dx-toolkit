@@ -3574,10 +3574,10 @@ class TestDXClientMembership(DXTestCase):
 
     def test_add_membership_default(self):
         cmd = "dx add membership {o} -u {u} --level {l}"
-
         username = self._new_user()
-        run(cmd.format(o=self.org_id, u=username, l="ADMIN"))
         user_id = "user-" + username
+
+        run(cmd.format(o=self.org_id, u=username, l="ADMIN"))
         exp_membership = {"user": user_id, "level": "ADMIN"}
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
@@ -3594,21 +3594,19 @@ class TestDXClientMembership(DXTestCase):
 
     def test_add_membership_with_options(self):
         cmd = "dx add membership {o} -u {u} --level {l}"
-
         username = self._new_user()
-        run("{cmd} --no-app-access --project-access NONE".format(cmd=cmd.format(
-            o=self.org_id, u=username, l="ADMIN")))
         user_id = "user-" + username
+
+        run("{cmd} --no-app-access --project-access NONE".format(
+            cmd=cmd.format(o=self.org_id, u=username, l="ADMIN")))
         exp_membership = {"user": user_id, "level": "ADMIN"}
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
         self._remove_user(user_id)
 
-        username = self._new_user()
-        user_id = "user-" + username
-        run("{cmd} --allow-billable-activities --no-app-access --project-access NONE".format(cmd=cmd.format(
-            o=self.org_id, u=username, l="MEMBER")))
+        run("{cmd} --allow-billable-activities --no-app-access --project-access NONE".format(
+            cmd=cmd.format(o=self.org_id, u=username, l="MEMBER")))
         exp_membership = {"user": user_id, "level": "MEMBER",
                           "createProjectsAndApps": True,
                           "appAccess": False,
@@ -3682,7 +3680,6 @@ class TestDXClientMembership(DXTestCase):
 
         run("dx update membership {o} -u {u} --level MEMBER --allow-billable-activities false --project-access VIEW --app-access true".format(
             o=self.org_id, u=username))
-
         exp_membership = {"user": user_id, "level": "MEMBER",
                           "createProjectsAndApps": False,
                           "projectAccess": "VIEW", "appAccess": True}
