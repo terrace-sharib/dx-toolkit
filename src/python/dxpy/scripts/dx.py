@@ -2432,6 +2432,29 @@ def add_membership(args):
                                                     o=args.org_id)))
 
 
+def _get_org_remove_member_args(args):
+    remove_member_args = {
+        "user": "user-" + args.username,
+        "revokeProjectPermissions": args.revoke_project_permissions,
+        "revokeAppPermissions": args.revoke_app_permissions}
+    return remove_member_args
+
+
+def remove_membership(args):
+    # Will throw ResourceNotFound of the specified user is not currently a
+    # member of the org.
+    dxpy.api.org_get_member_access(args.org_id,
+                                   {"user": "user-" + args.username})
+
+    result = dxpy.api.org_remove_member(args.org_id,
+                                        _get_org_remove_member_args(args))
+    if args.brief:
+        print(result["id"])
+    else:
+        print(fill("Removed user-{u} from {o}".format(u=args.username,
+                                                      o=args.org_id)))
+
+
 def install(args):
     app_desc = try_call(resolve_app, args.app)
 
@@ -3861,6 +3884,14 @@ parser_remove_stage.add_argument('workflow', help='Name or ID of a workflow').co
 parser_remove_stage.add_argument('stage', help='Stage (index or ID) of the workflow to remove')
 parser_remove_stage.set_defaults(func=workflow_cli.remove_stage)
 register_subparser(parser_remove_stage, subparsers_action=subparsers_remove, categories='workflow')
+
+parser_remove_membership = subparsers_remove.add_parser("membership", help="Revoke the org membership of a user", description="Revoke the org membership of a user", prog="dx remove membership", parents=[stdout_args, env_args])
+parser_remove_membership.add_argument("org_id", help="ID of the org")
+parser_remove_membership.add_argument("-u", "--username", required=True, help="Username")
+parser_remove_membership.add_argument("--keep-project-permissions", default=True, action="store_false", dest="revoke_project_permissions", help="Disable revocation of project permissions of the specified user to projects billed to the org")
+parser_remove_membership.add_argument("--keep-app-permissions", default=True, action="store_false", dest="revoke_app_permissions", help="Disable revocation of app developer and user permissions of the specified user to apps billed to the org")
+parser_remove_membership.set_defaults(func=remove_membership)
+register_subparser(parser_remove_membership, subparsers_action=subparsers_remove, categories="other")
 
 parser_update = subparsers.add_parser('update', help='Update certain types of metadata',
                                       description='''
