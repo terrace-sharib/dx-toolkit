@@ -1786,15 +1786,10 @@ def cat(args):
         if not is_project_explicit and not is_project_valid:
             project = None
 
-        if 'DX_DEBUG_STR' in os.environ:
-            with open(os.environ['DX_DEBUG_STR'], "w") as fd:
-                if project is not None:
-                    fd.write(project)
-                    fd.close()
         try:
             dxfile = dxpy.DXFile(entity_result['id'], project=project)
             while True:
-                chunk = dxfile.read(1024*1024)
+                chunk = dxfile.read(1024*1024, project=project)
                 if len(chunk) == 0:
                     break
                 sys.stdout.buffer.write(chunk)

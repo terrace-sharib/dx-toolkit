@@ -174,18 +174,14 @@ def download(args):
                             **resolver_kwargs)
 
             # hint given to dx describe matches result
-            is_project_valid = project == desc['project']
+            if project == desc['project']:
+                is_project_valid = True
+                break
 
         if is_project_explicit and not is_project_valid:
             err_exit(fill('Error: project does not contain specified file object'))
         if not is_project_explicit and not is_project_valid:
             project = None
-
-        if 'DX_DEBUG_STR' in os.environ:
-            with open(os.environ['DX_DEBUG_STR'], "w") as fd:
-                if project is not None:
-                    fd.write(project)
-                    fd.close()
 
         files_to_get[project].extend(matching_files)
         folders_to_get[project].extend(((f, strip_prefix) for f in matching_folders))
