@@ -44,6 +44,8 @@ from ..cli.parsers import (no_color_arg, delim_arg, env_args, stdout_args, all_a
                            set_env_from_args, extra_args, process_extra_args, DXParserError, exec_input_args,
                            instance_type_arg, process_instance_type_arg)
 from ..cli.exec_io import (ExecutableInputs, format_choices_or_suggestions)
+from ..cli.org import (get_org_invite_args, add_membership, remove_membership,
+                       update_membership)
 from ..exceptions import (err_exit, DXError, DXCLIError, DXAPIError, network_exceptions, default_expected_exceptions,
                           format_exception)
 from ..utils import warn, group_array_by_field, normalize_timedelta, normalize_time_input
@@ -1266,28 +1268,6 @@ def _get_user_new_args(args):
     return user_new_args
 
 
-def _get_org_invite_args(args):
-    """
-    PRECONDITION:
-        - If /org-x/invite is being called in conjunction with /user/new, then
-          `_validate_new_user_input()` has been called on `args`; otherwise,
-          the parser must perform all the basic input validation.
-        - `args.username` is well-formed and valid (e.g. it does not start with
-          "user-").
-    """
-    org_invite_args = {"invitee": "user-" + args.username}
-    org_invite_args["level"] = args.level
-    if "set_bill_to" in args and args.set_bill_to is True:
-        # /org-x/invite is called in conjunction with /user/new.
-        org_invite_args["createProjectsAndApps"] = True
-    else:
-        org_invite_args["createProjectsAndApps"] = args.allow_billable_activities
-    org_invite_args["appAccess"] = args.app_access
-    org_invite_args["projectAccess"] = args.project_access
-    org_invite_args["suppressEmailNotification"] = args.no_email
-    return org_invite_args
-
-
 def new_user(args):
     _validate_new_user_input(args)
 
@@ -1304,7 +1284,7 @@ def new_user(args):
 
     if args.org is not None:
         # Invite new user to org.
-        dxpy.api.org_invite(args.org, _get_org_invite_args(args))
+        dxpy.api.org_invite(args.org, get_org_invite_args(args))
 
     if args.brief:
         print("user-" + args.username)
@@ -2420,73 +2400,6 @@ def remove_developers(args):
         dxpy.api.app_remove_developers(app_desc['id'], input_params={"developers": args.developers})
     except:
         err_exit()
-
-
-def add_membership(args):
-    try:
-        dxpy.api.org_get_member_access(args.org_id,
-                                       {"user": "user-" + args.username})
-    except:
-        pass
-    else:
-        raise DXCLIError("Cannot add a user who is already a member of the org")
-
-    dxpy.api.org_invite(args.org_id, _get_org_invite_args(args))
-
-    if args.brief:
-        print("org-" + args.org_id)
-    else:
-        print(fill("Invited user-{u} to {o}".format(u=args.username,
-                                                    o=args.org_id)))
-
-
-def _get_org_remove_member_args(args):
-    remove_member_args = {
-        "user": "user-" + args.username,
-        "revokeProjectPermissions": args.revoke_project_permissions,
-        "revokeAppPermissions": args.revoke_app_permissions}
-    return remove_member_args
-
-
-def remove_membership(args):
-    # Will throw ResourceNotFound of the specified user is not currently a
-    # member of the org.
-    dxpy.api.org_get_member_access(args.org_id,
-                                   {"user": "user-" + args.username})
-
-    result = dxpy.api.org_remove_member(args.org_id,
-                                        _get_org_remove_member_args(args))
-    if args.brief:
-        print(result["id"])
-    else:
-        print(fill("Removed user-{u} from {o}".format(u=args.username,
-                                                      o=args.org_id)))
-
-
-def _get_org_set_member_access_args(args):
-    user_id = "user-" + args.username
-    org_set_member_access_input = {user_id: {"level": args.level}}
-    if args.allow_billable_activities is not None:
-        org_set_member_access_input[user_id]["createProjectsAndApps"] = (True if args.allow_billable_activities == "true" else False)
-    if args.app_access is not None:
-        org_set_member_access_input[user_id]["appAccess"] = (True if args.app_access == "true" else False)
-    if args.project_access is not None:
-        org_set_member_access_input[user_id]["projectAccess"] = args.project_access
-    return org_set_member_access_input
-
-
-def update_membership(args):
-    # Will throw ResourceNotFound of the specified user is not currently a
-    # member of the org.
-    dxpy.api.org_get_member_access(args.org_id,
-                                   {"user": "user-" + args.username})
-    result = dxpy.api.org_set_member_access(args.org_id,
-                                            _get_org_set_member_access_args(args))
-    if args.brief:
-        print(result["id"])
-    else:
-        print(fill("Updated membership of user-{u} in {o}".format(
-            u=args.username, o=args.org_id)))
 
 
 def install(args):
