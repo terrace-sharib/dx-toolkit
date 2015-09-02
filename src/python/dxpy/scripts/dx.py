@@ -3763,7 +3763,7 @@ parser_add_member.add_argument("-u", "--username", required=True, help="Username
 parser_add_member.add_argument("--level", required=True, choices=["ADMIN", "MEMBER"], help="Org membership level that will be granted to the specified user")
 parser_add_member.add_argument("--allow-billable-activities", default=False, action="store_true", help='Grant the specified user "createProjectsAndApps" in the org')
 parser_add_member.add_argument("--no-app-access", default=True, action="store_false", dest="app_access", help='Disable "appAccess" for the specified user in the org')
-parser_add_member.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], default="CONTRIBUTE", help='The "projectAccess" to grant the specified user in the org; default CONTRIBUTE')
+parser_add_member.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], default="CONTRIBUTE", help='The default "projectAccess" to grant the specified user in the org; default CONTRIBUTE')
 parser_add_member.add_argument("--no-email", default=False, action="store_true", help="Disable org invitation email notification to the specified user")
 parser_add_member.set_defaults(func=add_membership)
 register_subparser(parser_add_member, subparsers_action=subparsers_add, categories="other")
