@@ -3573,7 +3573,7 @@ class TestDXClientMembership(DXTestCase):
         super(TestDXClientMembership, self).tearDown()
 
     def test_add_membership_default(self):
-        cmd = "dx add membership {o} -u {u} --level {l}"
+        cmd = "dx add member {o} -u {u} --level {l}"
         username = self._new_user()
         user_id = "user-" + username
 
@@ -3593,7 +3593,7 @@ class TestDXClientMembership(DXTestCase):
         self.assertEqual(membership, exp_membership)
 
     def test_add_membership_with_options(self):
-        cmd = "dx add membership {o} -u {u} --level {l}"
+        cmd = "dx add member {o} -u {u} --level {l}"
         username = self._new_user()
         user_id = "user-" + username
 
@@ -3615,7 +3615,7 @@ class TestDXClientMembership(DXTestCase):
         self.assertEqual(membership, exp_membership)
 
     def test_add_membership_negative(self):
-        cmd = "dx add membership"
+        cmd = "dx add member"
 
         called_process_error_opts = [
             "",
@@ -3645,14 +3645,14 @@ class TestDXClientMembership(DXTestCase):
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
-        run("dx remove membership {o} -u {u}".format(o=self.org_id,
+        run("dx remove member {o} -u {u}".format(o=self.org_id,
                                                      u=username))
 
         with self.assertRaisesRegexp(DXAPIError, "404"):
             self._org_get_member_access(user_id)
 
     def test_remove_membership_negative(self):
-        cmd = "dx remove membership"
+        cmd = "dx remove member"
         username = self._new_user()
 
         # Cannot remove a user who is not currently a member of the org.
@@ -3678,7 +3678,7 @@ class TestDXClientMembership(DXTestCase):
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
-        run("dx update membership {o} -u {u} --level MEMBER --allow-billable-activities false --project-access VIEW --app-access true".format(
+        run("dx update member {o} -u {u} --level MEMBER --allow-billable-activities false --project-access VIEW --app-access true".format(
             o=self.org_id, u=username))
         exp_membership = {"user": user_id, "level": "MEMBER",
                           "createProjectsAndApps": False,
@@ -3687,7 +3687,7 @@ class TestDXClientMembership(DXTestCase):
         self.assertEqual(membership, exp_membership)
 
     def test_update_membership_negative(self):
-        cmd = "dx update membership"
+        cmd = "dx update member"
         username = self._new_user()
 
         # Cannot update the membership of a user who is not currently a member
@@ -3711,7 +3711,7 @@ class TestDXClientMembership(DXTestCase):
         username = self._new_user()
         user_id = "user-" + username
 
-        cmd = "dx add membership {o} -u {u} --level {l} --project-access UPLOAD"
+        cmd = "dx add member {o} -u {u} --level {l} --project-access UPLOAD"
         run(cmd.format(o=self.org_id, u=username, l="MEMBER"))
         exp_membership = {"user": user_id, "level": "MEMBER",
                           "createProjectsAndApps": False,
@@ -3720,7 +3720,7 @@ class TestDXClientMembership(DXTestCase):
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
-        cmd = "dx update membership {o} -u {u} --level MEMBER --allow-billable-activities true"
+        cmd = "dx update member {o} -u {u} --level MEMBER --allow-billable-activities true"
         run(cmd.format(o=self.org_id, u=username))
         exp_membership = {"user": user_id, "level": "MEMBER",
                           "createProjectsAndApps": True,
@@ -3729,13 +3729,13 @@ class TestDXClientMembership(DXTestCase):
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
-        cmd = "dx update membership {o} -u {u} --level ADMIN"
+        cmd = "dx update member {o} -u {u} --level ADMIN"
         run(cmd.format(o=self.org_id, u=username))
         exp_membership = {"user": user_id, "level": "ADMIN"}
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
-        cmd = "dx update membership {o} -u {u} --level MEMBER --allow-billable-activities true --project-access CONTRIBUTE --app-access false"
+        cmd = "dx update member {o} -u {u} --level MEMBER --allow-billable-activities true --project-access CONTRIBUTE --app-access false"
         run(cmd.format(o=self.org_id, u=username))
         exp_membership = {"user": user_id, "level": "MEMBER",
                           "createProjectsAndApps": True,
@@ -3744,7 +3744,7 @@ class TestDXClientMembership(DXTestCase):
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
-        cmd = "dx remove membership {o} -u {u}"
+        cmd = "dx remove member {o} -u {u}"
         run(cmd.format(o=self.org_id, u=username))
 
         with self.assertRaisesRegexp(DXAPIError, "404"):
