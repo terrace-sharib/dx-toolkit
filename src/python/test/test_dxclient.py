@@ -1033,7 +1033,7 @@ class TestDXClientUploadDownload(DXTestCase):
             file2_id = gen_file(file2_name, data2, proj2_id).get_id()
 
             # set output file to verify api call is called with correct project
-            os.environ['DX_DEBUG_STR'] = tempFileFd.name
+            os.environ['DX_DEBUG_FILE'] = tempFileFd.name
 
             # Success: project specified by ID contains file specifed by ID
             buf = run("dx download -o - {p}:{f}".format(p=proj2_id, f=file2_id), env=os.environ)
@@ -1059,8 +1059,8 @@ class TestDXClientUploadDownload(DXTestCase):
             with self.assertSubprocessFailure(stderr_regexp="ResolutionError: Found multiple projects", exit_code=3):
                 run("dx download -f --no-progress {p}:{f}".format(p=proj2_name, f=file2_id), env=os.environ)
 
-    # @unittest.skipUnless(testutil.TEST_ENV,
-    #                      'skipping test that would clobber your local environment')
+    @unittest.skipUnless(testutil.TEST_ENV,
+                         'skipping test that would clobber your local environment')
     def test_dx_download_project_context(self):
         def gen_file(fname, data, proj_id):
             dxfile = dxpy.upload_string(data, name=fname, project=proj_id, wait_on_close=True)
@@ -1094,14 +1094,13 @@ class TestDXClientUploadDownload(DXTestCase):
             dxpy.config.save()
 
             # set output file to verify api call is called with correct project
-            os.environ['DX_DEBUG_STR'] = tempFileFd.name
+            os.environ['DX_DEBUG_FILE'] = tempFileFd.name
 
             # Success: project from context contains file specifed by ID
             buf = run("dx download -o - {f}".format(f=file1_id), env=os.environ)
             self.assertEqual(buf, data1)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj1_id)
 
             # Success: project from context contains file specifed by name
@@ -1109,7 +1108,6 @@ class TestDXClientUploadDownload(DXTestCase):
             self.assertEqual(buf, data1)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj1_id)
 
             # Success: project specified by context does not contains file specifed by ID
@@ -1117,7 +1115,6 @@ class TestDXClientUploadDownload(DXTestCase):
             self.assertEqual(buf, data2)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, "")
 
             # Failure: project specified by context does not contains file specifed by name
@@ -1130,21 +1127,18 @@ class TestDXClientUploadDownload(DXTestCase):
             run("dx download -f --no-progress {f}".format(f=file1_id), env=os.environ)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj1_id)
 
             # Success: project from context contains file specifed by name
             run("dx download -f --no-progress {f}".format(f=file1_name), env=os.environ)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj1_id)
 
             # Success: project specified by context does not contains file specifed by ID
             buf = run("dx download -f --no-progress {f}".format(f=file2_id), env=os.environ)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, "")
 
             # Failure: project specified by context does not contains file specifed by name
@@ -1156,8 +1150,7 @@ class TestDXClientUploadDownload(DXTestCase):
             dxpy.config.save()
             self.assertNotIn('DX_PROJECT_CONTEXT_ID', run('dx env --bash'))
 
-    def test_dx_download_explicit_project(self):
-
+    def test_dx_download_project_explicit(self):
         def gen_file(fname, data, proj_id):
             dxfile = dxpy.upload_string(data, name=fname, project=proj_id, wait_on_close=True)
             return dxfile
@@ -1181,7 +1174,7 @@ class TestDXClientUploadDownload(DXTestCase):
             file2_id = gen_file(file2_name, data2, proj2_id).get_id()
 
             # set output file to verify api call is called with correct project
-            os.environ['DX_DEBUG_STR'] = tempFileFd.name
+            os.environ['DX_DEBUG_FILE'] = tempFileFd.name
 
             # Explicit project provided
 
@@ -1190,7 +1183,6 @@ class TestDXClientUploadDownload(DXTestCase):
             self.assertEqual(buf, data2)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj2_id)
 
             # Success: project specified by ID contains file specifed by name
@@ -1198,7 +1190,6 @@ class TestDXClientUploadDownload(DXTestCase):
             self.assertEqual(buf, data1)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj1_id)
 
             # Success: project specified by name contains file specifed by ID
@@ -1206,7 +1197,6 @@ class TestDXClientUploadDownload(DXTestCase):
             self.assertEqual(buf, data2)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj2_id)
 
             # Success: project specified by name contains file specifed by name
@@ -1214,7 +1204,6 @@ class TestDXClientUploadDownload(DXTestCase):
             self.assertEqual(buf, data1)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj1_id)
 
             # Failure: project specified by ID does not contain file specifed by ID
@@ -1239,32 +1228,28 @@ class TestDXClientUploadDownload(DXTestCase):
             run("dx download -f --no-progress {p}:{f}".format(p=proj2_id, f=file2_id), env=os.environ)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj2_id)
 
             # Success: project specified by ID contains file specifed by name
             run("dx download -f --no-progress {p}:{f}".format(p=proj1_id, f=file1_name), env=os.environ)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj1_id)
 
             # Success: project specified by name contains file specifed by ID
             run("dx download -f --no-progress {p}:{f}".format(p=proj2_name, f=file2_name), env=os.environ)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj2_id)
 
             # Success: project specified by name contains file specifed by name
             run("dx download -f --no-progress {p}:{f}".format(p=proj1_name, f=file1_name))
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj1_id)
 
             # Failure: project specified by ID does not contain file specifed by ID
-            with self.assertSubprocessFailure(stderr_regexp="Error: project does not", exit_code=1):
+            with self.assertSubprocessFailure(stderr_regexp="Error: specified project does not", exit_code=1):
                 run("dx download -f --no-progress {p}:{f}".format(p=proj2_id, f=file1_id), env=os.environ)
 
             # Failure: project specified by ID does not contain file specifed by name
@@ -1272,7 +1257,7 @@ class TestDXClientUploadDownload(DXTestCase):
                 run("dx download -f --no-progress {p}:{f}".format(p=proj1_id, f=file2_name), env=os.environ)
 
             # Failure: project specified by name does not contain file specifed by ID
-            with self.assertSubprocessFailure(stderr_regexp="Error: project does not", exit_code=1):
+            with self.assertSubprocessFailure(stderr_regexp="Error: specified project does not", exit_code=1):
                 run("dx download -f --no-progress {p}:{f}".format(p=proj2_name, f=file1_id), env=os.environ)
 
             # Failure: project specified by name does not contain file specifed by name
@@ -5512,8 +5497,9 @@ class TestDXCp(DXTestCase):
 
         # Unset environment
         del dxpy.config['DX_PROJECT_CONTEXT_ID']
+        print(dxpy.__file__)
         dxpy.config.save()
-        self.assertNotIn('DX_PROJECT_CONTEXT_ID', run('dx env --bash'))
+        self.assertNotIn('DX_PROJECT_CONTEXT_ID', run('which dx; dx env --bash'))
 
         # Copy the file to a new project.
         # This does not currently work, because the context is not set.

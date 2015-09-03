@@ -105,7 +105,7 @@ public class DXRecordTest {
         // Setting the same field more than once is disallowed
         try {
             DXRecord.newRecord().setProject(p)
-                    .setProject(DXProject.getInstance("project-000000000000000000000001"));
+                    .setProject(DXProject.getInstance("project-000000000000000000000000"));
             Assert.fail("Expected double setting of setProject to fail");
         } catch (IllegalStateException e) {
             // Expected

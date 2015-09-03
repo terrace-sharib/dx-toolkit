@@ -25,8 +25,13 @@ import sys
 import collections
 import dxpy
 import dxpy.utils.printing as printing
-from ..utils.resolver import (resolve_existing_path, resolve_path,
-                              get_last_pos_of_char, get_first_pos_of_char)
+from ..utils.resolver import (resolve_existing_path,
+                              resolve_path,
+                              get_last_pos_of_char,
+                              get_first_pos_of_char,
+                              split_unescaped,
+                              is_project_explicit,
+                              is_file_in_project)
 from ..exceptions import (err_exit, DXCLIError, InvalidState)
 from . import (try_call, try_call_err_exit)
 from dxpy.utils.printing import (fill)
@@ -136,9 +141,11 @@ def download(args):
         if args.all or _is_glob(path):
             resolver_kwargs.update({'allow_mult': True, 'all_mult': True})
 
-        # Hackey logic to detect if project was explicitly provided
-        is_project_explicit = ":" in path and path.strip().split(":")[0] != ''
-        is_project_valid = False
+        # assume by default that project doesn't contain specified file
+        has_file_in_proj = False
+
+        # determine if user passed in project explicitly
+        has_proj_in_path = is_project_explicit(path)
 
         project, folderpath, matching_files = try_call(resolve_existing_path, path, **resolver_kwargs)
         if matching_files is None:
@@ -164,23 +171,24 @@ def download(args):
         if len(matching_files) == 0 and len(matching_folders) == 0:
             err_exit(fill('Error: {path} is neither a file nor a folder name'.format(path=path)))
 
-        for matched_file in matching_files:
-            # contains the requested file and is valid in this context.
-            describe = {'project': project}
-            resolver_kwargs = {}
-            desc = try_call(dxpy.DXHTTPRequest,
-                            '/' + matched_file['describe']['id'] + '/describe',
-                            describe,
-                            **resolver_kwargs)
+        # For each matching file returned by resolve_existing_path
+        # call 'dx describe' with the returned project as a hint.
+        #
+        # If the project in the hash returned by 'dx describe' fails
+        # to match the project provided in hint we know the project
+        # does not contain the specified file
+        #
+        has_file_in_proj = is_file_in_project(project, matching_files)
 
-            # hint given to dx describe matches result
-            if project == desc['project']:
-                is_project_valid = True
-                break
-
-        if is_project_explicit and not is_project_valid:
-            err_exit(fill('Error: project does not contain specified file object'))
-        if not is_project_explicit and not is_project_valid:
+        # If the user explicitly provided the project and it doesn't contain
+        # the file, don't allow the download.
+        #
+        # If the user did not explicitly provide the project, don't pass any
+        # project parameter to the API call but continue with download resolution
+        #
+        if has_proj_in_path and not has_file_in_proj:
+            err_exit(fill('Error: specified project does not contain specified file object'))
+        if not has_proj_in_path and not has_file_in_proj:
             project = None
 
         files_to_get[project].extend(matching_files)
