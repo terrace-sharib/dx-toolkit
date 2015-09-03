@@ -44,6 +44,8 @@ from ..cli.parsers import (no_color_arg, delim_arg, env_args, stdout_args, all_a
                            set_env_from_args, extra_args, process_extra_args, DXParserError, exec_input_args,
                            instance_type_arg, process_instance_type_arg)
 from ..cli.exec_io import (ExecutableInputs, format_choices_or_suggestions)
+from ..cli.org import (get_org_invite_args, add_membership, remove_membership,
+                       update_membership)
 from ..exceptions import (err_exit, DXError, DXCLIError, DXAPIError, network_exceptions, default_expected_exceptions,
                           format_exception)
 from ..utils import warn, group_array_by_field, normalize_timedelta, normalize_time_input
@@ -407,7 +409,7 @@ def logout(args):
         try:
             token_sig = hashlib.sha256(token).hexdigest()
             response = dxpy.DXHTTPRequest(authserver + "/system/destroyAuthToken",
-                                          dict(token_signature=token_sig),
+                                          dict(tokenSignature=token_sig),
                                           prepend_srv=False,
                                           max_retries=1)
             print("Deleted token with signature", token_sig)
@@ -939,8 +941,7 @@ def rmproject(args):
 
 # ONLY for within the SAME project.  Will exit fatally otherwise.
 def mv(args):
-    dest_proj, dest_path, _none = try_call(resolve_path,
-                                          args.destination, 'folder')
+    dest_proj, dest_path, _none = try_call(resolve_path, args.destination, expected='folder')
     try:
         if dest_path is None:
             raise ValueError()
@@ -1267,23 +1268,6 @@ def _get_user_new_args(args):
     return user_new_args
 
 
-def _get_org_invite_args(args):
-    """
-    PRECONDITION: `_validate_new_user_input()` has been called on `args`, and
-    `args.username` is a well-formed and valid username.
-    """
-    org_invite_args = {"invitee": "user-" + args.username}
-    org_invite_args["level"] = args.level
-    if args.set_bill_to is True:
-        org_invite_args["createProjectsAndApps"] = True
-    else:
-        org_invite_args["createProjectsAndApps"] = args.allow_billable_activities
-    org_invite_args["appAccess"] = args.app_access
-    org_invite_args["projectAccess"] = args.project_access
-    org_invite_args["suppressEmailNotification"] = args.no_email
-    return org_invite_args
-
-
 def new_user(args):
     _validate_new_user_input(args)
 
@@ -1300,7 +1284,7 @@ def new_user(args):
 
     if args.org is not None:
         # Invite new user to org.
-        dxpy.api.org_invite(args.org, _get_org_invite_args(args))
+        dxpy.api.org_invite(args.org, get_org_invite_args(args))
 
     if args.brief:
         print("user-" + args.username)
@@ -2199,7 +2183,7 @@ def find_data(args):
                                               args.project, 'project')
 
     if args.folder is not None and not args.folder.startswith('/'):
-        args.project, args.folder, _none = try_call(resolve_path, args.folder, 'folder')
+        args.project, args.folder, _none = try_call(resolve_path, args.folder, expected='folder')
 
     try:
         results = dxpy.find_data_objects(classname=args.classname,
@@ -2435,6 +2419,7 @@ def remove_developers(args):
         dxpy.api.app_remove_developers(app_desc['id'], input_params={"developers": args.developers})
     except:
         err_exit()
+
 
 def install(args):
     app_desc = try_call(resolve_app, args.app)
@@ -3037,58 +3022,62 @@ def watch(args):
 def ssh_config(args):
     user_id = try_call(dxpy.whoami)
 
-    dnanexus_conf_dir = dxpy.config.get_user_conf_dir()
-    if not os.path.exists(dnanexus_conf_dir):
-        msg = "The DNAnexus configuration directory {d} does not exist. Use {c} to create it."
-        err_exit(msg.format(d=dnanexus_conf_dir, c=BOLD("dx login")))
+    if args.revoke:
+        dxpy.api.user_update(user_id, {"sshPublicKey": None})
+        print(fill("SSH public key has been revoked"))
+    else:
+        dnanexus_conf_dir = dxpy.config.get_user_conf_dir()
+        if not os.path.exists(dnanexus_conf_dir):
+            msg = "The DNAnexus configuration directory {d} does not exist. Use {c} to create it."
+            err_exit(msg.format(d=dnanexus_conf_dir, c=BOLD("dx login")))
 
-    print(fill("Select an SSH key pair to use when connecting to DNAnexus jobs. The public key will be saved to your " +
-               "DNAnexus account (readable only by you). The private key will remain on this computer.") + "\n")
+        print(fill("Select an SSH key pair to use when connecting to DNAnexus jobs. The public key will be saved to your " +
+                   "DNAnexus account (readable only by you). The private key will remain on this computer.") + "\n")
 
-    key_dest = os.path.join(dnanexus_conf_dir, 'ssh_id')
-    pub_key_dest = key_dest + ".pub"
+        key_dest = os.path.join(dnanexus_conf_dir, 'ssh_id')
+        pub_key_dest = key_dest + ".pub"
 
-    if os.path.exists(os.path.realpath(key_dest)) and os.path.exists(os.path.realpath(pub_key_dest)):
-        print(BOLD("dx") + " is already configured to use the SSH key pair at:\n    {}\n    {}".format(key_dest,
-                                                                                                       pub_key_dest))
-        if pick(["Use this SSH key pair", "Select or create another SSH key pair..."]) == 1:
+        if os.path.exists(os.path.realpath(key_dest)) and os.path.exists(os.path.realpath(pub_key_dest)):
+            print(BOLD("dx") + " is already configured to use the SSH key pair at:\n    {}\n    {}".format(key_dest,
+                                                                                                           pub_key_dest))
+            if pick(["Use this SSH key pair", "Select or create another SSH key pair..."]) == 1:
+                os.remove(key_dest)
+                os.remove(pub_key_dest)
+            else:
+                update_pub_key(user_id, pub_key_dest)
+                return
+        elif os.path.exists(key_dest) or os.path.exists(pub_key_dest):
             os.remove(key_dest)
             os.remove(pub_key_dest)
+
+        keys = [k for k in glob.glob(os.path.join(os.path.expanduser("~/.ssh"), "*.pub")) if os.path.exists(k[:-4])]
+
+        choices = ['Generate a new SSH key pair using ssh-keygen'] + keys + ['Select another SSH key pair...']
+        choice = pick(choices, default=0)
+
+        if choice == 0:
+            try:
+                subprocess.check_call(['ssh-keygen', '-f', key_dest] + args.ssh_keygen_args)
+            except subprocess.CalledProcessError:
+                err_exit("Unable to generate a new SSH key pair", expected_exceptions=(subprocess.CalledProcessError, ))
         else:
-            update_pub_key(user_id, pub_key_dest)
-            return
-    elif os.path.exists(key_dest) or os.path.exists(pub_key_dest):
-        os.remove(key_dest)
-        os.remove(pub_key_dest)
-
-    keys = [k for k in glob.glob(os.path.join(os.path.expanduser("~/.ssh"), "*.pub")) if os.path.exists(k[:-4])]
-
-    choices = ['Generate a new SSH key pair using ssh-keygen'] + keys + ['Select another SSH key pair...']
-    choice = pick(choices, default=0)
-
-    if choice == 0:
-        try:
-            subprocess.check_call(['ssh-keygen', '-f', key_dest] + args.ssh_keygen_args)
-        except subprocess.CalledProcessError:
-            err_exit("Unable to generate a new SSH key pair", expected_exceptions=(subprocess.CalledProcessError, ))
-    else:
-        if choice == len(choices) - 1:
-            key_src = input('Enter the location of your SSH key: ')
-            pub_key_src = key_src + ".pub"
-            if os.path.exists(key_src) and os.path.exists(pub_key_src):
-                print("Using {} and {} as the key pair".format(key_src, pub_key_src))
-            elif key_src.endswith(".pub") and os.path.exists(key_src[:-4]) and os.path.exists(key_src):
-                key_src, pub_key_src = key_src[:-4], key_src
-                print("Using {} and {} as the key pair".format(key_src, pub_key_src))
+            if choice == len(choices) - 1:
+                key_src = input('Enter the location of your SSH key: ')
+                pub_key_src = key_src + ".pub"
+                if os.path.exists(key_src) and os.path.exists(pub_key_src):
+                    print("Using {} and {} as the key pair".format(key_src, pub_key_src))
+                elif key_src.endswith(".pub") and os.path.exists(key_src[:-4]) and os.path.exists(key_src):
+                    key_src, pub_key_src = key_src[:-4], key_src
+                    print("Using {} and {} as the key pair".format(key_src, pub_key_src))
+                else:
+                    err_exit("Unable to find {k} and {k}.pub".format(k=key_src))
             else:
-                err_exit("Unable to find {k} and {k}.pub".format(k=key_src))
-        else:
-            key_src, pub_key_src = choices[choice][:-4], choices[choice]
+                key_src, pub_key_src = choices[choice][:-4], choices[choice]
 
-        os.symlink(key_src, key_dest)
-        os.symlink(pub_key_src, pub_key_dest)
+            os.symlink(key_src, key_dest)
+            os.symlink(pub_key_src, pub_key_dest)
 
-    update_pub_key(user_id, pub_key_dest)
+        update_pub_key(user_id, pub_key_dest)
 
 def update_pub_key(user_id, pub_key_file):
     with open(pub_key_file) as fh:
@@ -3366,19 +3355,27 @@ class DXArgumentParser(argparse.ArgumentParser):
                                                              msg=message))
 
 def register_subparser(subparser, subparsers_action=None, categories=('other', )):
+    name = re.sub('^dx ', '', subparser.prog)
     if subparsers_action is None:
         subparsers_action = subparsers
     if isinstance(categories, basestring):
         categories = (categories, )
     if subparsers_action == subparsers:
-        name = subparsers_action._choices_actions[-1].dest
+        subparsers_action_name = subparsers_action._choices_actions[-1].dest
     else:
-        name = subparsers._choices_actions[-1].dest + ' ' + subparsers_action._choices_actions[-1].dest
-    _help = subparsers_action._choices_actions[-1].help
+        subparsers_action_name = subparsers._choices_actions[-1].dest + ' ' + subparsers_action._choices_actions[-1].dest
+
     parser_map[name] = subparser
-    parser_categories['all']['cmds'].append((name, _help))
-    for category in categories:
-        parser_categories[category]['cmds'].append((name, _help))
+    # Some subparsers may not have help associated with them.  Those that lack
+    # help, will not have an item in the _choices_actions list.  So, to determine
+    # if the present subparser has a help, we'll get the name for this subparser,
+    # compare it to the name in the last _choices_actions list, and only if
+    # they match can we be confident that it has a help.
+    if subparsers_action_name == name:
+        _help = subparsers_action._choices_actions[-1].help
+        parser_categories['all']['cmds'].append((name, _help))
+        for category in categories:
+            parser_categories[category]['cmds'].append((name, _help))
 
 
 parser = DXArgumentParser(description=DNANEXUS_LOGO() + ' Command-Line Client, API v%s, client v%s' % (dxpy.API_VERSION, dxpy.TOOLKIT_VERSION) + '\n\n' + fill('dx is a command-line client for interacting with the DNAnexus platform.  You can log in, navigate, upload, organize and share your data, launch analyses, and more.  For a quick tour of what the tool can do, see') + '\n\n  https://wiki.dnanexus.com/Command-Line-Client/Quickstart\n\n' + fill('For a breakdown of dx commands by category, run "dx help".') + '\n\n' + fill('dx exits with exit code 3 if invalid input is provided or an invalid operation is requested, and exit code 1 if an internal error is encountered.  The latter usually indicate bugs in dx; please report them at') + "\n\n  https://github.com/dnanexus/dx-toolkit/issues",
@@ -3663,7 +3660,8 @@ parser_download.set_defaults(func=download_or_cat)
 register_subparser(parser_download, categories='data')
 
 parser_make_download_url = subparsers.add_parser('make_download_url', help='Create a file download link for sharing',
-                                                 description='Creates a pre-authenticated link that can be used to download a file without logging in.')
+                                                 description='Creates a pre-authenticated link that can be used to download a file without logging in.',
+                                                 prog='dx make_download_url')
 path_action = parser_make_download_url.add_argument('path', help='Data object ID or name to access')
 path_action.completer = DXPathCompleter(classes=['file'])
 parser_make_download_url.add_argument('--duration', help='Time for which the URL will remain valid (in seconds, or use suffix s, m, h, d, w, M, y). Default: 1 day')
@@ -3782,6 +3780,17 @@ add_stage_folder_args.add_argument('--relative-output-folder', help='A relative 
 parser_add_stage.set_defaults(func=workflow_cli.add_stage)
 register_subparser(parser_add_stage, subparsers_action=subparsers_add, categories='workflow')
 
+parser_add_member = subparsers_add.add_parser("member", help="Grant a user membership to an org", description="Grant a user membership to an org", prog="dx add member", parents=[stdout_args, env_args])
+parser_add_member.add_argument("org_id", help="ID of the org")
+parser_add_member.add_argument("username", help="Username")
+parser_add_member.add_argument("--level", required=True, choices=["ADMIN", "MEMBER"], help="Org membership level that will be granted to the specified user")
+parser_add_member.add_argument("--allow-billable-activities", default=False, action="store_true", help='Grant the specified user "createProjectsAndApps" in the org')
+parser_add_member.add_argument("--no-app-access", default=True, action="store_false", dest="app_access", help='Disable "appAccess" for the specified user in the org')
+parser_add_member.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], default="CONTRIBUTE", help='The default implicit maximum permission the specified user will receive to projects explicitly shared with the org; default CONTRIBUTE')
+parser_add_member.add_argument("--no-email", default=False, action="store_true", help="Disable org invitation email notification to the specified user")
+parser_add_member.set_defaults(func=add_membership)
+register_subparser(parser_add_member, subparsers_action=subparsers_add, categories="other")
+
 parser_list = subparsers.add_parser('list', help='Print the members of a list',
                                    description='Use this command with one of the availabile subcommands to perform various actions such as printing the list of developers or authorized users of an app.',
                                    prog='dx list')
@@ -3846,6 +3855,14 @@ parser_remove_stage.add_argument('stage', help='Stage (index or ID) of the workf
 parser_remove_stage.set_defaults(func=workflow_cli.remove_stage)
 register_subparser(parser_remove_stage, subparsers_action=subparsers_remove, categories='workflow')
 
+parser_remove_member = subparsers_remove.add_parser("member", help="Revoke the org membership of a user", description="Revoke the org membership of a user", prog="dx remove member", parents=[stdout_args, env_args])
+parser_remove_member.add_argument("org_id", help="ID of the org")
+parser_remove_member.add_argument("username", help="Username")
+parser_remove_member.add_argument("--keep-explicit-project-permissions", default=True, action="store_false", dest="revoke_project_permissions", help="Disable revocation of explicit project permissions of the specified user to projects billed to the org; implicit project permissions (i.e. those granted to the specified user via his membership in this org) will always be revoked")
+parser_remove_member.add_argument("--keep-explicit-app-permissions", default=True, action="store_false", dest="revoke_app_permissions", help="Disable revocation of explicit app developer and user permissions of the specified user to apps billed to the org; implicit app permissions (i.e. those granted to the specified user via his membership in this org) will always be revoked")
+parser_remove_member.set_defaults(func=remove_membership)
+register_subparser(parser_remove_member, subparsers_action=subparsers_remove, categories="other")
+
 parser_update = subparsers.add_parser('update', help='Update certain types of metadata',
                                       description='''
 Use this command with one of the available targets listed below to update
@@ -3894,6 +3911,16 @@ update_stage_folder_args.add_argument('--output-folder', help='Path to the outpu
 update_stage_folder_args.add_argument('--relative-output-folder', help='A relative folder path for the stage (interpreted as relative to the workflow\'s output folder)')
 parser_update_stage.set_defaults(func=workflow_cli.update_stage)
 register_subparser(parser_update_stage, subparsers_action=subparsers_update, categories='workflow')
+
+parser_update_member = subparsers_update.add_parser("member", help="Update the membership of a user in an org", description="Update the membership of a user in an org", prog="dx update member", parents=[stdout_args, env_args])
+parser_update_member.add_argument("org_id", help="ID of the org")
+parser_update_member.add_argument("username", help="Username")
+parser_update_member.add_argument("--level", required=True, choices=["ADMIN", "MEMBER"], help="The new org membership level of the specified user")
+parser_update_member.add_argument("--allow-billable-activities", choices=["true", "false"], help='The new "createProjectsAndApps" membership permission of the specified user in the org')
+parser_update_member.add_argument("--app-access", choices=["true", "false"], help='The new "appAccess" membership permission of the specified user in the org')
+parser_update_member.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], help='The new default implicit maximum permission the specified user will receive to projects explicitly shared with the org')
+parser_update_member.set_defaults(func=update_membership)
+register_subparser(parser_update_member, subparsers_action=subparsers_update, categories="other")
 
 parser_install = subparsers.add_parser('install', help='Install an app',
                                        description='Install an app by name.  To see a list of apps you can install, hit <TAB> twice after "dx install" or run "' + BOLD('dx find apps') + '" to see a list of available apps.', prog='dx install',
@@ -4029,6 +4056,7 @@ parser_ssh_config = subparsers.add_parser('ssh_config', help='Configure SSH keys
                                    parents=[env_args])
 parser_ssh_config.add_argument('ssh_keygen_args', help='Command-line arguments to pass to ssh-keygen',
                                nargs=argparse.REMAINDER)
+parser_ssh_config.add_argument('--revoke', help='Revoke SSH public key associated with your DNAnexus account; you will no longer be able to SSH into any jobs.', action='store_true')
 parser_ssh_config.set_defaults(func=ssh_config)
 register_subparser(parser_ssh_config, categories='exec')
 
@@ -4415,7 +4443,8 @@ parser_api.set_defaults(func=api)
 register_subparser(parser_api)
 
 parser_upgrade = subparsers.add_parser('upgrade', help='Upgrade dx-toolkit (the DNAnexus SDK and this program)',
-                                       description='Upgrades dx-toolkit (the DNAnexus SDK and this program) to the latest recommended version, or to a specified version and platform.')
+                                       description='Upgrades dx-toolkit (the DNAnexus SDK and this program) to the latest recommended version, or to a specified version and platform.',
+                                       prog='dx upgrade')
 parser_upgrade.add_argument('args', nargs='*')
 parser_upgrade.set_defaults(func=upgrade)
 register_subparser(parser_upgrade)

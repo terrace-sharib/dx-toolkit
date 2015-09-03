@@ -18,7 +18,6 @@
 This module handles download commands for the dx command-line client.
 '''
 from __future__ import (print_function, unicode_literals)
-import pprint
 
 import os
 import sys
@@ -34,6 +33,7 @@ from ..utils.resolver import (resolve_existing_path,
                               is_file_in_project)
 from ..exceptions import (err_exit, DXCLIError, InvalidState)
 from . import (try_call, try_call_err_exit)
+from ..utils.resolver import (resolve_existing_path, get_first_pos_of_char)
 from dxpy.utils.printing import (fill)
 from dxpy.utils import pathmatch
 

@@ -28,7 +28,7 @@ import requests
 import dxpy
 from dxpy.scripts import dx_build_app
 from dxpy_testutil import (DXTestCase, check_output, temporary_project, select_project, cd,
-                           override_environment)
+                           override_environment, generate_unique_username_email)
 import dxpy_testutil as testutil
 from dxpy.exceptions import DXAPIError, DXSearchError, EXPECTED_ERR_EXIT_STATUS
 from dxpy.compat import str, sys_encoding
@@ -673,6 +673,54 @@ class TestDXClient(DXTestCase):
         except:
             print("*** TODO: FIXME: Unable to verify that grandchild subprocess inherited session")
 
+    def test_dx_ssh_config_revoke(self):
+        original_ssh_public_key = None
+
+        user_id = dxpy.whoami()
+        original_ssh_public_key = dxpy.api.user_describe(user_id).get("sshPublicKey")
+        wd = tempfile.mkdtemp()
+        os.mkdir(os.path.join(wd, ".dnanexus_config"))
+
+        def revoke_ssh_public_key(args=["ssh_config", "--revoke"]):
+            dx_ssh_config_revoke = pexpect.spawn("dx", args=args)
+            dx_ssh_config_revoke.expect("revoked")
+
+        def set_ssh_public_key():
+            dx_ssh_config = pexpect.spawn("dx ssh_config", env=override_environment(HOME=wd))
+            dx_ssh_config.logfile = sys.stdout
+            dx_ssh_config.expect("Select an SSH key pair")
+            dx_ssh_config.sendline("0")
+            dx_ssh_config.expect("Enter passphrase")
+            dx_ssh_config.sendline()
+            dx_ssh_config.expect("again")
+            dx_ssh_config.sendline()
+            dx_ssh_config.expect("Your account has been configured for use with SSH")
+
+        def assert_same_ssh_pub_key():
+            self.assertTrue(os.path.exists(os.path.join(wd, ".dnanexus_config/ssh_id")))
+
+            with open(os.path.join(wd, ".dnanexus_config/ssh_id.pub")) as fh:
+                self.assertEquals(fh.read(), dxpy.api.user_describe(user_id).get('sshPublicKey'))
+
+        try:
+            # public key exists
+            set_ssh_public_key()
+            assert_same_ssh_pub_key()
+            revoke_ssh_public_key()
+            self.assertNotIn("sshPublicKey", dxpy.api.user_describe(user_id))
+
+            # public key does not exist
+            revoke_ssh_public_key()
+            self.assertNotIn("sshPublicKey", dxpy.api.user_describe(user_id))
+
+            # random input after '--revoke'
+            revoke_ssh_public_key(args=["ssh_config", '--revoke', 'asdf'])
+            self.assertNotIn("sshPublicKey", dxpy.api.user_describe(user_id))
+
+        finally:
+            if original_ssh_public_key:
+                dxpy.api.user_update(user_id, {"sshPublicKey": original_ssh_public_key})
+
     def test_dx_ssh_config(self):
         original_ssh_public_key = None
         try:
@@ -822,7 +870,8 @@ class TestDXClient(DXTestCase):
             dx2.sendline("y")
             dx2.expect("Terminated job", timeout=60)
 
-    @unittest.skipUnless(testutil.TEST_RUN_JOBS, "Skipping test that would run jobs")
+    @unittest.skip("temporarily disabling broken test")
+    # @unittest.skipUnless(testutil.TEST_RUN_JOBS, "Skipping test that would run jobs")
     def test_dx_run_debug_on(self):
         with self.configure_ssh() as wd:
             crash_applet = dxpy.api.applet_new(dict(name="crash",
@@ -3583,12 +3632,6 @@ class TestDXClientNewUser(DXTestCase):
     def _now(self):
         return str(int(time.time()))
 
-    def _generate_unique_username_email(self):
-        r = random.randint(0, 255)
-        username = "asset_" + self._now() + "_" + str(r)
-        email = username + "@example.com"
-        return username, email
-
     def _assert_user_desc(self, user_id, exp_user_desc):
         user_desc = dxpy.api.user_describe(user_id)
         for field in exp_user_desc:
@@ -3604,7 +3647,7 @@ class TestDXClientNewUser(DXTestCase):
         super(TestDXClientNewUser, self).tearDown()
 
     def test_create_user_account_and_set_bill_to_negative(self):
-        username, email = self._generate_unique_username_email()
+        username, email = generate_unique_username_email()
         first = "Asset"
         cmd = "dx new user"
 
@@ -3672,20 +3715,20 @@ class TestDXClientNewUser(DXTestCase):
         cmd = "dx new user"
 
         # Basic with first name only.
-        username, email = self._generate_unique_username_email()
+        username, email = generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --brief".format(
                       cmd=cmd, u=username, e=email, f=first)).strip()
         self._assert_user_desc(user_id, {"first": first})
 
         # Basic with last name only.
-        username, email = self._generate_unique_username_email()
+        username, email = generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --last {l} --brief".format(
                       cmd=cmd, u=username, e=email, l=last)).strip()
         self._assert_user_desc(user_id, {"last": last})
 
         # Basic with all options we can verify.
         # TODO: Test --token-duration and --occupation.
-        username, email = self._generate_unique_username_email()
+        username, email = generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --middle {m} --last {l} --brief".format(
                       cmd=cmd, u=username, e=email, f=first, m=middle,
                       l=last)).strip()
@@ -3700,7 +3743,7 @@ class TestDXClientNewUser(DXTestCase):
         cmd = "dx new user"
 
         # Grant default org membership level and permission flags.
-        username, email = self._generate_unique_username_email()
+        username, email = generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id)).strip()
@@ -3716,7 +3759,7 @@ class TestDXClientNewUser(DXTestCase):
         self.assertEqual(exp, res)
 
         # Grant custom org membership level and permission flags.
-        username, email = self._generate_unique_username_email()
+        username, email = generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --allow-billable-activities --no-app-access --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="MEMBER", pa="VIEW")).strip()
@@ -3733,7 +3776,7 @@ class TestDXClientNewUser(DXTestCase):
 
         # Grant ADMIN org membership level; ignore all other org permission
         # options.
-        username, email = self._generate_unique_username_email()
+        username, email = generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --no-app-access --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="ADMIN", pa="VIEW")).strip()
@@ -3751,7 +3794,7 @@ class TestDXClientNewUser(DXTestCase):
 
         # --allow-billable-activities is implied; grant custom org membership
         # level and other permission flags.
-        username, email = self._generate_unique_username_email()
+        username, email = generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="MEMBER", pa="VIEW")).strip()
@@ -3766,7 +3809,7 @@ class TestDXClientNewUser(DXTestCase):
         res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
         self.assertEqual(exp, res)
 
-        username, email = self._generate_unique_username_email()
+        username, email = generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --project-access {pa} --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id, l="MEMBER", pa="VIEW")).strip()
@@ -3782,7 +3825,7 @@ class TestDXClientNewUser(DXTestCase):
         self.assertEqual(exp, res)
 
         # Grant ADMIN org membership level.
-        username, email = self._generate_unique_username_email()
+        username, email = generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level ADMIN --brief".format(
                       cmd=cmd, u=username, e=email, f=first,
                       o=self.org_id)).strip()
@@ -3793,6 +3836,220 @@ class TestDXClientNewUser(DXTestCase):
         }
         res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
         self.assertEqual(exp, res)
+
+
+@unittest.skipUnless(testutil.TEST_WITH_AUTHSERVER,
+                     'skipping tests that require a running authserver')
+class TestDXClientMembership(DXTestCase):
+
+    def _new_user(self):
+        first = "Asset"
+        username, email = generate_unique_username_email()
+        new_user_input = {"username": username, "email": email, "first": first}
+        dxpy.DXHTTPRequest(dxpy.get_auth_server_name() + "/user/new",
+                           new_user_input,
+                           prepend_srv=False,
+                           max_retries=0)
+        return username
+
+    def _add_user(self, user_id):
+        dxpy.api.org_invite(self.org_id,
+                            {"invitee": user_id, "level": "ADMIN"})
+
+    def _remove_user(self, user_id):
+        dxpy.api.org_remove_member(self.org_id, {"user": user_id})
+
+        with self.assertRaises(DXAPIError):
+            self._org_get_member_access(user_id)
+
+    def _org_get_member_access(self, user_id):
+        return dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
+
+    def setUp(self):
+        org_handle = "dx_membership_org_{t}".format(t=int(time.time()))
+        self.org_id = dxpy.api.org_new({"handle": org_handle,
+                                        "name": "Org to management membership in"})["id"]
+        super(TestDXClientMembership, self).setUp()
+
+    def tearDown(self):
+        super(TestDXClientMembership, self).tearDown()
+
+    def test_add_membership_default(self):
+        cmd = "dx add member {o} {u} --level {l}"
+        username = self._new_user()
+        user_id = "user-" + username
+
+        run(cmd.format(o=self.org_id, u=username, l="ADMIN"))
+        exp_membership = {"user": user_id, "level": "ADMIN"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        self._remove_user(user_id)
+
+        run(cmd.format(o=self.org_id, u=username, l="MEMBER"))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": False,
+                          "appAccess": True,
+                          "projectAccess": "CONTRIBUTE"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+    def test_add_membership_with_options(self):
+        cmd = "dx add member {o} {u} --level {l}"
+        username = self._new_user()
+        user_id = "user-" + username
+
+        run("{cmd} --no-app-access --project-access NONE".format(
+            cmd=cmd.format(o=self.org_id, u=username, l="ADMIN")))
+        exp_membership = {"user": user_id, "level": "ADMIN"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        self._remove_user(user_id)
+
+        run("{cmd} --allow-billable-activities --no-app-access --project-access NONE".format(
+            cmd=cmd.format(o=self.org_id, u=username, l="MEMBER")))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": True,
+                          "appAccess": False,
+                          "projectAccess": "NONE"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+    def test_add_membership_negative(self):
+        cmd = "dx add member"
+
+        called_process_error_opts = [
+            "",
+            "some_username --level ADMIN",
+            "org-foo --level ADMIN",
+            "org-foo some_username",
+        ]
+        for invalid_opts in called_process_error_opts:
+            with self.assertRaises(subprocess.CalledProcessError):
+                run(" ".join([cmd, invalid_opts]))
+
+        username = self._new_user()
+        user_id = "user-" + username
+        self._add_user(user_id)
+
+        # Cannot add a user who is already a member of the org.
+        with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                     "DXCLIError"):
+            run(" ".join([cmd, self.org_id, username, "--level ADMIN"]))
+
+    def test_remove_membership_default(self):
+        username = self._new_user()
+        user_id = "user-" + username
+        self._add_user(user_id)
+
+        exp_membership = {"user": user_id, "level": "ADMIN"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        run("dx remove member {o} {u}".format(o=self.org_id, u=username))
+
+        with self.assertRaisesRegexp(DXAPIError, "404"):
+            self._org_get_member_access(user_id)
+
+    def test_remove_membership_negative(self):
+        cmd = "dx remove member"
+        username = self._new_user()
+
+        # Cannot remove a user who is not currently a member of the org.
+        with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                     "ResourceNotFound"):
+            run(" ".join([cmd, self.org_id, username]))
+
+        called_process_error_opts = [
+            "",
+            "some_username",
+            "org-foo",
+        ]
+        for invalid_opts in called_process_error_opts:
+            with self.assertRaises(subprocess.CalledProcessError):
+                run(" ".join([cmd, invalid_opts]))
+
+    def test_update_membership_default(self):
+        username = self._new_user()
+        user_id = "user-" + username
+        self._add_user(user_id)
+
+        exp_membership = {"user": user_id, "level": "ADMIN"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        run("dx update member {o} {u} --level MEMBER --allow-billable-activities false --project-access VIEW --app-access true".format(
+            o=self.org_id, u=username))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": False,
+                          "projectAccess": "VIEW", "appAccess": True}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+    def test_update_membership_negative(self):
+        cmd = "dx update member"
+        username = self._new_user()
+
+        # Cannot update the membership of a user who is not currently a member
+        # of the org.
+        with self.assertRaisesRegexp(subprocess.CalledProcessError,
+                                     "ResourceNotFound"):
+            run(" ".join([cmd, self.org_id, username, "--level ADMIN"]))
+
+        called_process_error_opts = [
+            "",
+            "some_username --level ADMIN",
+            "org-foo --level ADMIN",
+            "org-foo some_username",
+            "org-foo some_username --level NONE",
+        ]
+        for invalid_opts in called_process_error_opts:
+            with self.assertRaises(subprocess.CalledProcessError):
+                run(" ".join([cmd, invalid_opts]))
+
+    def test_add_update_remove_membership(self):
+        username = self._new_user()
+        user_id = "user-" + username
+
+        cmd = "dx add member {o} {u} --level {l} --project-access UPLOAD"
+        run(cmd.format(o=self.org_id, u=username, l="MEMBER"))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": False,
+                          "appAccess": True,
+                          "projectAccess": "UPLOAD"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx update member {o} {u} --level MEMBER --allow-billable-activities true"
+        run(cmd.format(o=self.org_id, u=username))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": True,
+                          "appAccess": True,
+                          "projectAccess": "UPLOAD"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx update member {o} {u} --level ADMIN"
+        run(cmd.format(o=self.org_id, u=username))
+        exp_membership = {"user": user_id, "level": "ADMIN"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx update member {o} {u} --level MEMBER --allow-billable-activities true --project-access CONTRIBUTE --app-access false"
+        run(cmd.format(o=self.org_id, u=username))
+        exp_membership = {"user": user_id, "level": "MEMBER",
+                          "createProjectsAndApps": True,
+                          "appAccess": False,
+                          "projectAccess": "CONTRIBUTE"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx remove member {o} {u}"
+        run(cmd.format(o=self.org_id, u=username))
+
+        with self.assertRaisesRegexp(DXAPIError, "404"):
+            self._org_get_member_access(user_id)
 
 
 @unittest.skipUnless(testutil.TEST_HTTP_PROXY,

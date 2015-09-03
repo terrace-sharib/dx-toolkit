@@ -28,6 +28,7 @@ import dxpy
 import dxpy_testutil as testutil
 from dxpy.exceptions import DXAPIError, DXFileError, DXError, DXJobFailureError, ServiceUnavailable, InvalidInput
 from dxpy.utils import pretty_print, warn
+from dxpy.utils.resolver import resolve_path, resolve_existing_path, ResolutionError
 
 def get_objects_from_listf(listf):
     objects = []
@@ -2134,20 +2135,192 @@ class TestDataobjectFunctions(unittest.TestCase):
         self.assertEqual(handler._alias, "1.0.0")
 
 
-class TestResolver(unittest.TestCase):
+class TestResolver(testutil.DXTestCase):
     def setUp(self):
+        super(TestResolver, self).setUp()
         setUpTempProjects(self)
 
     def tearDown(self):
         tearDownTempProjects(self)
+        super(TestResolver, self).tearDown()
 
-    def test_basic_ops(self):
-        from dxpy.utils.resolver import resolve_existing_path, ResolutionError
+    def test_resolve_path(self):
+        dxpy.WORKSPACE_ID = self.project
+        temp_proj_name = 'resolve_path_' + str(time.time())
+        not_a_project_name = 'doesnt_exist_' + str(time.time())
+        dxpy.config['DX_CLI_WD'] = '/a'
+        with testutil.temporary_project(name=temp_proj_name) as p:
+            self.assertEqual(resolve_path(""),
+                             (self.project, "/a", None))
+            with self.assertRaises(ResolutionError):
+                resolve_path("", allow_empty_string=False)
+            self.assertEqual(resolve_path(":"),
+                             (self.project, "/", None))
+
+            self.assertEqual(resolve_path("project-012301230123012301230123"),
+                             ("project-012301230123012301230123", "/", None))
+            self.assertEqual(resolve_path("file-111111111111111111111111"),
+                             (self.project, None, "file-111111111111111111111111"))
+            # TODO: this shouldn't be treated as a data object ID
+            self.assertEqual(resolve_path("job-111111111111111111111111"),
+                             (self.project, None, "job-111111111111111111111111"))
+
+            with self.assertRaises(ResolutionError):
+                resolve_path("project-012301230123012301230123:foo:bar")
+            with self.assertRaises(ResolutionError):
+                resolve_path(not_a_project_name + ":")
+            with self.assertRaises(ResolutionError):
+                resolve_path(not_a_project_name + ":foo")
+
+            self.assertEqual(resolve_path(":foo"),
+                             (self.project, "/", "foo"))
+            self.assertEqual(resolve_path(":foo/bar"),
+                             (self.project, "/foo", "bar"))
+            self.assertEqual(resolve_path(":/foo/bar"),
+                             (self.project, "/foo", "bar"))
+
+            self.assertEqual(resolve_path(temp_proj_name + ":"),
+                             (p.get_id(), "/", None))
+            self.assertEqual(resolve_path(temp_proj_name + ":foo"),
+                             (p.get_id(), "/", "foo"))
+            self.assertEqual(resolve_path(temp_proj_name + ":foo/bar"),
+                             (p.get_id(), "/foo", "bar"))
+            self.assertEqual(resolve_path(temp_proj_name + ":/foo/bar"),
+                             (p.get_id(), "/foo", "bar"))
+            # WD is ignored in project-qualified paths, even if the
+            # project is the project context
+            self.assertEqual(resolve_path(self.project + ":foo/bar"),
+                             (self.project, "/foo", "bar"))
+
+            self.assertEqual(resolve_path("job-111122223333111122223333:foo"),
+                             ("job-111122223333111122223333", None, "foo"))
+
+            self.assertEqual(resolve_path("foo"),
+                             (self.project, "/a", "foo"))
+            self.assertEqual(resolve_path("foo/bar"),
+                             (self.project, "/a/foo", "bar"))
+            self.assertEqual(resolve_path("../foo"),
+                             (self.project, "/", "foo"))
+            self.assertEqual(resolve_path("../../foo"),
+                             (self.project, "/", "foo"))
+            self.assertEqual(resolve_path("*foo"),
+                             (self.project, "/a", "*foo"))
+            self.assertEqual(resolve_path("/foo"),
+                             (self.project, "/", "foo"))
+            self.assertEqual(resolve_path("/foo/bar"),
+                             (self.project, "/foo", "bar"))
+
+            self.assertEqual(resolve_path("project-012301230123012301230123:foo"),
+                             ("project-012301230123012301230123", "/", "foo"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:foo/bar"),
+                             ("project-012301230123012301230123", "/foo", "bar"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:/foo"),
+                             ("project-012301230123012301230123", "/", "foo"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:/foo/bar"),
+                             ("project-012301230123012301230123", "/foo", "bar"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:file-000011112222333344445555"),
+                             ("project-012301230123012301230123", "/", "file-000011112222333344445555"))
+
+            # JSON
+            self.assertEqual(resolve_path(json.dumps({"$dnanexus_link": "file-111111111111111111111111"})),
+                             (self.project, None, "file-111111111111111111111111"))
+            self.assertEqual(
+                resolve_path(json.dumps({"$dnanexus_link": {"project": "project-012301230123012301230123",
+                                                            "id": "file-111111111111111111111111"}})),
+                ("project-012301230123012301230123", "/", "file-111111111111111111111111")
+            )
+
+            # --- test some behavior when workspace is not set ---
+            dxpy.WORKSPACE_ID = None
+            with self.assertRaises(ResolutionError):
+                resolve_path("")
+            with self.assertRaises(ResolutionError):
+                resolve_path(":")
+            with self.assertRaises(ResolutionError):
+                resolve_path(":foo")
+            with self.assertRaises(ResolutionError):
+                resolve_path("foo", expected="folder")
+            self.assertEqual(resolve_path(temp_proj_name + ":"),
+                             (p.get_id(), "/", None))
+
+            # TODO: why does this happen if no project context is
+            # available? Shouldn't these just fail?
+            self.assertEqual(resolve_path("foo"),
+                             (None, "/a", "foo"))
+            self.assertEqual(resolve_path("../foo"),
+                             (None, "/", "foo"))
+            self.assertEqual(resolve_path("../../foo"),
+                             (None, "/", "foo"))
+            self.assertEqual(resolve_path("/foo/bar"),
+                             (None, "/foo", "bar"))
+
+            self.assertEqual(resolve_path("file-111111111111111111111111"),
+                             (None, None, "file-111111111111111111111111"))
+            # TODO: this shouldn't be treated as a data object ID; it
+            # should be treated just like "foo" above
+            self.assertEqual(resolve_path("job-111111111111111111111111"),
+                             (None, None, "job-111111111111111111111111"))
+
+            self.assertEqual(resolve_path(temp_proj_name + ":"),
+                             (p.get_id(), "/", None))
+            self.assertEqual(resolve_path(temp_proj_name + ":foo"),
+                             (p.get_id(), "/", "foo"))
+            self.assertEqual(resolve_path(temp_proj_name + ":foo/bar"),
+                             (p.get_id(), "/foo", "bar"))
+
+            self.assertEqual(resolve_path("project-012301230123012301230123"),
+                             ("project-012301230123012301230123", "/", None))
+            self.assertEqual(resolve_path("project-012301230123012301230123:foo"),
+                             ("project-012301230123012301230123", "/", "foo"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:foo/bar"),
+                             ("project-012301230123012301230123", "/foo", "bar"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:file-000011112222333344445555"),
+                             ("project-012301230123012301230123", "/", "file-000011112222333344445555"))
+
+            self.assertEqual(resolve_path("job-111122223333111122223333:foo"),
+                             ("job-111122223333111122223333", None, "foo"))
+
+            self.assertEqual(resolve_path(json.dumps({"$dnanexus_link": "file-111111111111111111111111"})),
+                             (None, None, "file-111111111111111111111111"))
+            self.assertEqual(
+                resolve_path(json.dumps({"$dnanexus_link": {"project": "project-012301230123012301230123",
+                                                            "id": "file-111111111111111111111111"}})),
+                ("project-012301230123012301230123", "/", "file-111111111111111111111111")
+            )
+
+            # TODO: test multi project. This may require us to find some
+            # way to disable or programmatically drive the interactive
+            # prompt
+
+    def test_resolve_existing_path(self):
         resolve_existing_path('')
         with self.assertRaises(ResolutionError):
             resolve_existing_path('', allow_empty_string=False)
         proj_id, path, entity_id = resolve_existing_path(':')
         self.assertEqual(proj_id, dxpy.WORKSPACE_ID)
+
+    def test_clean_folder_path(self):
+        from dxpy.utils.resolver import clean_folder_path as clean
+        self.assertEqual(clean(""), ("/", None))
+        self.assertEqual(clean("/foo"), ("/", "foo"))
+        self.assertEqual(clean("/foo/bar/baz"), ("/foo/bar", "baz"))
+        self.assertEqual(clean("/foo/bar////baz"), ("/foo/bar", "baz"))
+        self.assertEqual(clean("/foo/bar/baz/"), ("/foo/bar/baz", None))
+        self.assertEqual(clean("/foo/bar/baz///"), ("/foo/bar/baz", None))
+        self.assertEqual(clean("/foo/bar/baz", expected="folder"), ("/foo/bar/baz", None))
+        self.assertEqual(clean("/foo/bar/baz/."), ("/foo/bar/baz", None))
+        self.assertEqual(clean("/foo/bar/baz/.."), ("/foo/bar", None))
+        self.assertEqual(clean("/foo/bar/../.."), ("/", None))
+        self.assertEqual(clean("/foo/bar/../../.."), ("/", None))
+        self.assertEqual(clean("/foo/bar/../../../"), ("/", None))
+        self.assertEqual(clean("/foo/\\/bar/\\/"), ("/foo/\\/bar", "/"))
+        self.assertEqual(clean("/foo/\\//bar/\\/"), ("/foo/\\//bar", "/"))
+        self.assertEqual(clean("/foo/bar/\\]/\\["), ("/foo/bar/\\]", "["))
+        self.assertEqual(clean("/foo/bar/baz/../quux"), ("/foo/bar", "quux"))
+        self.assertEqual(clean("/foo/bar/../baz/../quux"), ("/foo", "quux"))
+        self.assertEqual(clean("/foo/././bar/../baz/../quux"), ("/foo", "quux"))
+        self.assertEqual(clean("/foo/bar/../baz/../../quux"), ("/", "quux"))
+        self.assertEqual(clean("/foo/bar/../../baz/../../quux"), ("/", "quux"))
 
     def test_resolution_batching(self):
         from dxpy.bindings.search import resolve_data_objects

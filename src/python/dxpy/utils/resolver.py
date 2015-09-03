@@ -308,6 +308,7 @@ def split_unescaped(char, string, include_empty_strings=False):
     words.reverse()
     return words
 
+
 def clean_folder_path(path, expected=None):
     '''
     :param path: A folder path to sanitize and parse
@@ -332,8 +333,7 @@ def clean_folder_path(path, expected=None):
     if expected == 'folder' or folders[-1] == '.' or folders[-1] == '..' or get_last_pos_of_char('/', path) == len(path) - 1:
         entity_name = None
     else:
-        entity_name = unescape_name_str(folders[-1])
-        folders = folders[:-1]
+        entity_name = unescape_name_str(folders.pop())
 
     sanitized_folders = []
 
@@ -346,32 +346,26 @@ def clean_folder_path(path, expected=None):
         else:
             sanitized_folders.append(unescape_folder_str(folder))
 
-    if len(sanitized_folders) == 0:
-        newpath = '/'
-    else:
-        newpath = ""
-        for folder in sanitized_folders:
-            newpath += '/' + folder
+    return ('/' + '/'.join(sanitized_folders)), entity_name
 
-    return newpath, entity_name
 
-def resolve_container_id_or_name(raw_string, is_error=False, unescape=True, multi=False):
+def resolve_container_id_or_name(raw_string, is_error=False, multi=False):
     '''
     :param raw_string: A potential project or container ID or name
     :type raw_string: string
-    :param is_error: Whether to raise an exception if the project or container ID cannot be resolved
+    :param is_error: Whether to raise an exception if the project or
+            container ID cannot be resolved
     :type is_error: boolean
-    :param unescape: Whether to unescaping the string is required (TODO: External link to section on escaping characters.)
-    :type unescape: boolean
     :returns: Project or container ID if found or else None
     :rtype: string or None
-    :raises: :exc:`ResolutionError` if *is_error* is True and the project or container could not be resolved
+    :raises: :exc:`ResolutionError` if *is_error* is True and the
+            project or container could not be resolved
 
-    Attempt to resolve *raw_string* to a project or container ID.
+    Unescapes and attempts to resolve *raw_string* to a project or
+    container ID.
 
     '''
-    if unescape:
-        string = unescape_name_str(raw_string)
+    string = unescape_name_str(raw_string)
     if is_container_id(string):
         return ([string] if multi else string)
 
@@ -402,18 +396,24 @@ def resolve_container_id_or_name(raw_string, is_error=False, unescape=True, mult
         # len(results) > 1 and multi
         return [result['id'] for result in results]
 
-def resolve_path(path, expected=None, expected_classes=None, multi_projects=False, allow_empty_string=True):
+
+def resolve_path(path, expected=None, multi_projects=False, allow_empty_string=True):
     '''
     :param path: A path to a data object to attempt to resolve
     :type path: string
-    :param expected: one of the following: "folder", "entity", or None to indicate whether the expected path is a folder, a data object, or either
+    :param expected: one of the following: "folder", "entity", or None
+            to indicate whether the expected path is a folder, a data
+            object, or either
     :type expected: string or None
-    :param expected_classes: a list of DNAnexus data object classes (if any) by which the search can be filtered
-    :type expected_classes: list of strings or None
     :returns: A tuple of 3 values: container_ID, folderpath, entity_name
     :rtype: string, string, string
-    :raises: exc:`ResolutionError` if 1) a colon is provided but no project can be resolved, or 2) *expected* was set to "folder" but no project can be resolved from which to establish context
-    :param allow_empty_string: If false, a ResolutionError will be raised if *path* is an empty string. Use this when resolving the empty string could result in unexpected behavior.
+    :raises: exc:`ResolutionError` if 1) a colon is provided but no
+            project can be resolved, or 2) *expected* was set to
+            "folder" but no project can be resolved from which to
+            establish context
+    :param allow_empty_string: If false, a ResolutionError will be
+            raised if *path* is an empty string. Use this when resolving
+            the empty string could result in unexpected behavior.
     :type allow_empty_string: boolean
 
     Attempts to resolve *path* to a project or container ID, a folder
@@ -448,7 +448,7 @@ def resolve_path(path, expected=None, expected_classes=None, multi_projects=Fals
     if path == '':
         if dxpy.WORKSPACE_ID is None:
             raise ResolutionError('Expected a project name or ID to the left of a colon or for a current project to be set')
-        return ([dxpy.WORKSPACE_ID] if multi_projects else dxpy.WORKSPACE_ID), os.environ.get('DX_CLI_WD', '/'), None
+        return ([dxpy.WORKSPACE_ID] if multi_projects else dxpy.WORKSPACE_ID), dxpy.config.get('DX_CLI_WD', '/'), None
     # Third easy case: hash ID
     if is_container_id(path):
         return ([path] if multi_projects else path), '/', None
@@ -460,7 +460,7 @@ def resolve_path(path, expected=None, expected_classes=None, multi_projects=Fals
     project = 0
     folderpath = None
     entity_name = None
-    wd = None
+    wd = dxpy.config.get('DX_CLI_WD', u'/')
 
     # Test for multiple colons
     last_colon = get_last_pos_of_char(':', path)
@@ -501,7 +501,6 @@ def resolve_path(path, expected=None, expected_classes=None, multi_projects=Fals
         project = dxpy.WORKSPACE_ID
         if expected == 'folder' and project is None:
             raise ResolutionError('a project context was expected for a path, but a current project is not set, nor was one provided in the path (preceding a colon) in "' + path + '"')
-        wd = dxpy.config.get('DX_CLI_WD', u'/')
 
     # Determine folderpath and entity_name if necessary
     if folderpath is None:
@@ -931,10 +930,12 @@ def resolve_multiple_existing_paths(paths):
     to_resolve_in_batch_inputs = []  # Project, folderpath, and entity name
     for path in paths:
         project, folderpath, entity_name = resolve_path(path, expected='entity')
-        must_resolve, project, folderpath, entity_name = _check_resolution_needed(path,
-                                                                                  project,
-                                                                                  folderpath,
-                                                                                  entity_name)
+        try:
+            must_resolve, project, folderpath, entity_name = _check_resolution_needed(
+                path, project, folderpath, entity_name)
+        except:
+            must_resolve = False
+
         if must_resolve:
             if is_glob_pattern(entity_name):
                 # TODO: Must call findDataObjects because resolveDataObjects does not support glob patterns
@@ -995,7 +996,7 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
     NOTE: if expected_classes is provided and conflicts with the class
     of the hash ID, it will return None for all fields.
     '''
-    project, folderpath, entity_name = resolve_path(path, expected, allow_empty_string=allow_empty_string)
+    project, folderpath, entity_name = resolve_path(path, expected=expected, allow_empty_string=allow_empty_string)
     must_resolve, project, folderpath, entity_name = _check_resolution_needed(path,
                                                                               project,
                                                                               folderpath,
