@@ -23,16 +23,12 @@ import os
 import sys
 import collections
 import dxpy
-import dxpy.utils.printing as printing
 from ..utils.resolver import (resolve_existing_path,
-                              resolve_path,
-                              get_last_pos_of_char,
                               get_first_pos_of_char,
-                              split_unescaped,
                               is_project_explicit,
                               is_file_in_project)
-from ..exceptions import (err_exit, DXCLIError, InvalidState)
-from . import (try_call, try_call_err_exit)
+from ..exceptions import (err_exit)
+from . import (try_call)
 from ..utils.resolver import (resolve_existing_path, get_first_pos_of_char)
 from dxpy.utils.printing import (fill)
 from dxpy.utils import pathmatch
