@@ -182,10 +182,13 @@ def download(args):
         # If the user did not explicitly provide the project, don't pass any
         # project parameter to the API call but continue with download resolution
         #
-        if has_proj_in_path and len(matching_files) > 0 and not has_file_in_proj:
-            err_exit(fill('Error: specified project does not contain specified file object'))
-        if not has_proj_in_path and len(matching_files) > 0 and not has_file_in_proj:
-            project = None
+        # If length of matching_files is 0 then we're only downloading folders so skip this logic
+        # since the files will be verified in the API call
+        if len(matching_files) > 0:
+            if has_proj_in_path and not has_file_in_proj:
+                err_exit(fill('Error: specified project does not contain specified file object'))
+            if not has_proj_in_path and not has_file_in_proj:
+                project = None
 
         files_to_get[project].extend(matching_files)
         folders_to_get[project].extend(((f, strip_prefix) for f in matching_folders))

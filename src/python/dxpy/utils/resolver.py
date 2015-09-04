@@ -193,9 +193,10 @@ def is_file_in_project(project, entity_list):
     # to match the project provided in hint we know the project
     # does not contain the specified file
     #
+    describe = {'project': project}
+    resolver_kwargs = {}
+
     for entity in entity_list:
-        describe = {'project': project}
-        resolver_kwargs = {}
         desc = try_call(dxpy.DXHTTPRequest,
                         '/' + entity['describe']['id'] + '/describe',
                         describe,

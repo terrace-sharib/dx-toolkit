@@ -1089,7 +1089,6 @@ class TestDXClientUploadDownload(DXTestCase):
             self.assertEqual(buf, data2)
             with open(tempFileFd.name, "r") as fd:
                 project = fd.readline()
-            fd.close()
             self.assertEqual(project, proj2_id)
 
             # Failure: project specified by name contains file specifed by ID
@@ -5754,7 +5753,6 @@ class TestDXCp(DXTestCase):
 
         # Unset environment
         del dxpy.config['DX_PROJECT_CONTEXT_ID']
-        print(dxpy.__file__)
         dxpy.config.save()
         self.assertNotIn('DX_PROJECT_CONTEXT_ID', run('which dx; dx env --bash'))
 
