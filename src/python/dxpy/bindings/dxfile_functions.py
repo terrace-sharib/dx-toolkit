@@ -22,12 +22,17 @@ The following helper functions are useful shortcuts for interacting with File ob
 
 '''
 
-from __future__ import (print_function, unicode_literals)
+from __future__ import print_function, unicode_literals, division, absolute_import
 
-import os, sys, math, mmap, stat
+import os, sys, math, mmap, stat, hashlib, ssl
+import requests
+from requests.packages import urllib3
+from multiprocessing import cpu_count
+from concurrent.futures import ThreadPoolExecutor
 
 import dxpy
 from . import dxfile, DXFile
+from ..compat import open
 
 def open_dxfile(dxid, project=None, read_buffer_size=dxfile.DEFAULT_BUFFER_SIZE):
     '''
@@ -86,7 +91,7 @@ def download_dxfile(dxid, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE, append
     :type dxid: string
     :param filename: Local filename
     :type filename: string
-    :param append: If True, appends to the local file (default is to truncate local file if it exists)
+    :param append: If True, appends to the local file (default is to truncate local file if it exists) (FIXME)
     :type append: boolean
 
     Downloads the remote file with object ID *dxid* and saves it to
@@ -98,7 +103,7 @@ def download_dxfile(dxid, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE, append
 
     '''
 
-    def print_progress(bytes_downloaded, file_size):
+    def print_progress(bytes_downloaded, file_size, action="Downloaded"):
         num_ticks = 60
 
         effective_file_size = file_size or 1
@@ -108,39 +113,92 @@ def download_dxfile(dxid, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE, append
         ticks = int(round((bytes_downloaded / float(effective_file_size)) * num_ticks))
         percent = int(round((bytes_downloaded / float(effective_file_size)) * 100))
 
-        fmt = "[{done}{pending}] Downloaded {done_bytes:,}{remaining} bytes ({percent}%) {name}"
-        sys.stderr.write(fmt.format(done=('=' * (ticks - 1) + '>') if ticks > 0 else '',
-                                    pending=' ' * (num_ticks - ticks),
+        fmt = "[{done}{pending}] {action} {done_bytes:,}{remaining} bytes ({percent}%) {name}"
+        sys.stderr.write(fmt.format(action=action,
+                                    done=("=" * (ticks - 1) + ">") if ticks > 0 else "",
+                                    pending=" " * (num_ticks - ticks),
                                     done_bytes=bytes_downloaded,
-                                    remaining=' of {size:,}'.format(size=file_size) if file_size else "",
+                                    remaining=" of {size:,}".format(size=file_size) if file_size else "",
                                     percent=percent,
                                     name=filename))
         sys.stderr.flush()
         sys.stderr.write("\r")
         sys.stderr.flush()
 
-    file_size = None
     _bytes = 0
 
-    mode = 'ab' if append else 'wb'
-    with DXFile(dxid, mode='r', project=project, read_buffer_size=chunksize) as dxfile, open(filename, mode) as fd:
+    http = urllib3.PoolManager(maxsize=cpu_count()*2, cert_reqs=ssl.CERT_REQUIRED, ca_certs=requests.certs.where())
+
+    dxfile = dxpy.DXFile(dxid)
+    parts = dxfile.describe(fields={"parts"})["parts"]
+    parts_to_get = sorted(parts, key=int)
+    file_size = dxfile._file_length
+
+    offset = 0
+    for part_id in sorted(parts, key=int):
+        parts[part_id]["start"] = offset
+        offset += parts[part_id]["size"]
+
+    def get_part(part_id):
+        headers = requests.utils.default_headers()
+        download_url, download_headers = dxfile.get_download_url()
+        headers.update(download_headers)
+        # If we're fetching the whole object in one shot, avoid setting the Range header to take advantage of gzip
+        # transfer compression
+        if len(parts) > 1:
+            headers["Range"] = "bytes={}-{}".format(parts[part_id]["start"],
+                                                    parts[part_id]["start"] + parts[part_id]["size"] - 1)
+        response = http.request("GET", download_url, headers=headers)
+        if hashlib.md5(response.data).hexdigest() != parts[part_id]["md5"]:
+            raise Exception("Checksum mismatch in part {}".format(part_id))
+        return response.data
+
+    with ThreadPoolExecutor(max_workers=cpu_count()) as executor:
+        try:
+            fh = open(filename, "rb+")
+        except IOError:
+            fh = open(filename, "wb")
+
         if show_progress:
             print_progress(0, None)
-        while True:
-            file_content = dxfile.read(chunksize, **kwargs)
-            if file_size is None:
-                file_size = dxfile._file_length
 
+        if fh.mode == "rb+":
+            last_verified_part, last_verified_pos = 0, 0
+            try:
+                for part_id in range(1, len(parts_to_get)+1):
+                    part_info = parts[str(part_id)]
+                    part_data = fh.read(part_info["size"])
+                    if len(part_data) < part_info["size"]:
+                        raise Exception("Local data for part {} is truncated".format(part_id))
+                    if hashlib.md5(part_data).hexdigest() != part_info["md5"]:
+                        raise Exception("Checksum mismatch when verifying downloaded part {}".format(part_id))
+                    else:
+                        last_verified_part = part_id
+                        last_verified_pos = fh.tell()
+                        if show_progress:
+                            _bytes += len(part_data)
+                            print_progress(_bytes, file_size, action="Verified")
+            except Exception as e:
+                print(e, file=sys.stderr)
+            fh.seek(last_verified_pos)
+            del parts_to_get[:last_verified_part]
+            if len(parts_to_get) == 0 and len(fh.read(1)) > 0:
+                raise Exception("File to be downloaded is a truncated copy of local file")
+            if show_progress and len(parts_to_get) < len(parts):
+                sys.stderr.write("\n")
+            print("Verified {} downloaded parts; {} remaining".format(last_verified_part, len(parts_to_get), file=sys.stderr))
+
+        for part_data in executor.map(get_part, parts_to_get):
+            fh.write(part_data)
             if show_progress:
-                _bytes += len(file_content)
+                _bytes += len(part_data)
                 print_progress(_bytes, file_size)
 
-            if len(file_content) == 0:
-                if show_progress:
-                    sys.stderr.write("\n")
-                break
+        if show_progress:
+            sys.stderr.write("\n")
 
-            fd.write(file_content)
+        fh.close()
+
 
 def _get_buffer_size_for_file(file_size, file_is_mmapd=False):
     """Returns an upload buffer size that is appropriate to use for a file
