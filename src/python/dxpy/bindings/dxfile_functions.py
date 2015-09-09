@@ -31,6 +31,7 @@ from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 
 import dxpy
+from .. import API_VERSION, USER_AGENT, logger
 from . import dxfile, DXFile
 from ..compat import open
 
@@ -84,18 +85,17 @@ def new_dxfile(mode=None, write_buffer_size=dxfile.DEFAULT_BUFFER_SIZE, **kwargs
     dx_file.new(**kwargs)
     return dx_file
 
-def download_dxfile(dxid, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE, append=False, show_progress=False,
+def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_progress=False,
                     project=None, **kwargs):
     '''
-    :param dxid: Remote file ID
-    :type dxid: string
+    :param dxfile_or_id: Remote file handler or ID
+    :type dxfile_or_id: DXFile or string
     :param filename: Local filename
     :type filename: string
-    :param append: If True, appends to the local file (default is to truncate local file if it exists) (FIXME)
+    :param append: If True, appends to the local file (default is to truncate local file if it exists)
     :type append: boolean
 
-    Downloads the remote file with object ID *dxid* and saves it to
-    *filename*.
+    Downloads the remote file referenced by *dxfile_or_id* and saves it to *filename*.
 
     Example::
 
@@ -129,19 +129,26 @@ def download_dxfile(dxid, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE, append
 
     http = urllib3.PoolManager(maxsize=cpu_count()*2, cert_reqs=ssl.CERT_REQUIRED, ca_certs=requests.certs.where())
 
-    dxfile = dxpy.DXFile(dxid)
-    parts = dxfile.describe(fields={"parts"})["parts"]
+    if isinstance(dxfile_or_id, DXFile):
+        dxfile = dxfile_or_id
+    else:
+        dxfile = DXFile(dxfile_or_id, mode='r', project=project)
+
+    dxfile_desc = dxfile.describe(fields={"parts"}, default_fields=True, **kwargs)
+    parts = dxfile_desc["parts"]
     parts_to_get = sorted(parts, key=int)
-    file_size = dxfile._file_length
+    file_size = dxfile_desc.get("size") or 1
 
     offset = 0
-    for part_id in sorted(parts, key=int):
+    for part_id in parts_to_get:
         parts[part_id]["start"] = offset
         offset += parts[part_id]["size"]
 
     def get_part(part_id):
         headers = requests.utils.default_headers()
-        download_url, download_headers = dxfile.get_download_url()
+        headers['DNAnexus-API'] = API_VERSION
+        headers['User-Agent'] = USER_AGENT
+        download_url, download_headers = dxfile.get_download_url(**kwargs)
         headers.update(download_headers)
         # If we're fetching the whole object in one shot, avoid setting the Range header to take advantage of gzip
         # transfer compression
@@ -154,10 +161,13 @@ def download_dxfile(dxid, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE, append
         return response.data
 
     with ThreadPoolExecutor(max_workers=cpu_count()) as executor:
-        try:
-            fh = open(filename, "rb+")
-        except IOError:
-            fh = open(filename, "wb")
+        if append:
+            fh = open(filename, "ab")
+        else:
+            try:
+                fh = open(filename, "rb+")
+            except IOError:
+                fh = open(filename, "wb")
 
         if show_progress:
             print_progress(0, None)
@@ -179,14 +189,14 @@ def download_dxfile(dxid, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE, append
                             _bytes += len(part_data)
                             print_progress(_bytes, file_size, action="Verified")
             except Exception as e:
-                print(e, file=sys.stderr)
+                logger.debug(e)
             fh.seek(last_verified_pos)
             del parts_to_get[:last_verified_part]
             if len(parts_to_get) == 0 and len(fh.read(1)) > 0:
                 raise Exception("File to be downloaded is a truncated copy of local file")
             if show_progress and len(parts_to_get) < len(parts):
                 sys.stderr.write("\n")
-            print("Verified {} downloaded parts; {} remaining".format(last_verified_part, len(parts_to_get), file=sys.stderr))
+            logger.debug("Verified {} downloaded parts; {} remaining".format(last_verified_part, len(parts_to_get), file=sys.stderr))
 
         for part_data in executor.map(get_part, parts_to_get):
             fh.write(part_data)
