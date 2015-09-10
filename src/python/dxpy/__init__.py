@@ -406,7 +406,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                             (response.headers['content-length'], len(response.data), range_str)
                         )
 
-                content = response.content
+                content = response.data
 
                 if decode_response_body:
                     content = content.decode('utf-8')

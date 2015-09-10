@@ -31,8 +31,9 @@ from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 
 import dxpy
-from .. import API_VERSION, USER_AGENT, logger
+from .. import API_VERSION, USER_AGENT, logger, DXHTTPRequest
 from . import dxfile, DXFile
+from .dxfile import FILE_REQUEST_TIMEOUT
 from ..compat import open
 
 def open_dxfile(dxid, project=None, read_buffer_size=dxfile.DEFAULT_BUFFER_SIZE):
@@ -85,19 +86,12 @@ def new_dxfile(mode=None, write_buffer_size=dxfile.DEFAULT_BUFFER_SIZE, **kwargs
     dx_file.new(**kwargs)
     return dx_file
 
-_executor, _pool_manager = None, None
+_executor = None
 def _get_executor():
     global _executor
     if _executor is None:
         _executor = ThreadPoolExecutor(max_workers=cpu_count())
     return _executor
-
-timeout_policy = urllib3.util.timeout.Timeout(connect=dxpy.DEFAULT_TIMEOUT,
-                                              read=dxpy.DEFAULT_TIMEOUT)
-pool_manager = urllib3.PoolManager(maxsize=cpu_count()*2,
-                                   cert_reqs=ssl.CERT_REQUIRED,
-                                   ca_certs=requests.certs.where(),
-                                   timeout=timeout_policy)
 
 def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_progress=False,
                     project=None, **kwargs):
@@ -141,8 +135,6 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
 
     _bytes = 0
 
-    http = pool_manager
-
     if isinstance(dxfile_or_id, DXFile):
         dxfile = dxfile_or_id
     else:
@@ -162,22 +154,20 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
         offset += parts[part_id]["size"]
 
     def get_part(part_id):
-        headers = requests.utils.default_headers()
-        headers["DNAnexus-API"] = API_VERSION
-        headers["User-Agent"] = USER_AGENT
-        download_url, download_headers = dxfile.get_download_url(**kwargs)
-        headers.update(download_headers)
+        url, headers = dxfile.get_download_url(**kwargs)
         # If we're fetching the whole object in one shot, avoid setting the Range header to take advantage of gzip
         # transfer compression
         if len(parts) > 1:
             headers["Range"] = "bytes={}-{}".format(parts[part_id]["start"],
                                                     parts[part_id]["start"] + parts[part_id]["size"] - 1)
-        response = http.request("GET", download_url, headers=headers)
-        if len(response.data) != parts[part_id]["size"]:
+        part_data = DXHTTPRequest(url, b"", method="GET", headers=headers, auth=None, jsonify_data=False,
+                                  prepend_srv=False, always_retry=True, timeout=FILE_REQUEST_TIMEOUT,
+                                  decode_response_body=False)
+        if len(part_data) != parts[part_id]["size"]:
             raise Exception("unexpected part data size in part {}".format(part_id))
-        if hashlib.md5(response.data).hexdigest() != parts[part_id]["md5"]:
+        if hashlib.md5(part_data).hexdigest() != parts[part_id]["md5"]:
             raise Exception("Checksum mismatch in part {}".format(part_id))
-        return response.data
+        return part_data
 
     if append:
         fh = open(filename, "ab")
