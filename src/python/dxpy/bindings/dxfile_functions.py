@@ -85,6 +85,20 @@ def new_dxfile(mode=None, write_buffer_size=dxfile.DEFAULT_BUFFER_SIZE, **kwargs
     dx_file.new(**kwargs)
     return dx_file
 
+_executor, _pool_manager = None, None
+def _get_executor():
+    global _executor
+    if _executor is None:
+        _executor = ThreadPoolExecutor(max_workers=cpu_count()*2)
+    return _executor
+
+timeout_policy = urllib3.util.timeout.Timeout(connect=dxpy.DEFAULT_TIMEOUT,
+                                              read=dxpy.DEFAULT_TIMEOUT)
+pool_manager = urllib3.PoolManager(maxsize=cpu_count()*2,
+                                   cert_reqs=ssl.CERT_REQUIRED,
+                                   ca_certs=requests.certs.where(),
+                                   timeout=timeout_policy)
+
 def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_progress=False,
                     project=None, **kwargs):
     '''
@@ -127,7 +141,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
 
     _bytes = 0
 
-    http = urllib3.PoolManager(maxsize=cpu_count()*2, cert_reqs=ssl.CERT_REQUIRED, ca_certs=requests.certs.where())
+    http = pool_manager
 
     if isinstance(dxfile_or_id, DXFile):
         dxfile = dxfile_or_id
@@ -139,6 +153,9 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
     parts_to_get = sorted(parts, key=int)
     file_size = dxfile_desc.get("size") or 1
 
+    # Warm up the download URL cache in the file handler, to avoid all worker threads trying to fetch it simultaneously
+    dxfile.get_download_url(**kwargs)
+
     offset = 0
     for part_id in parts_to_get:
         parts[part_id]["start"] = offset
@@ -146,8 +163,8 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
 
     def get_part(part_id):
         headers = requests.utils.default_headers()
-        headers['DNAnexus-API'] = API_VERSION
-        headers['User-Agent'] = USER_AGENT
+        headers["DNAnexus-API"] = API_VERSION
+        headers["User-Agent"] = USER_AGENT
         download_url, download_headers = dxfile.get_download_url(**kwargs)
         headers.update(download_headers)
         # If we're fetching the whole object in one shot, avoid setting the Range header to take advantage of gzip
@@ -156,58 +173,68 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
             headers["Range"] = "bytes={}-{}".format(parts[part_id]["start"],
                                                     parts[part_id]["start"] + parts[part_id]["size"] - 1)
         response = http.request("GET", download_url, headers=headers)
+        if len(response.data) != parts[part_id]["size"]:
+            raise Exception("unexpected part data size in part {}".format(part_id))
         if hashlib.md5(response.data).hexdigest() != parts[part_id]["md5"]:
             raise Exception("Checksum mismatch in part {}".format(part_id))
         return response.data
 
-    with ThreadPoolExecutor(max_workers=cpu_count()) as executor:
-        if append:
-            fh = open(filename, "ab")
-        else:
-            try:
-                fh = open(filename, "rb+")
-            except IOError:
-                fh = open(filename, "wb")
+    if append:
+        fh = open(filename, "ab")
+    else:
+        try:
+            fh = open(filename, "rb+")
+        except IOError:
+            fh = open(filename, "wb")
 
-        if show_progress:
-            print_progress(0, None)
+    if show_progress:
+        print_progress(0, None)
 
-        if fh.mode == "rb+":
-            last_verified_part, last_verified_pos = 0, 0
-            try:
-                for part_id in range(1, len(parts_to_get)+1):
-                    part_info = parts[str(part_id)]
-                    part_data = fh.read(part_info["size"])
-                    if len(part_data) < part_info["size"]:
-                        raise Exception("Local data for part {} is truncated".format(part_id))
-                    if hashlib.md5(part_data).hexdigest() != part_info["md5"]:
-                        raise Exception("Checksum mismatch when verifying downloaded part {}".format(part_id))
-                    else:
-                        last_verified_part = part_id
-                        last_verified_pos = fh.tell()
-                        if show_progress:
-                            _bytes += len(part_data)
-                            print_progress(_bytes, file_size, action="Verified")
-            except Exception as e:
-                logger.debug(e)
-            fh.seek(last_verified_pos)
-            del parts_to_get[:last_verified_part]
-            if len(parts_to_get) == 0 and len(fh.read(1)) > 0:
-                raise Exception("File to be downloaded is a truncated copy of local file")
-            if show_progress and len(parts_to_get) < len(parts):
-                sys.stderr.write("\n")
-            logger.debug("Verified {} downloaded parts; {} remaining".format(last_verified_part, len(parts_to_get), file=sys.stderr))
+    if fh.mode == "rb+":
+        last_verified_part, last_verified_pos = 0, 0
+        try:
+            for part_id in range(1, len(parts_to_get)+1):
+                part_info = parts[str(part_id)]
+                part_data = fh.read(part_info["size"])
+                if len(part_data) < part_info["size"]:
+                    raise Exception("Local data for part {} is truncated".format(part_id))
+                if hashlib.md5(part_data).hexdigest() != part_info["md5"]:
+                    raise Exception("Checksum mismatch when verifying downloaded part {}".format(part_id))
+                else:
+                    last_verified_part = part_id
+                    last_verified_pos = fh.tell()
+                    if show_progress:
+                        _bytes += len(part_data)
+                        print_progress(_bytes, file_size, action="Verified")
+        except Exception as e:
+            logger.debug(e)
+        fh.seek(last_verified_pos)
+        del parts_to_get[:last_verified_part]
+        if len(parts_to_get) == 0 and len(fh.read(1)) > 0:
+            raise Exception("File to be downloaded is a truncated copy of local file")
+        if show_progress and len(parts_to_get) < len(parts):
+            print_progress(last_verified_pos, file_size, action="Resuming download at")
+            sys.stderr.write("\n")
+        logger.debug("Verified %d/%d downloaded parts", last_verified_part, len(parts_to_get))
 
-        for part_data in executor.map(get_part, parts_to_get):
+    try:
+        # Timeout is required for non-blocking join that can be interrupted by SIGINT (Ctrl+C)
+        for part_data in _get_executor().map(get_part, parts_to_get, timeout=sys.maxint):
             fh.write(part_data)
             if show_progress:
                 _bytes += len(part_data)
                 print_progress(_bytes, file_size)
+    except KeyboardInterrupt:
+        # Call os._exit() in case of KeyboardInterrupt. Otherwise, the atexit registered handler in
+        # concurrent.futures.thread will run, and issue blocking join() on all worker threads, requiring us to
+        # listen to events in worker threads in order to enable timely exit in response to Ctrl-C.
+        print('')
+        os._exit(os.EX_IOERR)
 
-        if show_progress:
-            sys.stderr.write("\n")
+    if show_progress:
+        sys.stderr.write("\n")
 
-        fh.close()
+    fh.close()
 
 
 def _get_buffer_size_for_file(file_size, file_is_mmapd=False):
