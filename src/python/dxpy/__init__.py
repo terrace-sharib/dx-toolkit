@@ -133,9 +133,9 @@ from collections import namedtuple
 
 from requests.exceptions import ConnectionError, HTTPError, Timeout
 from requests.auth import AuthBase
-from .compat import USING_PYTHON2, expanduser
 from requests.packages import urllib3
 from requests.packages.urllib3.packages.ssl_match_hostname import match_hostname
+from .compat import USING_PYTHON2, expanduser
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
