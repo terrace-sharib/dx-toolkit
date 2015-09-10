@@ -131,7 +131,7 @@ import requests
 import socket
 from collections import namedtuple
 
-from requests.exceptions import ConnectionError, HTTPError, Timeout
+from requests.exceptions import HTTPError
 from requests.auth import AuthBase
 from requests.packages import urllib3
 from requests.packages.urllib3.packages.ssl_match_hostname import match_hostname
@@ -232,19 +232,13 @@ def _is_retryable_exception(e):
     have been established, we return False.
 
     """
-    try:
-        if isinstance(e, ConnectionError):
-            # Unfortunately requests doesn't seem to provide a sensible
-            # API to retrieve the cause
-            cause = e.args[0].args[1]
-            if isinstance(cause, (socket.gaierror, socket.herror)):
-                return True
-            if isinstance(cause, socket.error) and cause.errno in _RETRYABLE_SOCKET_ERRORS:
-                return True
-        return False
-    except (AttributeError, TypeError, IndexError):
-        return False
-
+    if isinstance(e, urllib.exceptions.MaxRetryError):
+        e = e.reason
+    if isinstance(e, (socket.gaierror, socket.herror)):
+        return True
+    if isinstance(e, socket.error) and e.errno in _RETRYABLE_SOCKET_ERRORS:
+        return True
+    return False
 
 def _extract_msg_from_last_exception():
     ''' Extract a useful error message from the last thrown exception '''
@@ -394,7 +388,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                     content = json.loads(response.data.decode('utf-8'))
                     error_class = getattr(exceptions, content["error"]["type"], exceptions.DXAPIError)
                     raise error_class(content, response.status)
-                response.raise_for_status()
+                raise HTTPError("{} {}".format(response.status, response.reason))
 
             if want_full_response:
                 return response
