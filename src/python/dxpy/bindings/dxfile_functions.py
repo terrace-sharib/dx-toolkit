@@ -137,7 +137,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
     if isinstance(dxfile_or_id, DXFile):
         dxfile = dxfile_or_id
     else:
-        dxfile = DXFile(dxfile_or_id, mode='r', project=project)
+        dxfile = DXFile(dxfile_or_id, mode="r", project=project)
 
     dxfile_desc = dxfile.describe(fields={"parts"}, default_fields=True, **kwargs)
     parts = dxfile_desc["parts"]
@@ -216,7 +216,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
         # Call os._exit() in case of KeyboardInterrupt. Otherwise, the atexit registered handler in
         # concurrent.futures.thread will run, and issue blocking join() on all worker threads, requiring us to
         # listen to events in worker threads in order to enable timely exit in response to Ctrl-C.
-        print('')
+        print("")
         os._exit(os.EX_IOERR)
 
     if show_progress:
