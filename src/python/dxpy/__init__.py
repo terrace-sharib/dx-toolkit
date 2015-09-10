@@ -364,9 +364,11 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
 
     try_index = 0
     while True:
-        success, streaming_response_truncated = True, False
+        success, streaming_response_truncated, time_started = True, False, None
         response = None
         try:
+            if _DEBUG > 0:
+                time_started = time.time()
             _method, _url, _headers = _process_method_url_headers(method, url, headers)
             response = _pool_manager.request(_method, _url, headers=_headers, body=data,
                                              timeout=timeout, **kwargs)
@@ -408,8 +410,8 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                     if response.headers.get('content-type', '').startswith('application/json'):
                         try:
                             content = json.loads(content)
-                            #t = int(response.elapsed.total_seconds() * 1000) FIXME
-                            t = 1
+                            if _DEBUG > 0:
+                                t = int((time.time() - time_started) * 1000)
                             if _DEBUG >= 3:
                                 print(method, url, "<=", response.status, "(%dms)" % t,
                                       "\n" + json.dumps(content, indent=2), file=sys.stderr)
