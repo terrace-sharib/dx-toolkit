@@ -89,7 +89,7 @@ _executor, _pool_manager = None, None
 def _get_executor():
     global _executor
     if _executor is None:
-        _executor = ThreadPoolExecutor(max_workers=cpu_count()*2)
+        _executor = ThreadPoolExecutor(max_workers=cpu_count())
     return _executor
 
 timeout_policy = urllib3.util.timeout.Timeout(connect=dxpy.DEFAULT_TIMEOUT,
