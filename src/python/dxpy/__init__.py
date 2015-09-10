@@ -272,6 +272,7 @@ def _extract_retry_after_timeout(response):
         seconds_to_wait = DEFAULT_RETRY_AFTER_503_INTERVAL
     return max(1, seconds_to_wait)
 
+
 def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                   timeout=DEFAULT_TIMEOUT,
                   use_compression=None, jsonify_data=True, want_full_response=False,
