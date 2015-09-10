@@ -24,14 +24,12 @@ The following helper functions are useful shortcuts for interacting with File ob
 
 from __future__ import print_function, unicode_literals, division, absolute_import
 
-import os, sys, math, mmap, stat, hashlib, ssl
-import requests
-from requests.packages import urllib3
+import os, sys, math, mmap, stat, hashlib
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 
 import dxpy
-from .. import API_VERSION, USER_AGENT, logger, DXHTTPRequest
+from .. import logger, DXHTTPRequest
 from . import dxfile, DXFile
 from .dxfile import FILE_REQUEST_TIMEOUT
 from ..compat import open
@@ -204,7 +202,6 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
             raise Exception("File to be downloaded is a truncated copy of local file")
         if show_progress and len(parts_to_get) < len(parts):
             print_progress(last_verified_pos, file_size, action="Resuming download at")
-            sys.stderr.write("\n")
         logger.debug("Verified %d/%d downloaded parts", last_verified_part, len(parts_to_get))
 
     try:
