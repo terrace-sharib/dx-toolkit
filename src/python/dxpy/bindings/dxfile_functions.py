@@ -33,6 +33,7 @@ from .. import logger, DXHTTPRequest
 from . import dxfile, DXFile
 from .dxfile import FILE_REQUEST_TIMEOUT
 from ..compat import open
+from ..exceptions import DXFileError
 
 def open_dxfile(dxid, project=None, read_buffer_size=dxfile.DEFAULT_BUFFER_SIZE):
     '''
@@ -162,9 +163,9 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
                                   prepend_srv=False, always_retry=True, timeout=FILE_REQUEST_TIMEOUT,
                                   decode_response_body=False)
         if len(part_data) != parts[part_id]["size"]:
-            raise Exception("unexpected part data size in part {}".format(part_id))
+            raise DXFileError("Unexpected part data size in {} part {}".format(dxfile.get_id(), part_id))
         if hashlib.md5(part_data).hexdigest() != parts[part_id]["md5"]:
-            raise Exception("Checksum mismatch in part {}".format(part_id))
+            raise DXFileError("Checksum mismatch in {} part {}".format(dxfile.get_id(), part_id))
         return part_data
 
     if append:
@@ -185,9 +186,9 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
                 part_info = parts[str(part_id)]
                 part_data = fh.read(part_info["size"])
                 if len(part_data) < part_info["size"]:
-                    raise Exception("Local data for part {} is truncated".format(part_id))
+                    raise DXFileError("Local data for part {} is truncated".format(part_id))
                 if hashlib.md5(part_data).hexdigest() != part_info["md5"]:
-                    raise Exception("Checksum mismatch when verifying downloaded part {}".format(part_id))
+                    raise DXFileError("Checksum mismatch when verifying downloaded part {}".format(part_id))
                 else:
                     last_verified_part = part_id
                     last_verified_pos = fh.tell()
@@ -199,7 +200,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
         fh.seek(last_verified_pos)
         del parts_to_get[:last_verified_part]
         if len(parts_to_get) == 0 and len(fh.read(1)) > 0:
-            raise Exception("File to be downloaded is a truncated copy of local file")
+            raise DXFileError("{} to be downloaded is a truncated copy of local file".format(part_id))
         if show_progress and len(parts_to_get) < len(parts):
             print_progress(last_verified_pos, file_size, action="Resuming download at")
         logger.debug("Verified %d/%d downloaded parts", last_verified_part, len(parts_to_get))
