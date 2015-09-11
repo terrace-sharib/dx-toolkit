@@ -1132,10 +1132,10 @@ class TestDXClientUploadDownload(DXTestCase):
             file2_name = "file2"
             file2_id = gen_file(file2_name, data2, proj2_id).get_id()
 
-            # unset environment
-            del dxpy.config['DX_PROJECT_CONTEXT_ID']
-            dxpy.config.save()
-            self.assertNotIn('DX_PROJECT_CONTEXT_ID', run('dx env --bash'))
+            # # unset environment
+            # del dxpy.config['DX_PROJECT_CONTEXT_ID']
+            # dxpy.config.save()
+            # self.assertNotIn('DX_PROJECT_CONTEXT_ID', run('dx env --bash'))
 
             # set environment/project context to proj1
             dxpy.config['DX_PROJECT_CONTEXT_ID'] = proj1_id
@@ -1193,10 +1193,10 @@ class TestDXClientUploadDownload(DXTestCase):
             with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
                 run("dx download -f --no-progress {f}".format(f=file2_name), env=os.environ)
 
-            # unset environment
-            del dxpy.config['DX_PROJECT_CONTEXT_ID']
-            dxpy.config.save()
-            self.assertNotIn('DX_PROJECT_CONTEXT_ID', run('dx env --bash'))
+            # # unset environment
+            # del dxpy.config['DX_PROJECT_CONTEXT_ID']
+            # dxpy.config.save()
+            # self.assertNotIn('DX_PROJECT_CONTEXT_ID', run('dx env --bash'))
 
     def test_dx_download_project_explicit(self):
         def gen_file(fname, data, proj_id):
