@@ -154,17 +154,18 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
 
     def get_part(part_id):
         url, headers = dxfile.get_download_url(**kwargs)
+        part_info = parts[part_id]
         # If we're fetching the whole object in one shot, avoid setting the Range header to take advantage of gzip
         # transfer compression
         if len(parts) > 1:
-            headers["Range"] = "bytes={}-{}".format(parts[part_id]["start"],
-                                                    parts[part_id]["start"] + parts[part_id]["size"] - 1)
+            headers["Range"] = "bytes={}-{}".format(part_info["start"],
+                                                    part_info["start"] + part_info["size"] - 1)
         part_data = DXHTTPRequest(url, b"", method="GET", headers=headers, auth=None, jsonify_data=False,
                                   prepend_srv=False, always_retry=True, timeout=FILE_REQUEST_TIMEOUT,
                                   decode_response_body=False)
-        if len(part_data) != parts[part_id]["size"]:
+        if len(part_data) != part_info["size"]:
             raise DXFileError("Unexpected part data size in {} part {}".format(dxfile.get_id(), part_id))
-        if hashlib.md5(part_data).hexdigest() != parts[part_id]["md5"]:
+        if hashlib.md5(part_data).hexdigest() != part_info["md5"]:
             raise DXFileError("Checksum mismatch in {} part {}".format(dxfile.get_id(), part_id))
         return part_data
 
