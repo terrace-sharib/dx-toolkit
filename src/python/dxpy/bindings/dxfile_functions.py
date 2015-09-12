@@ -92,7 +92,7 @@ def _get_executor():
         _executor = ThreadPoolExecutor(max_workers=cpu_count())
     return _executor
 
-def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_progress=False,
+def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE, append=False, show_progress=False,
                     project=None, **kwargs):
     '''
     :param dxfile_or_id: Remote file handler or ID
@@ -143,6 +143,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
     parts = dxfile_desc["parts"]
     parts_to_get = sorted(parts, key=int)
     file_size = dxfile_desc.get("size") or 1
+    chunks_to_get = []
 
     # Warm up the download URL cache in the file handler, to avoid all worker threads trying to fetch it simultaneously
     dxfile.get_download_url(**kwargs)
@@ -152,22 +153,16 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
         parts[part_id]["start"] = offset
         offset += parts[part_id]["size"]
 
-    def get_part(part_id):
+    def get_chunk(chunk_info):
         url, headers = dxfile.get_download_url(**kwargs)
-        part_info = parts[part_id]
         # If we're fetching the whole object in one shot, avoid setting the Range header to take advantage of gzip
         # transfer compression
-        if len(parts) > 1:
-            headers["Range"] = "bytes={}-{}".format(part_info["start"],
-                                                    part_info["start"] + part_info["size"] - 1)
-        part_data = DXHTTPRequest(url, b"", method="GET", headers=headers, auth=None, jsonify_data=False,
-                                  prepend_srv=False, always_retry=True, timeout=FILE_REQUEST_TIMEOUT,
-                                  decode_response_body=False)
-        if len(part_data) != part_info["size"]:
-            raise DXFileError("Unexpected part data size in {} part {}".format(dxfile.get_id(), part_id))
-        if hashlib.md5(part_data).hexdigest() != part_info["md5"]:
-            raise DXFileError("Checksum mismatch in {} part {}".format(dxfile.get_id(), part_id))
-        return part_data
+        if len(parts) > 1 or len(chunks_to_get) > 1:
+            headers["Range"] = "bytes={}-{}".format(chunk_info["start"], chunk_info["end"])
+        chunk_info["data"] = DXHTTPRequest(url, b"", method="GET", headers=headers, auth=None, jsonify_data=False,
+                                           prepend_srv=False, always_retry=True, timeout=FILE_REQUEST_TIMEOUT,
+                                           decode_response_body=False)
+        return chunk_info
 
     if append:
         fh = open(filename, "ab")
@@ -181,18 +176,18 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
         print_progress(0, None)
 
     if fh.mode == "rb+":
-        last_verified_part, last_verified_pos, max_chunk_size = 0, 0, 1024*1024
+        last_verified_part, last_verified_pos, max_verify_chunk_size = 0, 0, 1024*1024
         try:
             for part_id in parts_to_get:
                 part_info = parts[part_id]
                 bytes_to_read = part_info["size"]
                 hasher = hashlib.md5()
                 while bytes_to_read > 0:
-                    chunk = fh.read(min(max_chunk_size, bytes_to_read))
-                    if len(chunk) < min(max_chunk_size, bytes_to_read):
+                    chunk = fh.read(min(max_verify_chunk_size, bytes_to_read))
+                    if len(chunk) < min(max_verify_chunk_size, bytes_to_read):
                         raise DXFileError("Local data for part {} is truncated".format(part_id))
                     hasher.update(chunk)
-                    bytes_to_read -= max_chunk_size
+                    bytes_to_read -= max_verify_chunk_size
                 if hasher.hexdigest() != part_info["md5"]:
                     raise DXFileError("Checksum mismatch when verifying downloaded part {}".format(part_id))
                 else:
@@ -211,13 +206,32 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
             print_progress(last_verified_pos, file_size, action="Resuming download at")
         logger.debug("Verified %d/%d downloaded parts", last_verified_part, len(parts_to_get))
 
+    for part_id in parts_to_get:
+        part_info = parts[part_id]
+        for chunk_start in range(part_info["start"], part_info["start"] + part_info["size"], chunksize):
+            chunk_end = min(chunk_start + chunksize, part_info["start"] + part_info["size"]) - 1
+            chunks_to_get.append(dict(part=part_id, start=chunk_start, end=chunk_end))
+
+    def verify_part(part_id, got_bytes, hasher):
+        if got_bytes is not None and got_bytes != parts[part_id]["size"]:
+            raise DXFileError("Unexpected part data size in {} part {}".format(dxfile.get_id(), part_id))
+        if hasher is not None and hasher.hexdigest() != parts[part_id]["md5"]:
+            raise DXFileError("Checksum mismatch in {} part {}".format(dxfile.get_id(), part_id))
+
     try:
+        cur_part, got_bytes, hasher = None, None, None
         # Timeout is required for non-blocking join that can be interrupted by SIGINT (Ctrl+C)
-        for part_data in _get_executor().map(get_part, parts_to_get, timeout=sys.maxint):
-            fh.write(part_data)
+        for chunk in _get_executor().map(get_chunk, chunks_to_get, timeout=sys.maxint):
+            if chunk["part"] != cur_part:
+                verify_part(cur_part, got_bytes, hasher)
+                cur_part, got_bytes, hasher = chunk["part"], 0, hashlib.md5()
+            got_bytes += len(chunk["data"])
+            hasher.update(chunk["data"])
+            fh.write(chunk["data"])
             if show_progress:
-                _bytes += len(part_data)
+                _bytes += len(chunk["data"])
                 print_progress(_bytes, file_size)
+        verify_part(cur_part, got_bytes, hasher)
     except KeyboardInterrupt:
         # Call os._exit() in case of KeyboardInterrupt. Otherwise, the atexit registered handler in
         # concurrent.futures.thread will run, and issue blocking join() on all worker threads, requiring us to
