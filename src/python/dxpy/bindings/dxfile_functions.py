@@ -181,20 +181,25 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
         print_progress(0, None)
 
     if fh.mode == "rb+":
-        last_verified_part, last_verified_pos = 0, 0
+        last_verified_part, last_verified_pos, max_chunk_size = 0, 0, 1024*1024
         try:
             for part_id in range(1, len(parts_to_get)+1):
                 part_info = parts[str(part_id)]
-                part_data = fh.read(part_info["size"])
-                if len(part_data) < part_info["size"]:
-                    raise DXFileError("Local data for part {} is truncated".format(part_id))
-                if hashlib.md5(part_data).hexdigest() != part_info["md5"]:
+                bytes_to_read = part_info["size"]
+                hasher = hashlib.md5()
+                while bytes_to_read > 0:
+                    chunk = fh.read(min(max_chunk_size, bytes_to_read))
+                    if len(chunk) < min(max_chunk_size, bytes_to_read):
+                        raise DXFileError("Local data for part {} is truncated".format(part_id))
+                    hasher.update(chunk)
+                    bytes_to_read -= max_chunk_size
+                if hasher.hexdigest() != part_info["md5"]:
                     raise DXFileError("Checksum mismatch when verifying downloaded part {}".format(part_id))
                 else:
                     last_verified_part = part_id
                     last_verified_pos = fh.tell()
                     if show_progress:
-                        _bytes += len(part_data)
+                        _bytes += part_info["size"]
                         print_progress(_bytes, file_size, action="Verified")
         except Exception as e:
             logger.debug(e)
