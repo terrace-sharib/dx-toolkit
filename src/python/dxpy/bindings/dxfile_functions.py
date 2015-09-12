@@ -183,8 +183,8 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
     if fh.mode == "rb+":
         last_verified_part, last_verified_pos, max_chunk_size = 0, 0, 1024*1024
         try:
-            for part_id in range(1, len(parts_to_get)+1):
-                part_info = parts[str(part_id)]
+            for part_id in parts_to_get:
+                part_info = parts[part_id]
                 bytes_to_read = part_info["size"]
                 hasher = hashlib.md5()
                 while bytes_to_read > 0:
@@ -204,7 +204,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=None, append=False, show_p
         except Exception as e:
             logger.debug(e)
         fh.seek(last_verified_pos)
-        del parts_to_get[:last_verified_part]
+        del parts_to_get[:parts_to_get.index(last_verified_part)+1]
         if len(parts_to_get) == 0 and len(fh.read(1)) > 0:
             raise DXFileError("{} to be downloaded is a truncated copy of local file".format(part_id))
         if show_progress and len(parts_to_get) < len(parts):
