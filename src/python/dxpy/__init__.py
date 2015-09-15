@@ -232,7 +232,7 @@ def _is_retryable_exception(e):
     have been established, we return False.
 
     """
-    if isinstance(e, urllib.exceptions.MaxRetryError):
+    if isinstance(e, urllib3.exceptions.MaxRetryError):
         e = e.reason
     if isinstance(e, (socket.gaierror, socket.herror)):
         return True
