@@ -203,7 +203,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
         if len(parts_to_get) == 0 and len(fh.read(1)) > 0:
             raise DXFileError("{} to be downloaded is a truncated copy of local file".format(part_id))
         if show_progress and len(parts_to_get) < len(parts):
-            print_progress(last_verified_pos, file_size, action="Resuming download at")
+            print_progress(last_verified_pos, file_size, action="Resuming at")
         logger.debug("Verified %d/%d downloaded parts", last_verified_part, len(parts_to_get))
 
     for part_id in parts_to_get:
@@ -232,6 +232,8 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
                 _bytes += len(chunk["data"])
                 print_progress(_bytes, file_size)
         verify_part(cur_part, got_bytes, hasher)
+        if show_progress:
+            print_progress(_bytes, file_size, action="Completed")
     except KeyboardInterrupt:
         # Call os._exit() in case of KeyboardInterrupt. Otherwise, the atexit registered handler in
         # concurrent.futures.thread will run, and issue blocking join() on all worker threads, requiring us to
