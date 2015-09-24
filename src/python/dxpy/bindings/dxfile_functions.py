@@ -177,7 +177,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
         print_progress(0, None)
 
     if fh.mode == "rb+":
-        last_verified_part, last_verified_pos, max_verify_chunk_size = 0, 0, 1024*1024
+        last_verified_part, last_verified_pos, max_verify_chunk_size = None, 0, 1024*1024
         try:
             for part_id in parts_to_get:
                 part_info = parts[part_id]
@@ -201,10 +201,11 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
             logger.debug(e)
         fh.seek(last_verified_pos)
         fh.truncate()
-        del parts_to_get[:parts_to_get.index(last_verified_part)+1]
+        if last_verified_part is not None:
+            del parts_to_get[:parts_to_get.index(last_verified_part)+1]
         if show_progress and len(parts_to_get) < len(parts):
             print_progress(last_verified_pos, file_size, action="Resuming at")
-        logger.debug("Verified %d/%d downloaded parts", last_verified_part, len(parts_to_get))
+        logger.debug("Verified %s/%d downloaded parts", last_verified_part, len(parts_to_get))
 
     for part_id in parts_to_get:
         part_info = parts[part_id]
