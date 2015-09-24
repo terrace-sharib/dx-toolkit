@@ -125,7 +125,7 @@ environment variables:
 
 from __future__ import (print_function, unicode_literals)
 
-import os, sys, json, time, logging, platform, collections, ssl, traceback
+import os, sys, json, time, logging, platform, ssl, traceback
 import errno
 import requests
 import socket
@@ -295,6 +295,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
     :type decode_response_body: boolean
     :param prepend_srv: If True, prepends the API server location to the URL
     :type prepend_srv: boolean
+    :param session_handler: Deprecated.
     :param max_retries: Maximum number of retries to perform for a request. A "failed" request is retried if any of the following is true:
 
                         - A response is received from the server, and the content length received does not match the "Content-Length" header.
@@ -346,7 +347,6 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
         kwargs['verify'] = os.environ['DX_CA_CERT']
         if os.environ['DX_CA_CERT'] == 'NOVERIFY':
             kwargs['verify'] = False
-            from requests.packages import urllib3
             urllib3.disable_warnings()
 
     if jsonify_data:

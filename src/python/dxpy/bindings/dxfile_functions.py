@@ -24,7 +24,8 @@ The following helper functions are useful shortcuts for interacting with File ob
 
 from __future__ import print_function, unicode_literals, division, absolute_import
 
-import os, sys, math, mmap, stat, hashlib
+import os, sys, math, mmap, stat
+import hashlib
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 
@@ -142,7 +143,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
     dxfile_desc = dxfile.describe(fields={"parts"}, default_fields=True, **kwargs)
     parts = dxfile_desc["parts"]
     parts_to_get = sorted(parts, key=int)
-    file_size = dxfile_desc.get("size") or 1
+    file_size = dxfile_desc.get("size")
     chunks_to_get = []
 
     # Warm up the download URL cache in the file handler, to avoid all worker threads trying to fetch it simultaneously
@@ -199,9 +200,8 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
         except Exception as e:
             logger.debug(e)
         fh.seek(last_verified_pos)
+        fh.truncate()
         del parts_to_get[:parts_to_get.index(last_verified_part)+1]
-        if len(parts_to_get) == 0 and len(fh.read(1)) > 0:
-            raise DXFileError("{} to be downloaded is a truncated copy of local file".format(part_id))
         if show_progress and len(parts_to_get) < len(parts):
             print_progress(last_verified_pos, file_size, action="Resuming at")
         logger.debug("Verified %d/%d downloaded parts", last_verified_part, len(parts_to_get))
