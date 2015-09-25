@@ -24,8 +24,13 @@ The following helper functions are useful shortcuts for interacting with File ob
 
 from __future__ import print_function, unicode_literals, division, absolute_import
 
+import threading
+from time import sleep
+
 import os, sys, math, mmap, stat
 import hashlib
+
+from Queue import Queue
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 
@@ -155,14 +160,25 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
         offset += parts[part_id]["size"]
 
     def get_chunk(chunk_info):
+        def monitor_progress(status):
+          while True:
+            chunk_info["bytes_received"] = status.get()
+
+        thread = threading.Thread(target=monitor_progress, args=(chunk_info["status"],))
+
+        # TODO: Do we want this?
+        thread.daemon = True
+        thread.start()
+
         url, headers = dxfile.get_download_url(**kwargs)
         # If we're fetching the whole object in one shot, avoid setting the Range header to take advantage of gzip
         # transfer compression
         if len(parts) > 1 or len(chunks_to_get) > 1:
             headers["Range"] = "bytes={}-{}".format(chunk_info["start"], chunk_info["end"])
+
         chunk_info["data"] = DXHTTPRequest(url, b"", method="GET", headers=headers, auth=None, jsonify_data=False,
                                            prepend_srv=False, always_retry=True, timeout=FILE_REQUEST_TIMEOUT,
-                                           decode_response_body=False)
+                                           decode_response_body=False, status=chunk_info["status"])
         return chunk_info
 
     if append:
@@ -211,7 +227,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
         part_info = parts[part_id]
         for chunk_start in range(part_info["start"], part_info["start"] + part_info["size"], chunksize):
             chunk_end = min(chunk_start + chunksize, part_info["start"] + part_info["size"]) - 1
-            chunks_to_get.append(dict(part=part_id, start=chunk_start, end=chunk_end))
+            chunks_to_get.append(dict(part=part_id, start=chunk_start, end=chunk_end, status=Queue(), bytes_received=0))
 
     def verify_part(part_id, got_bytes, hasher):
         if got_bytes is not None and got_bytes != parts[part_id]["size"]:
@@ -221,6 +237,27 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
 
     try:
         cur_part, got_bytes, hasher = None, None, None
+
+        def monitor_status(chunks = []):
+          while True:
+
+            bytes_to_print = _bytes
+
+            # Now add all the partial chunks
+
+            for chunk in chunks:
+              if chunk["bytes_received"] != (chunk["end"] - chunk["start"]):
+                bytes_to_print += chunk["bytes_received"]
+
+            print("BYTES TO PRINT: " + str(bytes_to_print))
+            print_progress(bytes_to_print, file_size)
+            sleep(1)
+
+        # RECIPE
+        thread = threading.Thread(target=monitor_status, kwargs=dict(chunks=chunks_to_get))
+        thread.daemon = True                            # Daemonize thread
+        thread.start()
+
         # Timeout is required for non-blocking join that can be interrupted by SIGINT (Ctrl+C)
         for chunk in _get_executor().map(get_chunk, chunks_to_get, timeout=sys.maxint):
             if chunk["part"] != cur_part:
@@ -231,6 +268,9 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
             fh.write(chunk["data"])
             if show_progress:
                 _bytes += len(chunk["data"])
+
+
+                # TODO: HERE
                 print_progress(_bytes, file_size)
         verify_part(cur_part, got_bytes, hasher)
         if show_progress:

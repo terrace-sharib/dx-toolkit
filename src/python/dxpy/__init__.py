@@ -131,6 +131,8 @@ import requests
 import socket
 from collections import namedtuple
 
+import threading
+
 from requests.exceptions import HTTPError
 from requests.auth import AuthBase
 from requests.packages import urllib3
@@ -271,7 +273,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                   timeout=DEFAULT_TIMEOUT,
                   use_compression=None, jsonify_data=True, want_full_response=False,
                   decode_response_body=True, prepend_srv=True, session_handler=None,
-                  max_retries=DEFAULT_RETRIES, always_retry=False, **kwargs):
+                  max_retries=DEFAULT_RETRIES, always_retry=False, status=None, **kwargs):
     '''
     :param resource: API server route, e.g. "/record/new". If *prepend_srv* is False, a fully qualified URL is expected. If this argument is a callable, it will be called just before each request attempt, and expected to return a tuple (URL, headers). Headers returned by the callback are updated with *headers* (including headers set by this method).
     :type resource: string
@@ -372,6 +374,24 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
             _method, _url, _headers = _process_method_url_headers(method, url, headers)
             response = _pool_manager.request(_method, _url, headers=_headers, body=data,
                                              timeout=timeout, **kwargs)
+
+            def print_status(response, status):
+                while True:
+                    print("TELL: " + str(response.tell()))
+                    status.put(response.tell())
+                    time.sleep(0.1)
+
+            if status is not None:
+                thread = threading.Thread(target=print_status, args=(response, status))
+
+                # TODO: Do we want this?
+                thread.daemon = True
+                thread.start()
+
+            #print(response)
+            #print(response.tell())
+            for chunk in response.stream():
+                print(len(chunk) + " bytes in chunk");
 
             if _UPGRADE_NOTIFY and response.headers.get('x-upgrade-info', '').startswith('A recommended update is available') and not os.environ.has_key('_ARGCOMPLETE'):
                 logger.info(response.headers['x-upgrade-info'])
