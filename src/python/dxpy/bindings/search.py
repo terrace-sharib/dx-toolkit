@@ -680,3 +680,81 @@ def find_one_app(zero_ok=False, more_ok=True, **kwargs):
 
     """
     return _find_one(find_apps, zero_ok=zero_ok, more_ok=more_ok, **kwargs)
+
+def org_find_projects(orgID=None ,name=None, name_mode='exact', properties=None, tags=None,
+                  level=None, describe=False, public=None, created_after=None, 
+                  created_before=None, limit=None, return_handler=False, 
+                  first_page_size=100, **kwargs):
+    """
+    :param name: Name of the project (also see *name_mode*)
+    :type name: string
+    :param name_mode: Method by which to interpret the *name* field ("exact": exact match, "glob": use "*" and "?" as wildcards, "regexp": interpret as a regular expression)
+    :type name_mode: string
+    :param properties: Properties (key-value pairs) that each result must have (use value True to require the property key and allow any value)
+    :type properties: dict
+    :param tags: Tags that each result must have
+    :type tags: list of strings
+    :param level: One of "VIEW", "UPLOAD", "CONTRIBUTE", or "ADMINSTER". If specified, only returns projects where the current user has at least the specified permission level.
+    :type level: string
+    :param describe: Controls whether to also return the output of
+        calling describe() on each project. Supply False to omit
+        describe output, True to obtain the default describe output, or
+        a dict to be supplied as the describe call input (which may be
+        used to customize the set of fields that is returned)
+    :type describe: bool or dict
+    :param public: Filter on the project being public. If True, matching projects must be public. If False, matching projects must not be public. (default is None, for no filter)
+    :type public: boolean or None
+    :param created_after: Timestamp after which each result was created
+        (see note accompanying :meth:`find_data_objects()` for interpretation)
+    :type created_after: int or string
+    :param created_before: Timestamp before which each result was created
+        (see note accompanying :meth:`find_data_objects()` for interpretation)
+    :type created_before: int or string
+    :param limit: The maximum number of results to be returned (if not specified, the number of results is unlimited)
+    :type limit: int
+    :param first_page_size: The number of results that the initial API call will return. Subsequent calls will raise this by multiplying by 2 up to a maximum of 1000.
+    :type first_page_size: int
+    :param return_handler: If True, yields results as dxpy object handlers (otherwise, yields each result as a dict with keys "id" and "project")
+    :type return_handler: boolean
+    :rtype: generator
+
+    Returns a generator that yields all projects that match the query.
+    It transparently handles paging through the result set if necessary.
+    For all parameters that are omitted, the search is not restricted by
+    the corresponding field.
+
+    You can use the *level* parameter to find projects that the user has
+    at least a specific level of access to (e.g. "CONTRIBUTE").
+
+    """
+    query = {}
+    if name is not None:
+        if name_mode == 'exact':
+            query['name'] = name
+        elif name_mode == 'glob':
+            query['name'] = {'glob': name}
+        elif name_mode == 'regexp':
+            query['name'] = {'regexp': name}
+        else:
+            raise DXError('org_find_projects: Unexpected value found for argument name_mode')
+    if properties is not None:
+        query["properties"] = properties
+    if tags is not None:
+        query["tags"] = {"$and": tags}
+    if level is not None:
+        query["level"] = level
+    if describe is not None and describe is not False:
+        query["describe"] = describe
+    if public is not None:
+        query['public'] = public
+    if created_after is not None or created_before is not None:
+        query["created"] = {}
+        if created_after is not None:
+            query["created"]["after"] = dxpy.utils.normalize_time_input(created_after)
+        if created_before is not None:
+            query["created"]["before"] = dxpy.utils.normalize_time_input(created_before)
+    if limit is not None:
+        query["limit"] = limit
+    
+    return _find(dxpy.api.org_find_projects(orgID), query, limit, return_handler, first_page_size, **kwargs)
+

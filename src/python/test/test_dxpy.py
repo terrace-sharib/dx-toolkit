@@ -1892,6 +1892,42 @@ class TestDXSearch(unittest.TestCase):
         matching_ids = (result["id"] for result in dxpy.find_projects(created_before=created - 1000))
         self.assertNotIn(dxproject.id, matching_ids)
 
+    def test_find_org_projects(self):
+        dxproject = dxpy.DXProject()
+        results = list(dxpy.find_org_projects())
+        found_proj = False;
+        for result in results:
+            if result["id"] == dxproject.get_id():
+                self.assertEqual(result["level"], 'ADMINISTER')
+                found_proj = True
+            self.assertFalse('describe' in result)
+        self.assertTrue(found_proj)
+
+        results = list(dxpy.find_org_projects(level='VIEW', describe=True))
+        found_proj = False;
+        for result in results:
+            if result["id"] == self.second_proj_id:
+                self.assertEqual(result["level"], 'ADMINISTER')
+                found_proj = True
+                self.assertTrue('describe' in result)
+                self.assertEqual(result['describe']['name'], 'test project 2')
+                break
+        self.assertTrue(found_proj)
+
+        created = dxproject.created
+        matching_ids = (result["id"] for result in dxpy.find_org_projects(created_before=created + 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in dxpy.find_org_projects(created_after=created - 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in
+                        dxpy.find_org_projects(created_before=created + 1000, created_after=created - 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in dxpy.find_org_projects(created_before=created - 1000))
+        self.assertNotIn(dxproject.id, matching_ids)
+
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
     def test_find_executions(self):
         dxapplet = dxpy.DXApplet()

@@ -165,11 +165,13 @@ else:
 # subcommand with further subcommands, then the second word must be an
 # appropriate sub-subcommand.
 class DXCLICompleter():
-    subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions ', 'analyses '],
+    subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions',
+                    'analyses ', 'org '],
                    'new': ['record ', 'project ', 'workflow '],
                    'add': ['developers ', 'users ', 'stage '],
                    'remove': ['developers ', 'users ', 'stage '],
-                   'update': ['stage ', 'workflow ']}
+                   'update': ['stage ', 'workflow '],
+                   'org': ['projects ']}    
 
     silent_commands = set(['import'])
 
@@ -2269,6 +2271,29 @@ def find_apps(args):
         else:
             for result in results:
                 print(maybe_x(result) + DELIMITER(" ") + result["id"] + DELIMITER(" ") + result['describe'].get('title', result['describe']['name']) + DELIMITER(' (') + result["describe"]["name"] + DELIMITER('), v') + result['describe']['version'] + DELIMITER(" (") + ("published" if result["describe"].get("published", 0) > 0 else "unpublished") + DELIMITER(")"))
+    except:
+        err_exit()
+
+def org_find_projects(args):
+    try_call(process_find_by_property_args, args)
+    try:
+        results = dxpy.org_find_projects(orgID=args.org,name=args.name, name_mode='glob',
+                                         properties=args.properties, tags=args.tag,
+                                         level=('VIEW' if args.public else args.level),
+                                         describe=(not args.brief),
+                                         public=(args.public if args.public else None),
+                                         created_after=args.created_after,
+                                         created_before=args.created_before)
+        if args.json:
+            print(json.dumps(list(results), indent=4))
+            return
+        if args.brief:
+            for result in results:
+                print(result['id'])
+        else:
+            for result in results:
+                print(result["id"] + DELIMITER(" : ") + result['describe']['name'] +
+                      DELIMITER(' (') + result["level"] + DELIMITER(')'))
     except:
         err_exit()
 
@@ -4396,6 +4421,32 @@ parser_find_projects.add_argument('--created-before',
                                   'created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
 parser_find_projects.set_defaults(func=find_projects)
 register_subparser(parser_find_projects, subparsers_action=subparsers_find, categories='data')
+
+parser_find_org = subparsers_find.add_parser('org', help='Find org',
+                                             description='TBD',
+                                             parents=[stdout_args, json_arg, delim_arg, env_args, find_by_properties_and_tags_args],
+                                             prog='dx find org')
+parser_find_org.add_argument('org', help='Org handle')
+subparsers_find_org = parser_find_org.add_subparsers(parser_class=DXArgumentParser)
+parser_find_org_projects = subparsers_find_org.add_parser('projects', help='Find org projects',
+                                             description='TBD',
+                                             parents=[stdout_args, json_arg, delim_arg, env_args, find_by_properties_and_tags_args],
+                                             prog='dx find org projects')
+parser_find_org_projects.add_argument('--name', help='Name of the project')
+parser_find_org_projects.add_argument('--level', choices=['VIEW', 'UPLOAD', 'CONTRIBUTE', 'ADMINISTER'],
+                                  help='Minimum level of permissions expected')
+parser_find_org_projects.add_argument('--public',
+                                  help='Include ONLY public projects (will automatically set --level to VIEW)',
+                                  action='store_true')
+parser_find_org_projects.add_argument('--created-after',
+                                  help='Date (e.g. 2012-01-01) or integer timestamp after which the project was ' +
+                                  'created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
+parser_find_org_projects.add_argument('--created-before',
+                                  help='Date (e.g. 2012-01-01) or integer timestamp after which the project was ' +
+                                  'created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
+parser_find_org_projects.set_defaults(func=org_find_projects)
+register_subparser(parser_find_org, subparsers_action=subparsers_find, categories='data')
+register_subparser(parser_find_org_projects, subparsers_action=subparsers_find_org, categories='data')
 
 parser_api = subparsers.add_parser('api', help='Call an API method',
                                    formatter_class=argparse.RawTextHelpFormatter,
