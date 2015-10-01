@@ -69,7 +69,6 @@ def resolve_data_objects(objects, project=None, folder=None, batchsize=1000):
         results.extend(dxpy.api.system_resolve_data_objects(args)['results'])
     return results
 
-
 def _find(api_method, query, limit, return_handler, first_page_size, **kwargs):
     ''' Takes an API method handler (dxpy.api.find...) and calls it with *query*, then wraps a generator around its
     output. Used by the methods below.
@@ -102,6 +101,30 @@ def _find(api_method, query, limit, return_handler, first_page_size, **kwargs):
         if resp["next"] is not None:
             query["starting"] = resp["next"]
             query["limit"] = min(query["limit"]*2, 1000)
+        else:
+            raise StopIteration()
+
+
+def _find_org(api_method, org_id, query, limit, return_handler, first_page_size, **kwargs):
+    ''' Takes an API method handler (dxpy.api.org_find...) and calls it with *org_id* and *query*, then wraps a generator around its
+    output. Used by `org_find_members` and `org_find_projects` below.
+    '''
+    num_results = 0
+
+    if "limit" not in query:
+        query["limit"] = first_page_size
+
+    while True:
+        resp = api_method(org_id, query, **kwargs)
+        for i in resp["results"]:
+            if num_results == limit:
+                raise StopIteration()
+            num_results += 1
+            yield i
+
+        # set up next query
+        if resp["next"] is not None:
+            query["starting"] = resp["next"]
         else:
             raise StopIteration()
 
@@ -681,15 +704,18 @@ def find_one_app(zero_ok=False, more_ok=True, **kwargs):
     """
     return _find_one(find_apps, zero_ok=zero_ok, more_ok=more_ok, **kwargs)
 
-def org_find_projects(orgID=None ,name=None, name_mode='exact', properties=None, tags=None,
-                  level=None, describe=False, public=None, created_after=None, 
-                  created_before=None, limit=None, return_handler=False, 
-                  first_page_size=100, **kwargs):
+
+def org_find_projects(org_id=None, name=None, name_mode='exact', id=None, properties=None, tags=None,
+                      describe=False, public=None, created_after=None,
+                      created_before=None, limit=None, return_handler=False,
+                      first_page_size=100, **kwargs):
     """
     :param name: Name of the project (also see *name_mode*)
     :type name: string
     :param name_mode: Method by which to interpret the *name* field ("exact": exact match, "glob": use "*" and "?" as wildcards, "regexp": interpret as a regular expression)
     :type name_mode: string
+    :param id: list of project ids
+    :type id: array of strings
     :param properties: Properties (key-value pairs) that each result must have (use value True to require the property key and allow any value)
     :type properties: dict
     :param tags: Tags that each result must have
@@ -737,12 +763,12 @@ def org_find_projects(orgID=None ,name=None, name_mode='exact', properties=None,
             query['name'] = {'regexp': name}
         else:
             raise DXError('org_find_projects: Unexpected value found for argument name_mode')
+    if id is not None:
+        query["id"] = id
     if properties is not None:
         query["properties"] = properties
     if tags is not None:
         query["tags"] = {"$and": tags}
-    if level is not None:
-        query["level"] = level
     if describe is not None and describe is not False:
         query["describe"] = describe
     if public is not None:
@@ -755,6 +781,5 @@ def org_find_projects(orgID=None ,name=None, name_mode='exact', properties=None,
             query["created"]["before"] = dxpy.utils.normalize_time_input(created_before)
     if limit is not None:
         query["limit"] = limit
-    
-    return _find(dxpy.api.org_find_projects(orgID), query, limit, return_handler, first_page_size, **kwargs)
 
+    return _find_org(dxpy.api.org_find_projects, org_id, query, limit, return_handler, first_page_size, **kwargs)

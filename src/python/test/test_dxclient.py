@@ -3377,14 +3377,22 @@ class TestDXClientFind(DXTestCase):
         assert_cmd_gives_ids("dx find analyses "+options3, [])
 
     def test_dx_find_org_projects(self):
-        org_handle = "dx_membership_org_{t}".format(t=int(time.time()))
-        unique_project_name = 'dx projects test ' + str(time.time())
-        orgID = dxpy.api.org_new({'handle': org_handle, 'name': 'org with projects'})['id']
-        projectID = dxpy.api.project_new({'name': unique_project_name})['id']
-        dxpy.api.project_update(projectID, {"billTo": orgID})
-        project_list = dxpy.api.org_find_projects(orgID)
-        output = run("dx find org " + pipes.quote(orgID) + " projects")
-        self.assertEqual(output, project_list)
+        project_name = 'dx projects test ' + str(time.time())
+        with temporary_project(project_name) as unique_project:
+            orgID = "org-infinite_spending_limit"
+            projectID = unique_project.get_id()
+            dxpy.api.project_update(projectID, {"billTo": orgID})
+            project_list = dxpy.api.org_find_projects(orgID)
+
+            # Basic test
+            output = run("dx find org " + pipes.quote(orgID) + " projects --brief").strip().split("\n")
+            expected = [project['id'] for project in project_list['results']]
+            self.assertEqual(output, expected)
+
+            # With --id flag
+            output = run("dx find org " + pipes.quote(orgID) + " projects --id "
+                         + projectID + " --brief").strip().split("\n")
+            self.assertEqual(output, [projectID])
 
 @unittest.skipUnless(testutil.TEST_WITH_AUTHSERVER,
                      'skipping tests that require a running authserver')

@@ -1850,7 +1850,7 @@ class TestDXSearch(unittest.TestCase):
     def test_find_projects(self):
         dxproject = dxpy.DXProject()
         results = list(dxpy.find_projects())
-        found_proj = False;
+        found_proj = False
         for result in results:
             if result["id"] == dxproject.get_id():
                 self.assertEqual(result["level"], 'ADMINISTER')
@@ -1859,7 +1859,7 @@ class TestDXSearch(unittest.TestCase):
         self.assertTrue(found_proj)
 
         results = list(dxpy.find_projects(level='VIEW', describe=True))
-        found_proj = False;
+        found_proj = False
         for result in results:
             if result["id"] == self.second_proj_id:
                 self.assertEqual(result["level"], 'ADMINISTER')
@@ -1893,9 +1893,11 @@ class TestDXSearch(unittest.TestCase):
         self.assertNotIn(dxproject.id, matching_ids)
 
     def test_find_org_projects(self):
+        org_id = "org-infinite_spending_limit"
         dxproject = dxpy.DXProject()
-        results = list(dxpy.find_org_projects())
-        found_proj = False;
+        dxpy.api.project_update(dxproject.get_id(), {"billTo": org_id})
+        results = list(dxpy.org_find_projects(org_id))
+        found_proj = False
         for result in results:
             if result["id"] == dxproject.get_id():
                 self.assertEqual(result["level"], 'ADMINISTER')
@@ -1903,29 +1905,29 @@ class TestDXSearch(unittest.TestCase):
             self.assertFalse('describe' in result)
         self.assertTrue(found_proj)
 
-        results = list(dxpy.find_org_projects(level='VIEW', describe=True))
-        found_proj = False;
+        results = list(dxpy.org_find_projects(org_id, describe=True))
+        found_proj = False
         for result in results:
-            if result["id"] == self.second_proj_id:
+            if result["id"] == dxproject.get_id():
                 self.assertEqual(result["level"], 'ADMINISTER')
                 found_proj = True
                 self.assertTrue('describe' in result)
-                self.assertEqual(result['describe']['name'], 'test project 2')
+                self.assertEqual(result['describe']['name'], 'test project 1')
                 break
         self.assertTrue(found_proj)
 
         created = dxproject.created
-        matching_ids = (result["id"] for result in dxpy.find_org_projects(created_before=created + 1000))
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000))
         self.assertIn(dxproject.id, matching_ids)
 
-        matching_ids = (result["id"] for result in dxpy.find_org_projects(created_after=created - 1000))
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_after=created - 1000))
         self.assertIn(dxproject.id, matching_ids)
 
         matching_ids = (result["id"] for result in
-                        dxpy.find_org_projects(created_before=created + 1000, created_after=created - 1000))
+                        dxpy.org_find_projects(org_id, created_before=created + 1000, created_after=created - 1000))
         self.assertIn(dxproject.id, matching_ids)
 
-        matching_ids = (result["id"] for result in dxpy.find_org_projects(created_before=created - 1000))
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created - 1000))
         self.assertNotIn(dxproject.id, matching_ids)
 
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
