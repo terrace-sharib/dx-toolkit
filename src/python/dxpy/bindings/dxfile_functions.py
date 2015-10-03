@@ -156,6 +156,7 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
     for part_id in parts_to_get:
         parts[part_id]["start"] = offset
         offset += parts[part_id]["size"]
+    import io
 
     def get_chunk(chunk_info):
         url, headers = dxfile.get_download_url(**kwargs)
@@ -163,9 +164,17 @@ def download_dxfile(dxfile_or_id, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE
         # transfer compression
         if len(parts) > 1 or len(chunks_to_get) > 1:
             headers["Range"] = "bytes={}-{}".format(chunk_info["start"], chunk_info["end"])
-        chunk_info["data"] = DXHTTPRequest(url, b"", method="GET", headers=headers, auth=None, jsonify_data=False,
+        res = DXHTTPRequest(url, b"", method="GET", headers=headers, auth=None, jsonify_data=False,
                                            prepend_srv=False, always_retry=True, timeout=FILE_REQUEST_TIMEOUT,
-                                           decode_response_body=False)
+                                           decode_response_body=False, preload_content=False, want_full_response=True)
+        buf = io.BytesIO()
+        while True:
+            subchunk = res.read(1024*1024)
+            if len(subchunk) == 0:
+                break
+            buf.write(subchunk)
+            #print_progress(chunk_info["start"] + buf.tell(), file_size)
+        chunk_info["data"] = buf.getvalue()
         return chunk_info
 
     if append:
