@@ -169,8 +169,7 @@ class DXCLICompleter():
                    'new': ['record ', 'project ', 'workflow '],
                    'add': ['developers ', 'users ', 'stage '],
                    'remove': ['developers ', 'users ', 'stage '],
-                   'update': ['stage ', 'workflow '],
-                   'org': ['projects ']}
+                   'update': ['stage ', 'workflow ']}
 
     silent_commands = set(['import'])
 
@@ -2278,7 +2277,7 @@ def org_find_projects(args):
     try_call(process_find_by_property_args, args)
     try:
         results = dxpy.org_find_projects(org_id=args.org, name=args.name, name_mode='glob',
-                                         id=args.id, properties=args.properties, tags=args.tag,
+                                         ids=args.ids, properties=args.properties, tags=args.tag,
                                          describe=(not args.brief),
                                          public=(args.public if args.public else None),
                                          created_after=args.created_after,
@@ -4421,24 +4420,29 @@ parser_find_projects.add_argument('--created-before',
 parser_find_projects.set_defaults(func=find_projects)
 register_subparser(parser_find_projects, subparsers_action=subparsers_find, categories='data')
 
-parser_find_org = subparsers_find.add_parser('org', help='Specify the ID of an org to execute search queries', prog='dx find org')
+parser_find_org = subparsers_find.add_parser('org', help='Specify the ID of an org to execute search queries', 
+                                             prog='dx find org')
 parser_find_org.add_argument('org', help='Org id')
 subparsers_find_org = parser_find_org.add_subparsers(parser_class=DXArgumentParser)
 parser_find_org_projects = subparsers_find_org.add_parser('projects', help='Find org projects',
-                                                          description='Finds projects of an org with the given search parameters. Use the --public flag to list all public projects.',
-                                                          parents=[stdout_args, json_arg, delim_arg, env_args, find_by_properties_and_tags_args],
+                                                          description='Finds projects of an org with the given search parameters.' +
+                                                          ' Use the --public flag to list all public projects.',
+                                                          parents=[stdout_args, json_arg, delim_arg, env_args,
+                                                                  find_by_properties_and_tags_args],
                                                           prog='dx find org projects')
 parser_find_org_projects.add_argument('--name', help='Name of the project')
-parser_find_org_projects.add_argument('--id', nargs='+', help='Projects to be listed')
+parser_find_org_projects.add_argument('--ids', nargs='+', help='Projects to be listed')
 parser_find_org_projects.add_argument('--public',
                                       help='Include ONLY public projects (will automatically set --level to VIEW)',
                                       action='store_true')
 parser_find_org_projects.add_argument('--created-after',
                                       help='Date (e.g. 2012-01-01) or integer timestamp after which the project was ' +
-                                      'created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
+                                      'created (negative number means ms in the past, or use suffix ' +
+                                      's, m, h, d, w, M, y)')
 parser_find_org_projects.add_argument('--created-before',
                                       help='Date (e.g. 2012-01-01) or integer timestamp after which the project was ' +
-                                      'created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
+                                      'created (negative number means ms in the past, or use suffix ' +
+                                      's, m, h, d, w, M, y)')
 parser_find_org_projects.set_defaults(func=org_find_projects)
 register_subparser(parser_find_org, subparsers_action=subparsers_find, categories='data')
 register_subparser(parser_find_org_projects, subparsers_action=subparsers_find_org, categories='data')

@@ -3390,7 +3390,7 @@ class TestDXClientFind(DXTestCase):
             self.assertEqual(output, expected)
 
             # With --id flag
-            output = run("dx find org " + pipes.quote(orgID) + " projects --id "
+            output = run("dx find org " + pipes.quote(orgID) + " projects --ids "
                          + projectID + " --brief").strip().split("\n")
             self.assertEqual(output, [projectID])
 

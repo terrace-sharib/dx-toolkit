@@ -106,8 +106,9 @@ def _find(api_method, query, limit, return_handler, first_page_size, **kwargs):
 
 
 def _find_org(api_method, org_id, query, limit, return_handler, first_page_size, **kwargs):
-    ''' Takes an API method handler (dxpy.api.org_find...) and calls it with *org_id* and *query*, then wraps a generator around its
-    output. Used by `org_find_members` and `org_find_projects` below.
+    ''' Takes an API method handler (dxpy.api.org_find...) and calls it with
+    *org_id* and *query*, then wraps a generator around its output. Used by 
+    `org_find_members` and `org_find_projects` below.
     '''
     num_results = 0
 
@@ -116,11 +117,11 @@ def _find_org(api_method, org_id, query, limit, return_handler, first_page_size,
 
     while True:
         resp = api_method(org_id, query, **kwargs)
-        for i in resp["results"]:
+        for result in resp["results"]:
             if num_results == limit:
                 raise StopIteration()
             num_results += 1
-            yield i
+            yield result
 
         # set up next query
         if resp["next"] is not None:
@@ -705,22 +706,26 @@ def find_one_app(zero_ok=False, more_ok=True, **kwargs):
     return _find_one(find_apps, zero_ok=zero_ok, more_ok=more_ok, **kwargs)
 
 
-def org_find_projects(org_id=None, name=None, name_mode='exact', id=None, properties=None, tags=None,
+def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, properties=None, tags=None,
                       describe=False, public=None, created_after=None,
                       created_before=None, limit=None, return_handler=False,
                       first_page_size=100, **kwargs):
     """
     :param name: Name of the project (also see *name_mode*)
     :type name: string
-    :param name_mode: Method by which to interpret the *name* field ("exact": exact match, "glob": use "*" and "?" as wildcards, "regexp": interpret as a regular expression)
+    :param name_mode: Method by which to interpret the *name* field ("exact": exact match,
+    "glob": use "*" and "?" as wildcards, "regexp": interpret as a regular expression)
     :type name_mode: string
-    :param id: list of project ids
-    :type id: array of strings
-    :param properties: Properties (key-value pairs) that each result must have (use value True to require the property key and allow any value)
+    :param ids: list of project ids which will be intersected with any other
+    applicatble constraints
+    :type ids: array of strings
+    :param properties: Properties (key-value pairs) that each result must have
+    (use value True to require the property key and allow any value)
     :type properties: dict
     :param tags: Tags that each result must have
     :type tags: list of strings
-    :param level: One of "VIEW", "UPLOAD", "CONTRIBUTE", or "ADMINSTER". If specified, only returns projects where the current user has at least the specified permission level.
+    :param level: One of "VIEW", "UPLOAD", "CONTRIBUTE", or "ADMINSTER". If specified, only returns projects where the current user has
+    at least the specified permission level.
     :type level: string
     :param describe: Controls whether to also return the output of
         calling describe() on each project. Supply False to omit
@@ -728,7 +733,8 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', id=None, proper
         a dict to be supplied as the describe call input (which may be
         used to customize the set of fields that is returned)
     :type describe: bool or dict
-    :param public: Filter on the project being public. If True, matching projects must be public. If False, matching projects must not be public. (default is None, for no filter)
+    :param public: Filter on the project being public. If True, matching projects must be public.
+    If False, matching projects must not be public. (default is None, for no filter)
     :type public: boolean or None
     :param created_after: Timestamp after which each result was created
         (see note accompanying :meth:`find_data_objects()` for interpretation)
@@ -738,9 +744,11 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', id=None, proper
     :type created_before: int or string
     :param limit: The maximum number of results to be returned (if not specified, the number of results is unlimited)
     :type limit: int
-    :param first_page_size: The number of results that the initial API call will return. Subsequent calls will raise this by multiplying by 2 up to a maximum of 1000.
+    :param first_page_size: The number of results that the initial API call will return. Subsequent calls will raise this
+    by multiplying by 2 up to a maximum of 1000.
     :type first_page_size: int
-    :param return_handler: If True, yields results as dxpy object handlers (otherwise, yields each result as a dict with keys "id" and "project")
+    :param return_handler: If True, yields results as dxpy object handlers (otherwise, yields each 
+    result as a dict with keys "id" and "project")
     :type return_handler: boolean
     :rtype: generator
 
@@ -763,8 +771,8 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', id=None, proper
             query['name'] = {'regexp': name}
         else:
             raise DXError('org_find_projects: Unexpected value found for argument name_mode')
-    if id is not None:
-        query["id"] = id
+    if ids is not None:
+        query["id"] = ids
     if properties is not None:
         query["properties"] = properties
     if tags is not None:
