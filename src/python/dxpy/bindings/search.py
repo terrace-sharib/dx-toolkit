@@ -105,29 +105,6 @@ def _find(api_method, query, limit, return_handler, first_page_size, **kwargs):
             raise StopIteration()
 
 
-def _find_org(api_method, org_id, query, limit, return_handler, first_page_size, **kwargs):
-    ''' Takes an API method handler (dxpy.api.org_find...) and calls it with
-    *org_id* and *query*, then wraps a generator around its output. Used by 
-    `org_find_members` and `org_find_projects` below.
-    '''
-    num_results = 0
-
-    if "limit" not in query:
-        query["limit"] = first_page_size
-
-    while True:
-        resp = api_method(org_id, query, **kwargs)
-        for result in resp["results"]:
-            if num_results == limit:
-                raise StopIteration()
-            num_results += 1
-            yield result
-
-        # set up next query
-        if resp["next"] is not None:
-            query["starting"] = resp["next"]
-        else:
-            raise StopIteration()
 
 def find_data_objects(classname=None, state=None, visibility=None,
                       name=None, name_mode='exact', properties=None,
@@ -706,6 +683,27 @@ def find_one_app(zero_ok=False, more_ok=True, **kwargs):
     return _find_one(find_apps, zero_ok=zero_ok, more_ok=more_ok, **kwargs)
 
 
+def _find_org(api_method, org_id, query, limit, return_handler, first_page_size, **kwargs):
+    ''' Takes an API method handler (dxpy.api.org_find...) and calls it with
+    *org_id* and *query*, then wraps a generator around its output. Used by
+    `org_find_members` and `org_find_projects` below.
+    '''
+    if "limit" not in query:
+        query["limit"] = first_page_size
+
+    while True:
+        resp = api_method(org_id, query, **kwargs)
+        for result in resp["results"]:
+            yield result
+
+        # set up next query
+        if resp["next"] is not None:
+            query["starting"] = resp["next"]
+            query["limit"] = min(query["limit"]*2, 1000)
+        else:
+            raise StopIteration()
+
+
 def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, properties=None, tags=None,
                       describe=False, public=None, created_after=None,
                       created_before=None, limit=None, return_handler=False,
@@ -714,18 +712,18 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
     :param name: Name of the project (also see *name_mode*)
     :type name: string
     :param name_mode: Method by which to interpret the *name* field ("exact": exact match,
-    "glob": use "*" and "?" as wildcards, "regexp": interpret as a regular expression)
+        "glob": use "*" and "?" as wildcards, "regexp": interpret as a regular expression)
     :type name_mode: string
     :param ids: list of project ids which will be intersected with any other
-    applicatble constraints
+        applicatble constraints
     :type ids: array of strings
     :param properties: Properties (key-value pairs) that each result must have
-    (use value True to require the property key and allow any value)
+        (use value True to require the property key and allow any value)
     :type properties: dict
     :param tags: Tags that each result must have
     :type tags: list of strings
-    :param level: One of "VIEW", "UPLOAD", "CONTRIBUTE", or "ADMINSTER". If specified, only returns projects where the current user has
-    at least the specified permission level.
+    :param level: One of "VIEW", "UPLOAD", "CONTRIBUTE", or "ADMINSTER". If specified, only returns projects
+        where the current user has at least the specified permission level.
     :type level: string
     :param describe: Controls whether to also return the output of
         calling describe() on each project. Supply False to omit
@@ -734,7 +732,7 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
         used to customize the set of fields that is returned)
     :type describe: bool or dict
     :param public: Filter on the project being public. If True, matching projects must be public.
-    If False, matching projects must not be public. (default is None, for no filter)
+        If False, matching projects must not be public. (default is None, for no filter)
     :type public: boolean or None
     :param created_after: Timestamp after which each result was created
         (see note accompanying :meth:`find_data_objects()` for interpretation)
@@ -744,11 +742,11 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
     :type created_before: int or string
     :param limit: The maximum number of results to be returned (if not specified, the number of results is unlimited)
     :type limit: int
-    :param first_page_size: The number of results that the initial API call will return. Subsequent calls will raise this
-    by multiplying by 2 up to a maximum of 1000.
+    :param first_page_size: The number of results that the initial API call will return.
+        Subsequent calls will raise this by multiplying by 2 up to a maximum of 1000.
     :type first_page_size: int
-    :param return_handler: If True, yields results as dxpy object handlers (otherwise, yields each 
-    result as a dict with keys "id" and "project")
+    :param return_handler: If True, yields results as dxpy object handlers
+        (otherwise, yields each result as a dict with keys "id" and "project")
     :type return_handler: boolean
     :rtype: generator
 

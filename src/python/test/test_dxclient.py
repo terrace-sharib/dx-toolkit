@@ -3385,12 +3385,12 @@ class TestDXClientFind(DXTestCase):
             project_list = dxpy.api.org_find_projects(orgID)
 
             # Basic test
-            output = run("dx find org " + pipes.quote(orgID) + " projects --brief").strip().split("\n")
+            output = run("dx find org_projects " + pipes.quote(orgID) + " --brief").strip().split("\n")
             expected = [project['id'] for project in project_list['results']]
             self.assertEqual(output, expected)
 
             # With --id flag
-            output = run("dx find org " + pipes.quote(orgID) + " projects --ids "
+            output = run("dx find org_projects " + pipes.quote(orgID) + " --ids "
                          + projectID + " --brief").strip().split("\n")
             self.assertEqual(output, [projectID])
 

@@ -165,7 +165,7 @@ else:
 # subcommand with further subcommands, then the second word must be an
 # appropriate sub-subcommand.
 class DXCLICompleter():
-    subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions', 'analyses ', 'org '],
+    subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions', 'analyses ', 'org_projects '],
                    'new': ['record ', 'project ', 'workflow '],
                    'add': ['developers ', 'users ', 'stage '],
                    'remove': ['developers ', 'users ', 'stage '],
@@ -2200,6 +2200,19 @@ def find_data(args):
         err_exit()
 
 
+def results_find_projects(args, results):
+    if args.json:
+        print(json.dumps(list(results), indent=4))
+        return
+    if args.brief:
+        for result in results:
+            print(result['id'])
+    else:
+        for result in results:
+            print(result["id"] + DELIMITER(" : ") + result['describe']['name'] +
+                  DELIMITER(' (') + result["level"] + DELIMITER(')'))
+
+
 def find_projects(args):
     try_call(process_find_by_property_args, args)
     try:
@@ -2211,16 +2224,7 @@ def find_projects(args):
                                      public=(args.public if args.public else None),
                                      created_after=args.created_after,
                                      created_before=args.created_before)
-        if args.json:
-            print(json.dumps(list(results), indent=4))
-            return
-        if args.brief:
-            for result in results:
-                print(result['id'])
-        else:
-            for result in results:
-                print(result["id"] + DELIMITER(" : ") + result['describe']['name'] +
-                      DELIMITER(' (') + result["level"] + DELIMITER(')'))
+        return results_find_projects(args, results)
     except:
         err_exit()
 
@@ -2276,22 +2280,13 @@ def find_apps(args):
 def org_find_projects(args):
     try_call(process_find_by_property_args, args)
     try:
-        results = dxpy.org_find_projects(org_id=args.org, name=args.name, name_mode='glob',
+        results = dxpy.org_find_projects(org_id=args.org_id, name=args.name, name_mode='glob',
                                          ids=args.ids, properties=args.properties, tags=args.tag,
                                          describe=(not args.brief),
                                          public=(args.public if args.public else None),
                                          created_after=args.created_after,
                                          created_before=args.created_before)
-        if args.json:
-            print(json.dumps(list(results), indent=4))
-            return
-        if args.brief:
-            for result in results:
-                print(result['id'])
-        else:
-            for result in results:
-                print(result["id"] + DELIMITER(" : ") + result['describe']['name'] +
-                      DELIMITER(' (') + result["level"] + DELIMITER(')'))
+        return results_find_projects(args, results)
     except:
         err_exit()
 
@@ -4420,18 +4415,16 @@ parser_find_projects.add_argument('--created-before',
 parser_find_projects.set_defaults(func=find_projects)
 register_subparser(parser_find_projects, subparsers_action=subparsers_find, categories='data')
 
-parser_find_org = subparsers_find.add_parser('org', help='Specify the ID of an org to execute search queries', 
-                                             prog='dx find org')
-parser_find_org.add_argument('org', help='Org id')
-subparsers_find_org = parser_find_org.add_subparsers(parser_class=DXArgumentParser)
-parser_find_org_projects = subparsers_find_org.add_parser('projects', help='Find org projects',
-                                                          description='Finds projects of an org with the given search parameters.' +
-                                                          ' Use the --public flag to list all public projects.',
-                                                          parents=[stdout_args, json_arg, delim_arg, env_args,
-                                                                  find_by_properties_and_tags_args],
-                                                          prog='dx find org projects')
+parser_find_org_projects = subparsers_find.add_parser('org_projects',
+                                                      help='Finds projects of specified org with the given search'
+                                                      + ' parameters. Use the --public flag to list all'
+                                                      + ' public projects.',
+                                                      parents=[stdout_args, json_arg, delim_arg, env_args,
+                                                               find_by_properties_and_tags_args],
+                                                      prog='dx find org_projects')
+parser_find_org_projects.add_argument('org_id', help='Org id')
 parser_find_org_projects.add_argument('--name', help='Name of the project')
-parser_find_org_projects.add_argument('--ids', nargs='+', help='Projects to be listed')
+parser_find_org_projects.add_argument('--ids', nargs='+', help='Projects to be listed by id')
 parser_find_org_projects.add_argument('--public',
                                       help='Include ONLY public projects (will automatically set --level to VIEW)',
                                       action='store_true')
@@ -4444,8 +4437,7 @@ parser_find_org_projects.add_argument('--created-before',
                                       'created (negative number means ms in the past, or use suffix ' +
                                       's, m, h, d, w, M, y)')
 parser_find_org_projects.set_defaults(func=org_find_projects)
-register_subparser(parser_find_org, subparsers_action=subparsers_find, categories='data')
-register_subparser(parser_find_org_projects, subparsers_action=subparsers_find_org, categories='data')
+register_subparser(parser_find_org_projects, subparsers_action=subparsers_find, categories='data')
 
 parser_api = subparsers.add_parser('api', help='Call an API method',
                                    formatter_class=argparse.RawTextHelpFormatter,
