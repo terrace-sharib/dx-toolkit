@@ -1296,7 +1296,16 @@ def new_user(args):
             u=args.username
         )))
 
-
+def new_org(args):
+    try:
+        resp = dxpy.api.org_new({"handle": args.handle, "name": args.name})
+        if args.brief:
+            print(resp['id'])
+        else:
+            print(fill('Created new org called "'+ args.name + '" (' + resp['id'] + ')'))
+    except:
+        err_exit()
+        
 def new_project(args):
     if args.name == None:
         if INTERACTIVE_CLI:
@@ -4109,6 +4118,15 @@ parser_new_user_org_opts.add_argument("--no-email", default=False, action=DXNewU
 parser_new_user.set_defaults(func=new_user)
 register_subparser(parser_new_user, subparsers_action=subparsers_new,
                    categories="other")
+
+parser_new_org = subparsers_new.add_parser('org', help='Create a new org',
+                                          description='Create a new org',
+                                          parents=[stdout_args, env_args],
+                                          prog='dx new org')
+parser_new_org.add_argument('handle', help='Unique handle for organization', nargs='?')
+parser_new_org.add_argument('name', help='Descriptive name of the new org', nargs='?')
+parser_new_org.set_defaults(func=new_org)
+register_subparser(parser_new_org, subparsers_action=subparsers_new, categories='fs')
 
 parser_new_project = subparsers_new.add_parser('project', help='Create a new project',
                                                description='Create a new project',
