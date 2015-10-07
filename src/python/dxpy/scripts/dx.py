@@ -2200,7 +2200,7 @@ def find_data(args):
         err_exit()
 
 
-def results_find_projects(args, results):
+def format_find_projects_results(args, results):
     if args.json:
         print(json.dumps(list(results), indent=4))
         return
@@ -2224,7 +2224,7 @@ def find_projects(args):
                                      public=(args.public if args.public else None),
                                      created_after=args.created_after,
                                      created_before=args.created_before)
-        return results_find_projects(args, results)
+        return format_find_projects_results(args, results)
     except:
         err_exit()
 
@@ -2283,10 +2283,10 @@ def org_find_projects(args):
         results = dxpy.org_find_projects(org_id=args.org_id, name=args.name, name_mode='glob',
                                          ids=args.ids, properties=args.properties, tags=args.tag,
                                          describe=(not args.brief),
-                                         public=(args.public if args.public else None),
+                                         public=args.public,
                                          created_after=args.created_after,
                                          created_before=args.created_before)
-        return results_find_projects(args, results)
+        return format_find_projects_results(args, results)
     except:
         err_exit()
 
@@ -4416,18 +4416,15 @@ parser_find_projects.set_defaults(func=find_projects)
 register_subparser(parser_find_projects, subparsers_action=subparsers_find, categories='data')
 
 parser_find_org_projects = subparsers_find.add_parser('org_projects',
-                                                      help='Finds projects of specified org with the given search'
-                                                      + ' parameters. Use the --public flag to list all'
-                                                      + ' public projects.',
+                                                      help='Finds projects billed to the specified org subject with'
+                                                      + ' the given search parameters.',
                                                       parents=[stdout_args, json_arg, delim_arg, env_args,
                                                                find_by_properties_and_tags_args],
                                                       prog='dx find org_projects')
 parser_find_org_projects.add_argument('org_id', help='Org id')
-parser_find_org_projects.add_argument('--name', help='Name of the project')
-parser_find_org_projects.add_argument('--ids', nargs='+', help='Projects to be listed by id')
-parser_find_org_projects.add_argument('--public',
-                                      help='Include ONLY public projects (will automatically set --level to VIEW)',
-                                      action='store_true')
+parser_find_org_projects.add_argument('--name', help='Name of the projects')
+parser_find_org_projects.add_argument('--ids', nargs='*', help='Possible IDs of projects to be listed')
+parser_find_org_projects.add_argument('--public', help='Include ONLY public projects', action='store_true')
 parser_find_org_projects.add_argument('--created-after',
                                       help='Date (e.g. 2012-01-01) or integer timestamp after which the project was ' +
                                       'created (negative number means ms in the past, or use suffix ' +
