@@ -688,7 +688,7 @@ def _find_org(api_method, org_id, query, first_page_size):
     Takes an API method handler (dxpy.api.org_find...) and calls it with
     *org_id* and *query*, then wraps a generator around its output. Used by
     ``org_find_members`` and ``org_find_projects`` below.
-    
+
     """
     if "limit" not in query:
         query["limit"] = first_page_size
