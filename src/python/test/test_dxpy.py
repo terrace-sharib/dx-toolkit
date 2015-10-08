@@ -1894,7 +1894,7 @@ class TestDXSearch(unittest.TestCase):
 
     def test_find_org_projects(self):
         org_id = "org-infinite_spending_limit"
-        dxproject = dxpy.DXProject()
+        dxproject = dxpy.DXProject(self.proj_id)
         dxpy.api.project_update(dxproject.get_id(), {"billTo": org_id})
         results = list(dxpy.org_find_projects(org_id))
         found_proj = False

@@ -683,7 +683,7 @@ def find_one_app(zero_ok=False, more_ok=True, **kwargs):
     return _find_one(find_apps, zero_ok=zero_ok, more_ok=more_ok, **kwargs)
 
 
-def _find_org(api_method, org_id, query, first_page_size, **kwargs):
+def _find_org(api_method, org_id, query, first_page_size):
     ''' Takes an API method handler (dxpy.api.org_find...) and calls it with
     *org_id* and *query*, then wraps a generator around its output. Used by
     `org_find_members` and `org_find_projects` below.
@@ -692,7 +692,7 @@ def _find_org(api_method, org_id, query, first_page_size, **kwargs):
         query["limit"] = first_page_size
 
     while True:
-        resp = api_method(org_id, query, **kwargs)
+        resp = api_method(org_id, query)
         for result in resp["results"]:
             yield result
 
@@ -701,12 +701,12 @@ def _find_org(api_method, org_id, query, first_page_size, **kwargs):
             query["starting"] = resp["next"]
             query["limit"] = min(query["limit"]*2, 1000)
         else:
-            raise StopIteration()
+            break
 
 
 def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, properties=None, tags=None,
                       describe=False, public=None, created_after=None,
-                      created_before=None, first_page_size=100, **kwargs):
+                      created_before=None, first_page_size=100):
     """
     :param name: Name of the project (also see *name_mode*)
     :type name: string
@@ -739,9 +739,6 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
     :param first_page_size: The number of results that the initial API call will return.
         Subsequent calls will raise this by multiplying by 2 up to a maximum of 1000.
     :type first_page_size: int
-    :param return_handler: If True, yields results as dxpy object handlers
-        (otherwise, yields each result as a dict with keys "id" and "project")
-    :type return_handler: boolean
     :rtype: generator
 
     Returns a generator that yields all projects that match the query.
@@ -765,7 +762,10 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
     if properties is not None:
         query["properties"] = properties
     if tags is not None:
-        query["tags"] = {"$and": tags}
+        if len(tags) == 1:
+            query["tags"] = tags[0]
+        else:
+            query["tags"] = {"$and": tags}
     if describe is not False:
         query["describe"] = describe
     if public is not None:
@@ -777,4 +777,4 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
         if created_before is not None:
             query["created"]["before"] = dxpy.utils.normalize_time_input(created_before)
 
-    return _find_org(dxpy.api.org_find_projects, org_id, query, first_page_size, **kwargs)
+    return _find_org(dxpy.api.org_find_projects, org_id, query, first_page_size)

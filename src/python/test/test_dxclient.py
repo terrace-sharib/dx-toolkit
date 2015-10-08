@@ -3376,6 +3376,7 @@ class TestDXClientFind(DXTestCase):
         assert_cmd_gives_ids("dx find jobs "+options3, [job_id])
         assert_cmd_gives_ids("dx find analyses "+options3, [])
 
+    @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects(self):
         project_name = 'dx projects test ' + str(time.time())
         with temporary_project(project_name) as unique_project:
@@ -3392,6 +3393,17 @@ class TestDXClientFind(DXTestCase):
             # With --id flag
             output = run("dx find org_projects " + pipes.quote(orgID) + " --ids "
                          + projectID + " --brief").strip().split("\n")
+            self.assertEqual(output, [projectID])
+
+            # With --tag
+            dxpy.api.project_add_tags(projectID, {'tags': ['tag-1']})
+            output = run("dx find org_projects " + pipes.quote(orgID) + " --tag tag-1 --brief").strip().split("\n")
+            self.assertEqual(output, [projectID])
+
+            # With multiple --tag
+            dxpy.api.project_add_tags(projectID, {'tags': ['tag-2']})
+            output = run("dx find org_projects " + pipes.quote(orgID) + " --tag tag-1 --tag tag-2"
+                         + " --brief").strip().split("\n")
             self.assertEqual(output, [projectID])
 
 @unittest.skipUnless(testutil.TEST_WITH_AUTHSERVER,

@@ -2204,7 +2204,7 @@ def format_find_projects_results(args, results):
     if args.json:
         print(json.dumps(list(results), indent=4))
         return
-    if args.brief:
+    elif args.brief:
         for result in results:
             print(result['id'])
     else:
