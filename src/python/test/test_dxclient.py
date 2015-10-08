@@ -3399,9 +3399,8 @@ class TestDXClientFind(DXTestCase):
             self.assertEqual(output, [projectID])
 
             # With --tag
-            output = run("dx find org_projects " + pipes.quote(orgID) + " --tag")
-            self.assertRaises
-
+            with self.assertSubprocessFailure(stderr_regexp='expected one argument', exit_code=2):
+                run("dx find org_projects " + pipes.quote(orgID) + " --tag")
 
             dxpy.api.project_add_tags(projectID, {'tags': ['tag-1']})
             output = run("dx find org_projects " + pipes.quote(orgID) + " --tag tag-1 --brief").strip().split("\n")
