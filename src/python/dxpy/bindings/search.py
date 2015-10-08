@@ -716,7 +716,7 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
         "glob": use "*" and "?" as wildcards, "regexp": interpret as a regular expression)
     :type name_mode: string
     :param ids: list of project ids which will be intersected with any other
-        applicatble constraints
+        specified constraints
     :type ids: array of strings
     :param properties: Properties (key-value pairs) that each result must have
         (use value True to require the property key and allow any value)

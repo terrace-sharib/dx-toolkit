@@ -3378,9 +3378,8 @@ class TestDXClientFind(DXTestCase):
 
     #@unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects(self):
-        project_name = 'dx projects test ' + str(time.time())
-        with temporary_project(project_name) as unique_project:
-            orgID = "org-infinite_spending_limit"
+        orgID = "org-infinite_spending_limit"
+        with temporary_project() as unique_project:
             projectID = unique_project.get_id()
             dxpy.api.project_update(projectID, {"billTo": orgID})
             project_list = dxpy.api.org_find_projects(orgID)

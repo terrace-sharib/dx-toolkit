@@ -2203,7 +2203,6 @@ def find_data(args):
 def _format_find_projects_results(args, results):
     if args.json:
         print(json.dumps(list(results), indent=4))
-        return
     elif args.brief:
         for result in results:
             print(result['id'])
@@ -4423,7 +4422,8 @@ parser_find_org_projects = subparsers_find.add_parser('org_projects',
                                                       prog='dx find org_projects')
 parser_find_org_projects.add_argument('org_id', help='Org id')
 parser_find_org_projects.add_argument('--name', help='Name of the projects')
-parser_find_org_projects.add_argument('--ids', nargs='*', help='Possible IDs of projects to be listed')
+parser_find_org_projects.add_argument('--ids', nargs='*', help='Possible IDs of projects to be listed. Project IDs may'
+                                      + ' be entered as arguments i.e. --ids project-1 project-2')
 parser_find_org_projects.add_argument('--public', help='Include ONLY public projects', action='store_true')
 parser_find_org_projects.add_argument('--created-after',
                                       help='Date (e.g. 2012-01-01) or integer timestamp after which the project was ' +
