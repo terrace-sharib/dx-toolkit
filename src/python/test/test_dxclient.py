@@ -3376,7 +3376,7 @@ class TestDXClientFind(DXTestCase):
         assert_cmd_gives_ids("dx find jobs "+options3, [job_id])
         assert_cmd_gives_ids("dx find analyses "+options3, [])
 
-    #@unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
+    @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects(self):
         orgID = "org-infinite_spending_limit"
         with temporary_project() as unique_project:
