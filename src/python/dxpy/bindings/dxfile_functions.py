@@ -93,7 +93,7 @@ _executor = None
 def _get_executor():
     global _executor
     if _executor is None:
-        _executor = ThreadPoolExecutor(max_workers=cpu_count())
+        _executor = ThreadPoolExecutor(max_workers=max(cpu_count(), 2))
     return _executor
 
 def download_dxfile(dxid, filename, chunksize=dxfile.DEFAULT_BUFFER_SIZE, append=False, show_progress=False,
