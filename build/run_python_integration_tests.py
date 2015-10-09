@@ -74,6 +74,8 @@ def run():
         except subprocess.CalledProcessError as e:
             print('*** coverage invocation failed with code %d' % (e.returncode,), file=sys.stderr)
             sys.exit(1)
+        except OSError:
+            print("*** coverage invocation failed: no coverage file found", file=sys.stderr)
     finally:
         os.unlink(site_customize_filename)
 
