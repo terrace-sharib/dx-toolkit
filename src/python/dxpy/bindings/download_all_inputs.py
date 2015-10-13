@@ -56,17 +56,24 @@ def _sequential_file_download(to_download, idir):
 # Download files in parallel
 #   to_download: list of tuples describing files to download
 def _parallel_file_download(to_download, idir, max_num_parallel_downloads):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_num_parallel_downloads) as executor:
-       future_files = {executor.submit(_download_one_file, file_rec, idir): file_rec for file_rec in to_download}
-       for future in concurrent.futures.as_completed(future_files):
-           file_rec = future_files[future]
-           try:
-               future.result()
-           except Exception as exc:
-               sys.stderr.write('%r -> %s generated an exception' % (file_rec['src_file_id'], file_rec['trg_fname']))
-               raise
-           else:
-               pass
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_num_parallel_downloads) as executor:
+            future_files = {executor.submit(_download_one_file, file_rec, idir): file_rec for file_rec in to_download}
+            for future in concurrent.futures.as_completed(future_files, timeout=sys.maxint):
+                file_rec = future_files[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    sys.stderr.write('%r -> %s generated an exception' % (file_rec['src_file_id'], file_rec['trg_fname']))
+                    raise
+                else:
+                    pass
+    except KeyboardInterrupt:
+        # Call os._exit() in case of KeyboardInterrupt. Otherwise, the atexit registered handler in
+        # concurrent.futures.thread will run, and issue blocking join() on all worker threads, requiring us to
+        # listen to events in worker threads in order to enable timely exit in response to Ctrl-C.
+        print("", file=sys.stderr)
+        os._exit(os.EX_IOERR)
 
 def _get_downloaded_files(inputs, idir):
     downloaded_files = defaultdict(list)
