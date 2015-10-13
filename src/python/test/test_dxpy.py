@@ -1893,29 +1893,24 @@ class TestDXSearch(unittest.TestCase):
         self.assertNotIn(dxproject.id, matching_ids)
 
     @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
-    def test_find_org_projects(self):
+    def test_find_org_projects_created(self):
         org_id = "org-infinite_spending_limit"
         dxproject = dxpy.DXProject(self.proj_id)
         dxpy.api.project_update(dxproject.get_id(), {"billTo": org_id})
-        results = list(dxpy.org_find_projects(org_id))
-        found_proj = False
-        for result in results:
-            if result["id"] == dxproject.get_id():
-                self.assertEqual(result["level"], 'ADMINISTER')
-                found_proj = True
-            self.assertFalse('describe' in result)
-        self.assertTrue(found_proj)
 
-        results = list(dxpy.org_find_projects(org_id, describe=True))
-        found_proj = False
-        for result in results:
-            if result["id"] == dxproject.get_id():
-                self.assertEqual(result["level"], 'ADMINISTER')
-                found_proj = True
-                self.assertTrue('describe' in result)
-                self.assertEqual(result['describe']['name'], 'test project 1')
-                break
-        self.assertTrue(found_proj)
+        created = dxproject.created
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id,  created_after=created - 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000,
+                        created_after=created - 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created - 1000))
+        self.assertNotIn(dxproject.id, matching_ids)
 
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
     def test_find_executions(self):

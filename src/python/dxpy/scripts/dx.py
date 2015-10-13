@@ -4423,14 +4423,14 @@ parser_find_org_projects = subparsers_find.add_parser('org_projects',
 parser_find_org_projects.add_argument('org_id', help='Org id')
 parser_find_org_projects.add_argument('--name', help='Name of the projects')
 parser_find_org_projects.add_argument('--ids', nargs='*', help='Possible IDs of projects to be listed. Project IDs may'
-                                      + ' be entered as arguments i.e. --ids project-1 project-2')
+                                      + ' be entered as arguments e.g. --ids project-1 project-2')
 parser_find_org_projects.add_argument('--public', help='Include ONLY public projects', action='store_true')
 parser_find_org_projects.add_argument('--created-after',
-                                      help='Date (e.g. 2012-01-01) or integer timestamp after which the project was ' +
+                                      help='Date (e.g. 2012-01-31) or integer timestamp after which the project was ' +
                                       'created (negative number means ms in the past, or use suffix ' +
                                       's, m, h, d, w, M, y)')
 parser_find_org_projects.add_argument('--created-before',
-                                      help='Date (e.g. 2012-01-01) or integer timestamp after which the project was ' +
+                                      help='Date (e.g. 2012-01-31) or integer timestamp after which the project was ' +
                                       'created (negative number means ms in the past, or use suffix ' +
                                       's, m, h, d, w, M, y)')
 parser_find_org_projects.set_defaults(func=org_find_projects)

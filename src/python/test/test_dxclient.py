@@ -3379,6 +3379,7 @@ class TestDXClientFind(DXTestCase):
     @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects(self):
         org_id = "org-infinite_spending_limit"
+        invalid_project_id = "project-invalid"
         with temporary_project() as unique_project:
             project_id = unique_project.get_id()
             dxpy.api.project_update(project_id, {"billTo": org_id})
@@ -3388,10 +3389,21 @@ class TestDXClientFind(DXTestCase):
             output = run("dx find org_projects " + pipes.quote(org_id) + " --brief").strip().split("\n")
             expected = [project['id'] for project in project_list['results']]
             self.assertEqual(output, expected)
+            self.assertIn(project_id, output)
+            self.assertNotIn(invalid_project_id, output)
+
+            # Test --json output
+            output = json.loads(run("dx find org_projects " + pipes.quote(org_id) + " --json"))
+            expected = dxpy.api.org_find_projects(org_id, {'describe': True})['results']
+            self.assertItemsEqual(output, expected)
 
             # With --id flag
-            output = run("dx find org_projects " + pipes.quote(org_id) + " --ids")
-            self.assertEquals(output, '')
+            output = run("dx find org_projects " + pipes.quote(org_id) + " --ids").strip().split("\n")
+            self.assertEquals(output, [''])
+
+            output = run("dx find org_projects " + pipes.quote(org_id) + " --ids "
+                         + invalid_project_id + " --brief").strip().split("\n")
+            self.assertEqual(output, [''])
 
             output = run("dx find org_projects " + pipes.quote(org_id) + " --ids "
                          + project_id + " --brief").strip().split("\n")
@@ -3401,40 +3413,45 @@ class TestDXClientFind(DXTestCase):
             with self.assertSubprocessFailure(stderr_regexp='expected one argument', exit_code=2):
                 run("dx find org_projects " + pipes.quote(org_id) + " --tag")
 
-            dxpy.api.project_add_tags(project_id, {'tags': ['tag-1']})
+            dxpy.api.project_add_tags(project_id, {'tags': ['tag-1', 'tag-2']})
             output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 --brief").strip().split("\n")
             self.assertEqual(output, [project_id])
 
             # With multiple --tag
-            dxpy.api.project_add_tags(project_id, {'tags': ['tag-2']})
             output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 --tag tag-2"
                          + " --brief").strip().split("\n")
             self.assertEqual(output, [project_id])
 
-            # With --created*
-            created = int(time.time())
+    # Test is buggy and subject to change
+    @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
+    def test_dx_find_org_projects_created(self):
+        org_id = "org-infinite_spending_limit"
+        with temporary_project() as unique_project:
+            project_id = unique_project.get_id()
+            dxpy.api.project_update(project_id, {"billTo": org_id})
+            created = int(dxpy.api.project_describe(project_id)['created'])
 
             matching_ids = [result["id"] for result in
-                            dxpy.org_find_projects(org_id, created_before=str(created + 1000))]
+                            dxpy.org_find_projects(org_id, created_before=created + 1000)]
             self.assertEqual(run("dx find org_projects " + pipes.quote(org_id) + " --created-before=" +
                                  str(created + 1000) + " --brief").strip().split("\n"), matching_ids)
 
             matching_ids = [result["id"] for result in
-                            dxpy.org_find_projects(org_id, created_after=str(created - 1000))]
-            self.assertEqual(run("dx find org_projects " + pipes.quote(org_id) + " --created-after=" +
-                                 str(created - 1000) + " --brief").strip().split("\n"), matching_ids)
-
-            matching_ids = [result["id"] for result in
-                            dxpy.org_find_projects(org_id, created_before=str(created + 1000),
-                                                   created_after=str(created - 1000))]
-            self.assertEqual(run("dx find org_projects " + pipes.quote(org_id) + " --created-after=" +
-                                 str(created - 1000) + " --created-before=" + str(created + 1000) +
+                            dxpy.org_find_projects(org_id, created_after='-1d')]
+            self.assertEqual(run("dx find org_projects " + pipes.quote(org_id) + " --created-after=-1d" +
                                  " --brief").strip().split("\n"), matching_ids)
 
             matching_ids = [result["id"] for result in
-                            dxpy.org_find_projects(org_id, created_before=str(created - 1000))]
-            self.assertEqual(run("dx find org_projects " + pipes.quote(org_id) + " --created-before=" +
-                                 str(created - 1000) + " --brief").strip().split("\n"), matching_ids)
+                            dxpy.org_find_projects(org_id, created_before=created + 1000,
+                                                   created_after='-1d')]
+            self.assertEqual(run("dx find org_projects " + pipes.quote(org_id) + " --created-after=-1d" +
+                                 " --created-before=" + str(created + 1000) +
+                                 " --brief").strip().split("\n"), matching_ids)
+
+            matching_ids = [result["id"] for result in
+                            dxpy.org_find_projects(org_id, created_before='-10d')]
+            self.assertEqual(run("dx find org_projects " + pipes.quote(org_id) + " --created-before=-10d" +
+                                 " --brief").strip().split("\n"), matching_ids)
 
 @unittest.skipUnless(testutil.TEST_WITH_AUTHSERVER,
                      'skipping tests that require a running authserver')
