@@ -1902,7 +1902,7 @@ class TestDXSearch(unittest.TestCase):
         matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000))
         self.assertIn(dxproject.id, matching_ids)
 
-        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id,  created_after=created - 1000))
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_after=created - 1000))
         self.assertIn(dxproject.id, matching_ids)
 
         matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000,
