@@ -3379,7 +3379,6 @@ class TestDXClientFind(DXTestCase):
     @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects(self):
         org_id = "org-infinite_spending_limit"
-        invalid_project_id = "project-invalid"
         with temporary_project() as unique_project:
             project_id = unique_project.get_id()
             dxpy.api.project_update(project_id, {"billTo": org_id})
@@ -3390,25 +3389,31 @@ class TestDXClientFind(DXTestCase):
             expected = [project['id'] for project in project_list['results']]
             self.assertEqual(output, expected)
             self.assertIn(project_id, output)
-            self.assertNotIn(invalid_project_id, output)
+
+            with temporary_project("alt_project_test") as alternate_project:
+                alt_project_id = alternate_project.get_id()
+                
+                # Project is not billTo org
+                self.assertEqual(dxpy.api.project_describe(alt_project_id)['billTo'], dxpy.whoami())                
+                self.assertNotIn(alt_project_id, output)
+
+                # With --id flag
+                output = run("dx find org_projects " + pipes.quote(org_id) + " --ids").strip().split("\n")
+                self.assertEquals(output, [''])
+
+                output = run("dx find org_projects " + pipes.quote(org_id) + " --ids "
+                             + alt_project_id + " --brief").strip().split("\n")
+                self.assertEqual(output, [''])
+
+                output = run("dx find org_projects " + pipes.quote(org_id) + " --ids "
+                             + project_id + " --brief").strip().split("\n")
+                self.assertEqual(output, [project_id])
 
             # Test --json output
             output = json.loads(run("dx find org_projects " + pipes.quote(org_id) + " --json"))
             expected = dxpy.api.org_find_projects(org_id, {'describe': True})['results']
             self.assertItemsEqual(output, expected)
-
-            # With --id flag
-            output = run("dx find org_projects " + pipes.quote(org_id) + " --ids").strip().split("\n")
-            self.assertEquals(output, [''])
-
-            output = run("dx find org_projects " + pipes.quote(org_id) + " --ids "
-                         + invalid_project_id + " --brief").strip().split("\n")
-            self.assertEqual(output, [''])
-
-            output = run("dx find org_projects " + pipes.quote(org_id) + " --ids "
-                         + project_id + " --brief").strip().split("\n")
-            self.assertEqual(output, [project_id])
-
+            
             # With --tag
             with self.assertSubprocessFailure(stderr_regexp='expected one argument', exit_code=2):
                 run("dx find org_projects " + pipes.quote(org_id) + " --tag")
