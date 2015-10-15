@@ -3490,9 +3490,8 @@ class TestDXClientFind(DXTestCase):
         assert_cmd_gives_ids("dx find jobs "+options3, [job_id])
         assert_cmd_gives_ids("dx find analyses "+options3, [])
 
-    # @unittest.skipUnless(testutil.TEST_CREATE_APPS,
-    #                      'skipping test that requires presence of test org')
-    @unittest.skip("skipping test that depends on PTFM-16342")
+    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+                         'skipping test that requires presence of test org')
     def test_find_orgs(self):
 
         def assert_find_orgs_results(results, assert_admin=False,
@@ -3528,11 +3527,11 @@ class TestDXClientFind(DXTestCase):
 
         # PRECONDITION: Assumes the presence of these orgs in the database.
         # TODO: Execute this test only as part of the integration test suite.
-        org_with_billable_activities = "org-members_with_createprojectsandapps01"
+        org_with_billable_activities = "org-members_with_billing_rights"
         self.assertTrue(dxpy.api.org_get_member_access(org_with_billable_activities)["createProjectsAndApps"])
-        org_without_billable_activities = "org-members_without_createprojectsandapps01"
+        org_without_billable_activities = "org-members_without_billing_rights"
         self.assertFalse(dxpy.api.org_get_member_access(org_without_billable_activities)["createProjectsAndApps"])
-        org_with_admin = "org-dx_user_creation_org"
+        org_with_admin = "org-piratelabs"
         self.assertTrue(dxpy.api.org_get_member_access(org_with_admin)["level"] == "ADMIN")
 
         cmd = "dx find orgs --level {l} {o} --json"
