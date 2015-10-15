@@ -3525,8 +3525,6 @@ class TestDXClientFind(DXTestCase):
                         (member_access_res["level"] == "MEMBER" and
                          member_access_res["createProjectsAndApps"]))
 
-        # PRECONDITION: Assumes the presence of these orgs in the database.
-        # TODO: Execute this test only as part of the integration test suite.
         org_with_billable_activities = "org-members_with_billing_rights"
         self.assertTrue(dxpy.api.org_get_member_access(org_with_billable_activities)["createProjectsAndApps"])
         org_without_billable_activities = "org-members_without_billing_rights"
@@ -3538,61 +3536,39 @@ class TestDXClientFind(DXTestCase):
 
         results = json.loads(run(cmd.format(l="MEMBER", o="")).strip())
         assert_find_orgs_results(results)
-        self.assertIn(org_with_billable_activities,
-                      [result["id"] for result in results])
-        self.assertIn(org_without_billable_activities,
-                      [result["id"] for result in results])
-        self.assertIn(org_with_admin,
-                      [result["id"] for result in results])
+        self.assertItemsEqual([org_with_billable_activities,
+                               org_without_billable_activities,
+                               org_with_admin],
+                              [result["id"] for result in results])
 
         results = json.loads(run(cmd.format(
             l="MEMBER", o="--with-billable-activities")).strip())
         assert_find_orgs_results(results, with_billable_activities=True)
-        self.assertIn(org_with_billable_activities,
-                      [result["id"] for result in results])
-        self.assertNotIn(org_without_billable_activities,
-                         [result["id"] for result in results])
-        self.assertIn(org_with_admin,
-                      [result["id"] for result in results])
+        self.assertItemsEqual([org_with_billable_activities,
+                               org_with_admin],
+                              [result["id"] for result in results])
 
         results = json.loads(run(cmd.format(
             l="MEMBER", o="--without-billable-activities")).strip())
         assert_find_orgs_results(results, with_billable_activities=False)
-        self.assertNotIn(org_with_billable_activities,
-                         [result["id"] for result in results])
-        self.assertIn(org_without_billable_activities,
-                      [result["id"] for result in results])
-        self.assertNotIn(org_with_admin,
-                         [result["id"] for result in results])
+        self.assertItemsEqual([org_without_billable_activities],
+                              [result["id"] for result in results])
 
         results = json.loads(run(cmd.format(l="ADMIN", o="")).strip())
         assert_find_orgs_results(results, assert_admin=True)
-        self.assertNotIn(org_with_billable_activities,
-                         [result["id"] for result in results])
-        self.assertNotIn(org_without_billable_activities,
-                         [result["id"] for result in results])
-        self.assertIn(org_with_admin,
-                      [result["id"] for result in results])
+        self.assertItemsEqual([org_with_admin],
+                              [result["id"] for result in results])
 
         results = json.loads(run(cmd.format(
             l="ADMIN", o="--with-billable-activities")).strip())
         assert_find_orgs_results(results, assert_admin=True, with_billable_activities=True)
-        self.assertNotIn(org_with_billable_activities,
-                         [result["id"] for result in results])
-        self.assertNotIn(org_without_billable_activities,
-                         [result["id"] for result in results])
-        self.assertIn(org_with_admin,
-                      [result["id"] for result in results])
+        self.assertItemsEqual([org_with_admin],
+                              [result["id"] for result in results])
 
         results = json.loads(run(cmd.format(
             l="ADMIN", o="--without-billable-activities")).strip())
         assert_find_orgs_results(results, assert_admin=True, with_billable_activities=False)
-        self.assertNotIn(org_with_billable_activities,
-                         [result["id"] for result in results])
-        self.assertNotIn(org_without_billable_activities,
-                         [result["id"] for result in results])
-        self.assertNotIn(org_with_admin,
-                         [result["id"] for result in results])
+        self.assertItemsEqual([], [result["id"] for result in results])
 
     @unittest.skipUnless(testutil.TEST_CREATE_APPS,
                          'skipping test that requires presence of test org')
