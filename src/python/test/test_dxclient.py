@@ -3605,9 +3605,7 @@ class TestDXClientNewUser(DXTestCase):
             self.assertEqual(user_desc[field], exp_user_desc[field])
 
     def setUp(self):
-        org_handle = "dx_new_user_org_{t}".format(t=self._now())
-        self.org_id = dxpy.api.org_new({"handle": org_handle,
-                                        "name": "Org to invite to"})["id"]
+        self.org_id = "org-piratelabs"
         super(TestDXClientNewUser, self).setUp()
 
     def tearDown(self):
