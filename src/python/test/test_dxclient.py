@@ -431,7 +431,7 @@ class TestDXClient(DXTestCase):
         with self.assertSubprocessFailure(stderr_regexp='Unable to resolve', exit_code=3):
             run("dx untag nonexistent atag")
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that requires presence of test org')
     def test_dx_create_new_project_with_bill_to(self):
         curr_bill_to = dxpy.api.user_describe(dxpy.whoami())['billTo']
@@ -627,7 +627,7 @@ class TestDXClient(DXTestCase):
         run("dx rmproject -y {name}".format(name=project_name))
         self.assertEqual(run("dx find projects --brief --name {name}".format(name=project_name)), "")
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test user')
+    @unittest.skipUnless(testutil.TEST_INTEGRATION, 'skipping test that requires presence of test user')
     def test_dx_project_invite_without_email(self):
         user_id = 'user-000000000000000000000001'
         with temporary_project() as unique_project:
@@ -1399,7 +1399,7 @@ class TestDXClientDescribe(DXTestCase):
         self.assertTrue("billTo" in cli_user_desc_json)
         self.assertEqual(cli_user_desc_json.get("billTo"), user_id)
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that would create apps')
     def test_describe_deleted_app(self):
         applet_id = dxpy.api.applet_new({"project": self.project,
@@ -3489,7 +3489,7 @@ class TestDXClientFind(DXTestCase):
         assert_cmd_gives_ids("dx find jobs "+options3, [job_id])
         assert_cmd_gives_ids("dx find analyses "+options3, [])
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that requires presence of test org')
     def test_find_orgs(self):
 
@@ -3569,7 +3569,7 @@ class TestDXClientFind(DXTestCase):
         assert_find_orgs_results(results, assert_admin=True, with_billable_activities=False)
         self.assertItemsEqual([], [result["id"] for result in results])
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that requires presence of test org')
     def test_find_orgs_format(self):
         cmd = "dx find orgs --level MEMBER {o}"
@@ -4252,7 +4252,7 @@ class TestDXBuildApp(DXTestCase):
         self.assertEqual('minimal_remote_build_applet_to_run',
                          resulting_jobs[0].describe()['executableName'])
 
-    @unittest.skipUnless(testutil.TEST_RUN_JOBS and testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_RUN_JOBS and testutil.TEST_INTEGRATION,
                          'skipping test that would create apps and run jobs')
     def test_remote_build_app(self):
         app_spec = {
@@ -4329,7 +4329,7 @@ class TestDXBuildApp(DXTestCase):
         with self.assertSubprocessFailure(stderr_regexp='interpreter field was not present'):
             run("dx build " + app_dir)
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that would create apps')
     def test_build_app_warnings(self):
         app_spec = {
@@ -4505,7 +4505,7 @@ class TestDXBuildApp(DXTestCase):
         with self.assertSubprocessFailure(stderr_regexp='Could not parse dxapp\.json file', exit_code=3):
             run("dx build " + app_dir)
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that would create apps')
     def test_build_app(self):
         app_spec = {
@@ -4527,7 +4527,7 @@ class TestDXBuildApp(DXTestCase):
         self.assertTrue(os.path.exists(os.path.join(app_dir, 'code.py')))
         self.assertFalse(os.path.exists(os.path.join(app_dir, 'code.pyc')))
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that would create apps')
+    @unittest.skipUnless(testutil.TEST_INTEGRATION, 'skipping test that would create apps')
     def test_build_app_and_pretend_to_update_devs(self):
         app_spec = {
             "name": "test_build_app_and_pretend_to_update_devs",
@@ -4548,7 +4548,7 @@ class TestDXBuildApp(DXTestCase):
         app_developers = dxpy.api.app_list_developers('app-test_build_app_and_pretend_to_update_devs')['developers']
         self.assertEqual(len(app_developers), 1) # the id of the user we are calling as
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that would create apps')
+    @unittest.skipUnless(testutil.TEST_INTEGRATION, 'skipping test that would create apps')
     def test_build_app_and_update_devs(self):
         app_spec = {
             "name": "test_build_app_and_update_devs",
@@ -4595,7 +4595,7 @@ class TestDXBuildApp(DXTestCase):
         app_developers = dxpy.api.app_list_developers('app-test_build_app_and_update_devs')['developers']
         self.assertEqual(app_developers, [my_userid])
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that would create apps')
     def test_invalid_project_context(self):
         app_spec = {
@@ -4712,7 +4712,7 @@ class TestDXBuildApp(DXTestCase):
         with self.assertSubprocessFailure(exit_code=3):
             run("dx describe " + applet_id)
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that would create apps')
     def test_update_app_categories(self):
         app1_spec = {
@@ -4741,7 +4741,7 @@ class TestDXBuildApp(DXTestCase):
         run("dx build --create-app --json " + app_dir)
         self.assertEquals(json.loads(run("dx api " + app_id + " listCategories"))["categories"], ['B'])
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that would create apps')
+    @unittest.skipUnless(testutil.TEST_INTEGRATION, 'skipping test that would create apps')
     def test_update_app_authorized_users(self):
         app0_spec = {
             "name": "update_app_authorized_users",
@@ -4785,7 +4785,7 @@ class TestDXBuildApp(DXTestCase):
         self.assertEquals(json.loads(run("dx api " + app_id +
                                          " listAuthorizedUsers"))["authorizedUsers"], ["user-eve"])
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that would create apps')
     def test_dx_add_list_remove_users(self):
         '''
@@ -4841,7 +4841,7 @@ class TestDXBuildApp(DXTestCase):
         run('dx remove users test_dx_users nonexistentuser')
         run('dx remove users test_dx_users piratelabs')
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that would create apps')
     def test_dx_add_list_remove_developers(self):
         '''
@@ -4909,7 +4909,7 @@ class TestDXBuildApp(DXTestCase):
         with self.assertSubprocessFailure(stderr_regexp='unsupported', exit_code=3):
             run('dx add developers test_dx_developers org-piratelabs')
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS,
+    @unittest.skipUnless(testutil.TEST_INTEGRATION,
                          'skipping test that would create apps')
     def test_build_app_autonumbering(self):
         app_spec = {
