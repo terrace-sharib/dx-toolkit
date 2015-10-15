@@ -1296,16 +1296,31 @@ def new_user(args):
             u=args.username
         )))
 
+        
 def new_org(args):
+    if args.name == None:
+        if INTERACTIVE_CLI: 
+            args.name = input("Enter descriptive name for organization")
+            args.handle = input("Enter handle for organization. This handle will be appended to 'org-'")
+            args.auto_accept_project_invites = prompt_for_yn("Auto accept project invites?", default=True)
+            args.member_list_visibility = input("Restrict visibility of member list to [admin, member] (default: admin)")
+            args.restrict_project_transfer = input("Restrict project transfer to [admin, member, public] (default: member)")
+        else:
+            parser.exit(1, parser_new_org.format_help() +
+                        fill("No organization name supplied, and input is not interactive") + '\n')
+    inputs = {"handle": args.handle, "name": args.name, "policies": {"autoAcceptProjectInvites":
+              args.auto_accept_project_invites, "memberListVisibility": args.member_list_visibility,
+              "restrictProjectTransfer": args.restrict_project_transfer}}
+
     try:
-        resp = dxpy.api.org_new({"handle": args.handle, "name": args.name})
+        resp = dxpy.api.org_new(inputs)
         if args.brief:
             print(resp['id'])
-        else:
-            print(fill('Created new org called "'+ args.name + '" (' + resp['id'] + ')'))
+        print("Organization " + args.name + " created")
     except:
         err_exit()
-        
+
+
 def new_project(args):
     if args.name == None:
         if INTERACTIVE_CLI:
@@ -4123,8 +4138,11 @@ parser_new_org = subparsers_new.add_parser('org', help='Create a new org',
                                           description='Create a new org',
                                           parents=[stdout_args, env_args],
                                           prog='dx new org')
-parser_new_org.add_argument('handle', help='Unique handle for organization', nargs='?')
-parser_new_org.add_argument('name', help='Descriptive name of the new org', nargs='?')
+parser_new_org.add_argument('handle', help='Unique handle for organization')
+parser_new_org.add_argument('name', help='Descriptive name of the organization', nargs='?')
+parser_new_org.add_argument('--auto-accept-project-invites', help='Org accepts project invites automatically', action='store_true')
+parser_new_org.add_argument('--member-list-visibility', help='Restricts visibility of member list', choices=["ADMIN", "MEMBER"], default="ADMIN")
+parser_new_org.add_argument('--restrict-project-transfer', help='Restricts ability of project transfer to certain level', choices=["ADMIN", "MEMBER", "PUBLIC"], default="MEMBER")
 parser_new_org.set_defaults(func=new_org)
 register_subparser(parser_new_org, subparsers_action=subparsers_new, categories='fs')
 

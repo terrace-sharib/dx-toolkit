@@ -3618,6 +3618,23 @@ class TestDXClientFind(DXTestCase):
             self.assertTrue(pattern.match(result))
 
 
+class TestDXClientNewOrg(DXTestCase):
+
+        def test_create_new_org(self):
+            dx_new_org = pexpect.spawn("dx new org")
+            dx_new_org.logfile = sys.stdout
+            dx_new_org.expect("Enter descriptive name for organization")
+            dx_new_org.sendline("Descriptive Org Name")
+            dx_new_org.expect("Enter handle for the organization. This handle will be appended to 'org-'")
+            dx_new_org.sendline("test_handle")
+            dx_new_org.expect("Auto accept project invites? (Y/n)")
+            dx_new_org.sendline()
+            dx.new_org.expect("Restrict member list visibility to [admin, member] (default: admin)")
+            dx.new_org.sendline()
+            dx.new_org.expect("Restrict project transfer to [admin, member, public] (default: admin)")
+            dx.new_org.sendline()
+            dx.new_org.expect("Organization Descriptive Org Name created")
+
 @unittest.skipUnless(testutil.TEST_WITH_AUTHSERVER,
                      'skipping tests that require a running authserver')
 class TestDXClientNewUser(DXTestCase):
