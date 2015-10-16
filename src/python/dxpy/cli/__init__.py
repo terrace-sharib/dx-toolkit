@@ -63,3 +63,21 @@ def prompt_for_yn(prompt_str, default=None):
                 print('Error: unrecognized response')
         elif default is not None:
             return default
+
+def prompt_for_mult_choice(prompt_str, default=None):
+    if default:
+        prompt = prompt_str + ' (default: ' + default + '): '
+    
+    while True:
+        try:
+            value = input(prompt)
+        except KyboardInterrupt:
+            print('')
+            exit(1)
+        except EOFError:
+            print('')
+            exit(1)
+        if value != '':
+            return value.upper()[0]
+        elif default is not None:
+            return default
