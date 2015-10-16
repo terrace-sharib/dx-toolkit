@@ -1308,7 +1308,7 @@ def new_org(args):
         args.handle = input("Enter handle for organization. This handle will be appended to 'org-': ")
         args.member_list_visibility = prompt_for_mult_choice("Restrict visibility of member list to [ADMIN, MEMBER]",
                                                              default=args.member_list_visibility)
-        args.project_transfer_ability = prompt_for_mult_choice("Restrict project transfer to [ADMIN, MEMBER]",
+        args.project_transfer_ability = prompt_for_mult_choice("Restrict project billTo transfer ability to [ADMIN, MEMBER]",
                                                                 default=args.project_transfer_ability)
 
     inputs = {"handle": args.handle, "name": args.name, "policies": {"memberListVisibility": args.member_list_visibility,
