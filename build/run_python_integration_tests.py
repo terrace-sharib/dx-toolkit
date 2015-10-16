@@ -75,7 +75,8 @@ def run():
             print('*** coverage invocation failed with code %d' % (e.returncode,), file=sys.stderr)
             sys.exit(1)
         except OSError:
-            print("*** coverage invocation failed: no coverage file found", file=sys.stderr)
+            print("*** coverage invocation failed: no coverage file found; please install coverage v3.7.1",
+                  file=sys.stderr)
     finally:
         os.unlink(site_customize_filename)
 
