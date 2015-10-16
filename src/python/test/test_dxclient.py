@@ -3774,21 +3774,6 @@ class TestDXClientNewUser(DXTestCase):
         res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
         self.assertEqual(exp, res)
 
-        username, email = generate_unique_username_email()
-        user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level {l} --project-access {pa} --brief".format(
-                      cmd=cmd, u=username, e=email, f=first,
-                      o=self.org_id, l="MEMBER", pa="VIEW")).strip()
-        self._assert_user_desc(user_id, {"first": first})
-        exp = {
-            "level": "MEMBER",
-            "createProjectsAndApps": True,
-            "appAccess": True,
-            "projectAccess": "VIEW",
-            "user": user_id
-        }
-        res = dxpy.api.org_get_member_access(self.org_id, {"user": user_id})
-        self.assertEqual(exp, res)
-
         # Grant ADMIN org membership level.
         username, email = generate_unique_username_email()
         user_id = run("{cmd} --username {u} --email {e} --first {f} --org {o} --level ADMIN --brief".format(
