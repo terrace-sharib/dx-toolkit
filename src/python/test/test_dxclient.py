@@ -3382,7 +3382,7 @@ class TestDXClientFind(DXTestCase):
         with temporary_project() as project_1:
             with temporary_project() as project_2:
                 project1_id = project_1.get_id()
-                project2_id = project_2.get_id() # project not billed to org
+                project2_id = project_2.get_id()  # project not billed to org
                 dxpy.api.project_update(project1_id, {"billTo": org_id})
                 project_list = dxpy.api.org_find_projects(org_id)
 
@@ -3420,7 +3420,8 @@ class TestDXClientFind(DXTestCase):
                     run("dx find org_projects " + pipes.quote(org_id) + " --tag")
 
                 dxpy.api.project_add_tags(project1_id, {'tags': ['tag-1', 'tag-2']})
-                output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 --brief").strip().split("\n")
+                output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 " +
+                             "--brief").strip().split("\n")
                 self.assertIn(project1_id, output)
                 self.assertNotIn(project2_id, output)
 
@@ -3440,17 +3441,17 @@ class TestDXClientFind(DXTestCase):
             created = int(dxpy.api.project_describe(project_id)['created'])
 
             self.assertIn(project_id, run("dx find org_projects " + pipes.quote(org_id) + " --created-before=" +
-                                 str(int((created + 1000)/1000)) + " --brief").strip().split("\n"))
+                                          str(int((created + 1000)/1000)) + " --brief").strip().split("\n"))
 
             self.assertIn(project_id, run("dx find org_projects " + pipes.quote(org_id) + " --created-after=" +
-                                 str(int((created - 1000)/1000)) + " --brief").strip().split("\n"))
+                                          str(int((created - 1000)/1000)) + " --brief").strip().split("\n"))
 
             self.assertIn(project_id, run("dx find org_projects " + pipes.quote(org_id) + " --created-after=" +
-                                 str(int((created - 1000)/1000)) + " --created-before=" +
-                                 str(int((created + 1000)/1000)) + " --brief").strip().split("\n"))
+                                          str(int((created - 1000)/1000)) + " --created-before=" +
+                                          str(int((created + 1000)/1000)) + " --brief").strip().split("\n"))
 
             self.assertNotIn(project_id, run("dx find org_projects " + pipes.quote(org_id) + " --created-before=" +
-                                 str(int((created - 1000)/1000)) + " --brief").strip().split("\n"))
+                                             str(int((created - 1000)/1000)) + " --brief").strip().split("\n"))
 
     @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects_format(self):
@@ -3466,7 +3467,7 @@ class TestDXClientFind(DXTestCase):
         # Assert that return format is like: "<project_id><project_name><level>"
         levels = "(ADMINISTER|CONTRIBUTE|UPLOAD|VIEW|NONE)"
         output = run(cmd.format(org=org_id, t="")).strip().split("\n")
-        pattern = re.compile("^project-[a-zA-Z0-9_]{24} : .* \(" + levels  + "\)$")
+        pattern = re.compile("^project-[a-zA-Z0-9_]{24} : .* \(" + levels + "\)$")
         for result in output:
             self.assertTrue(pattern.match(result))
 
