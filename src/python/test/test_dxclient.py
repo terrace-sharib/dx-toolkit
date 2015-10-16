@@ -3380,18 +3380,18 @@ class TestDXClientFind(DXTestCase):
     def test_dx_find_org_projects(self):
         org_id = "org-infinite_spending_limit"
         with temporary_project() as project_1:
-            project1_id = project_1.get_id()
-            dxpy.api.project_update(project1_id, {"billTo": org_id})
-            project_list = dxpy.api.org_find_projects(org_id)
-
-            # Basic test
-            output = run("dx find org_projects " + pipes.quote(org_id) + " --brief").strip().split("\n")
-            expected = [project['id'] for project in project_list['results']]
-            self.assertEqual(output, expected)
-            self.assertIn(project1_id, output)
-
             with temporary_project() as project_2:
-                project2_id = project_2.get_id()
+                project1_id = project_1.get_id()
+                project2_id = project_2.get_id() # project not billed to org
+                dxpy.api.project_update(project1_id, {"billTo": org_id})
+                project_list = dxpy.api.org_find_projects(org_id)
+
+                # Basic test
+                output = run("dx find org_projects " + pipes.quote(org_id) + " --brief").strip().split("\n")
+                expected = [project['id'] for project in project_list['results']]
+                self.assertEqual(output, expected)
+                self.assertIn(project1_id, output)
+                self.assertNotIn(project2_id, output)
 
                 # Project is not billTo org
                 self.assertEqual(dxpy.api.project_describe(project2_id)['billTo'], dxpy.whoami())
@@ -3409,23 +3409,26 @@ class TestDXClientFind(DXTestCase):
                              + project1_id + " --brief").strip().split("\n")
                 self.assertEqual(output, [project1_id])
 
-            # Test --json output
-            output = json.loads(run("dx find org_projects " + pipes.quote(org_id) + " --json"))
-            self.assertIn(project1_id, [result['id'] for result in output])
-            self.assertIn(dxpy.api.project_describe(project1_id), [result['describe'] for result in output])
+                # Test --json output
+                output = json.loads(run("dx find org_projects " + pipes.quote(org_id) + " --json"))
+                self.assertIn(project1_id, [result['id'] for result in output])
+                self.assertIn(dxpy.api.project_describe(project1_id), [result['describe'] for result in output])
+                self.assertNotIn(project2_id, [result['id'] for result in output])
 
-            # With --tag
-            with self.assertSubprocessFailure(stderr_regexp='expected one argument', exit_code=2):
-                run("dx find org_projects " + pipes.quote(org_id) + " --tag")
+                # With --tag
+                with self.assertSubprocessFailure(stderr_regexp='expected one argument', exit_code=2):
+                    run("dx find org_projects " + pipes.quote(org_id) + " --tag")
 
-            dxpy.api.project_add_tags(project1_id, {'tags': ['tag-1', 'tag-2']})
-            output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 --brief").strip().split("\n")
-            self.assertEqual(output, [project1_id])
+                dxpy.api.project_add_tags(project1_id, {'tags': ['tag-1', 'tag-2']})
+                output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 --brief").strip().split("\n")
+                self.assertIn(project1_id, output)
+                self.assertNotIn(project2_id, output)
 
-            # With multiple --tag
-            output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 --tag tag-2"
-                         + " --brief").strip().split("\n")
-            self.assertEqual(output, [project1_id])
+                # With multiple --tag
+                output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 --tag tag-2"
+                             + " --brief").strip().split("\n")
+                self.assertIn(project1_id, output)
+                self.assertNotIn(project2_id, output)
 
     # Test is buggy and subject to change
     @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
