@@ -3592,8 +3592,8 @@ class TestDXClientFind(DXTestCase):
             self.assertTrue(pattern.match(result))
 
 
-@unittest.skipUnless(testutil.TEST_WITH_AUTHSERVER,
-                     'skipping tests that require a running authserver')
+@unittest.skipUnless(testutil.TEST_INTEGRATION and testutil.TEST_WITH_AUTHSERVER,
+                     'skipping tests that require presence of test org and running authserver')
 class TestDXClientNewUser(DXTestCase):
 
     def _now(self):
