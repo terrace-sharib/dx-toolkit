@@ -3386,16 +3386,15 @@ class TestDXClientFind(DXTestCase):
                 dxpy.api.project_update(project1_id, {"billTo": org_id})
                 project_list = dxpy.api.org_find_projects(org_id)
 
-                # Basic test
+                # Project is not billTo org
                 output = run("dx find org_projects " + pipes.quote(org_id) + " --brief").strip().split("\n")
+                self.assertEqual(dxpy.api.project_describe(project2_id)['billTo'], dxpy.whoami())
+                self.assertNotIn(project2_id, output)
+
+                # Basic test
                 expected = [project['id'] for project in project_list['results']]
                 self.assertEqual(output, expected)
                 self.assertIn(project1_id, output)
-                self.assertNotIn(project2_id, output)
-
-                # Project is not billTo org
-                self.assertEqual(dxpy.api.project_describe(project2_id)['billTo'], dxpy.whoami())
-                self.assertNotIn(project2_id, output)
 
                 # With --id flag
                 output = run("dx find org_projects " + pipes.quote(org_id) + " --ids").strip().split("\n")
@@ -3420,6 +3419,7 @@ class TestDXClientFind(DXTestCase):
                     run("dx find org_projects " + pipes.quote(org_id) + " --tag")
 
                 dxpy.api.project_add_tags(project1_id, {'tags': ['tag-1', 'tag-2']})
+                dxpy.api.project_add_tags(project2_id, {'tags': ['tag-1', 'tag-2']})
                 output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 " +
                              "--brief").strip().split("\n")
                 self.assertIn(project1_id, output)
@@ -3460,14 +3460,14 @@ class TestDXClientFind(DXTestCase):
 
         # Assert that only org ids are returned, line-separated
         output = run(cmd.format(org=org_id, t="--brief")).strip().split("\n")
-        pattern = re.compile("^project-[a-zA-Z0-9_]{24}$")
+        pattern = re.compile("^project-[a-zA-Z0-9]{24}$")
         for result in output:
             self.assertTrue(pattern.match(result))
 
         # Assert that return format is like: "<project_id><project_name><level>"
         levels = "(ADMINISTER|CONTRIBUTE|UPLOAD|VIEW|NONE)"
         output = run(cmd.format(org=org_id, t="")).strip().split("\n")
-        pattern = re.compile("^project-[a-zA-Z0-9_]{24} : .* \(" + levels + "\)$")
+        pattern = re.compile("^project-[a-zA-Z0-9]{24} : .* \(" + levels + "\)$")
         for result in output:
             self.assertTrue(pattern.match(result))
 
