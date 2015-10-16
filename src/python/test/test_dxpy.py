@@ -1619,6 +1619,7 @@ def main(number):
         self.assertEqual(dxworkflow.stages[0]["executable"], second_applet.get_id())
         self.assertNotIn("my_input", dxworkflow.stages[0]["input"])
 
+
 @unittest.skipUnless(testutil.TEST_INTEGRATION,
                      'skipping test that would create an app')
 class TestDXApp(unittest.TestCase):
