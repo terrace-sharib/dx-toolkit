@@ -3940,7 +3940,54 @@ class TestDXClientMembership(DXTestCase):
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
-        run("dx remove member {o} {u}".format(o=self.org_id, u=username))
+        run("dx remove member {o} {u} -y".format(o=self.org_id, u=username))
+
+        with self.assertRaisesRegexp(DXAPIError, "404"):
+            self._org_get_member_access(user_id)
+
+    def test_remove_membership_interactive_conf(self):
+        # TODO: Update after PTFM-16342 lands.
+        username = self._new_user()
+        user_id = "user-" + username
+        self._add_user(user_id)
+
+        exp_membership = {"user": user_id, "level": "ADMIN"}
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        dx_rm_member_int = pexpect.spawn("dx remove member {o} {u}".format(
+            o=self.org_id, u=username), logfile=sys.stderr)
+        dx_rm_member_int.expect("Please confirm")
+        dx_rm_member_int.sendline("")
+        dx_rm_member_int.expect("Aborting")
+
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        dx_rm_member_int = pexpect.spawn("dx remove member {o} {u}".format(
+            o=self.org_id, u=username), logfile=sys.stderr)
+        dx_rm_member_int.expect("Please confirm")
+        dx_rm_member_int.sendintr()
+        dx_rm_member_int.expect("Aborting")
+
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        dx_rm_member_int = pexpect.spawn("dx remove member {o} {u}".format(
+            o=self.org_id, u=username), logfile=sys.stderr)
+        dx_rm_member_int.expect("Please confirm")
+        dx_rm_member_int.sendline("n")
+        dx_rm_member_int.expect("Aborting")
+
+        membership = self._org_get_member_access(user_id)
+        self.assertEqual(membership, exp_membership)
+
+        dx_rm_member_int = pexpect.spawn("dx remove member {o} {u}".format(
+            o=self.org_id, u=username))
+        dx_rm_member_int.logfile = sys.stdout
+        dx_rm_member_int.expect("Please confirm")
+        dx_rm_member_int.sendline("y")
+        dx_rm_member_int.expect("Removed user-{u}".format(u=username))
 
         with self.assertRaisesRegexp(DXAPIError, "404"):
             self._org_get_member_access(user_id)
@@ -4038,7 +4085,7 @@ class TestDXClientMembership(DXTestCase):
         membership = self._org_get_member_access(user_id)
         self.assertEqual(membership, exp_membership)
 
-        cmd = "dx remove member {o} {u}"
+        cmd = "dx remove member {o} {u} -y"
         run(cmd.format(o=self.org_id, u=username))
 
         with self.assertRaisesRegexp(DXAPIError, "404"):
