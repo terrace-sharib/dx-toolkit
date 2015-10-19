@@ -2278,16 +2278,20 @@ def find_apps(args):
 
 def org_find_projects(args):
     try_call(process_find_by_property_args, args)
+    if args.private_only:
+        args.public_only = False
+
     try:
         results = dxpy.org_find_projects(org_id=args.org_id, name=args.name, name_mode='glob',
                                          ids=args.ids, properties=args.properties, tags=args.tag,
                                          describe=(not args.brief),
-                                         public=args.public,
+                                         public=args.public_only,
                                          created_after=args.created_after,
                                          created_before=args.created_before)
         return _format_find_projects_results(args, results)
     except:
         err_exit()
+
 
 def close(args):
     if '_DX_FUSE' in os.environ:
@@ -4424,7 +4428,10 @@ parser_find_org_projects.add_argument('org_id', help='Org ID')
 parser_find_org_projects.add_argument('--name', help='Name of the projects')
 parser_find_org_projects.add_argument('--ids', nargs='*', help='Possible IDs of projects to be listed. Project IDs may'
                                       + ' be entered as arguments e.g. --ids project-1 project-2')
-parser_find_org_projects.add_argument('--public', help='Include ONLY public projects', action='store_true')
+ls_output_args = parser_ls.add_mutually_exclusive_group()
+find_org_projects_permissions = parser_find_org_projects.add_mutually_exclusive_group()
+find_org_projects_permissions.add_argument('--public-only', help='Include ONLY public projects', action='store_true', default=None)
+find_org_projects_permissions.add_argument('--private-only', help='Exclude public projects', action='store_true', default=None)
 parser_find_org_projects.add_argument('--created-after',
                                       help='Date (e.g. 2012-01-31) or integer timestamp after which the project was ' +
                                       'created (negative number means ms in the past, or use suffix ' +
