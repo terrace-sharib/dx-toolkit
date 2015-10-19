@@ -24,6 +24,7 @@ import dxpy
 from ..exceptions import DXCLIError
 from dxpy.utils.printing import (fill, DELIMITER)
 import json
+from ..compat import input
 
 
 def get_org_invite_args(args):
@@ -80,14 +81,36 @@ def remove_membership(args):
     dxpy.api.org_get_member_access(args.org_id,
                                    {"user": "user-" + args.username})
 
-    result = dxpy.api.org_remove_member(args.org_id,
-                                        _get_org_remove_member_args(args))
-    if args.brief:
-        print(result["id"])
+    confirmed = args.confirmed
+    if not confirmed:
+        # Request interactive confirmation.
+        print(fill("About to remove user-{u} from {o}; project permissions will{rpp} be removed and app permissions will{rap} be removed".format(
+            u=args.username, o=args.org_id,
+            rpp="" if args.revoke_project_permissions else " not",
+            rap="" if args.revoke_app_permissions else " not")))
+        try:
+            conf_input = input("Please confirm [y/n]: ")
+        except EOFError:
+            pass
+        except KeyboardInterrupt:
+            print("")
+        else:
+            if len(conf_input) > 0 and conf_input.lower()[0] == "y":
+                confirmed = True
+
+    if confirmed:
+        result = dxpy.api.org_remove_member(args.org_id,
+                                            _get_org_remove_member_args(args))
+        if args.brief:
+            print(result["id"])
+        else:
+            print(fill("Removed user-{u} from {o}. user-{u} has been removed from the following projects {p}. user-{u} has been removed from the following apps {a}.".format(
+                u=args.username, o=args.org_id, p=result["projects"].keys(),
+                a=result["apps"].keys())))
     else:
-        print(fill("Removed user-{u} from {o}. user-{u} has been removed from the following projects {p}. user-{u} has been removed from the following apps {a}.".format(
-          u=args.username, o=args.org_id, p=result["projects"].keys(),
-          a=result["apps"].keys())))
+        print(fill("Aborting removal of user-{u} from {o}".format(
+            u=args.username, o=args.org_id)))
+
 
 
 def _get_org_set_member_access_args(args):
