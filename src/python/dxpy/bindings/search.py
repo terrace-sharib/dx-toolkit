@@ -71,8 +71,10 @@ def resolve_data_objects(objects, project=None, folder=None, batchsize=1000):
 
 
 def _find(api_method, query, limit, return_handler, first_page_size, **kwargs):
-    ''' Takes an API method handler (dxpy.api.find...) and calls it with *query*, then wraps a generator around its
-    output. Used by the methods below.
+    ''' Takes an API method handler (dxpy.api.find*) and calls it with *query*,
+    and then wraps a generator around its output. Used by the methods below.
+
+    Note that this function may only be used for /system/find* methods.
     '''
     num_results = 0
 
@@ -779,3 +781,23 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
             query["created"]["before"] = dxpy.utils.normalize_time_input(created_before)
 
     return _org_find(dxpy.api.org_find_projects, org_id, query)
+
+
+def find_orgs(query, first_page_size=10):
+    """
+    :param query: The input to the /system/findOrgs API method.
+    :type query: dict
+
+    :param first_page_size: The number of results that the initial
+        /system/findOrgs API call will return; default 10, max 1000. Subsequent
+        calls will raise the number of returned results exponentially up to a
+        max of 1000.
+    :type first_page_size: int
+
+    :rtype: generator
+
+    Returns a generator that yields all orgs matching the specified query. Will
+    transparently handle pagination as necessary.
+    """
+    return _find(dxpy.api.system_find_orgs, query, limit=None,
+                 return_handler=False, first_page_size=first_page_size)
