@@ -3409,6 +3409,12 @@ class TestDXClientFind(DXTestCase):
                              + project1_id + " --brief").strip().split("\n")
                 self.assertEqual(output, [project1_id])
 
+                dxpy.api.project_update(project2_id, {"billTo": org_id})
+                output = run("dx find org_projects " + pipes.quote(org_id) + " --ids {p1} {p2} " +
+                        "--brief".format(o=org_id, p1=project1_id, p2=project2_id)).strip().split("\n")
+                dxpy.api.project_update(project2_id, {"billTo": dxpy.whoami()})
+
+
                 # Test --json output
                 output = json.loads(run("dx find org_projects " + pipes.quote(org_id) + " --json"))
                 output_ids = [result['id'] for result in output]
@@ -3433,8 +3439,8 @@ class TestDXClientFind(DXTestCase):
                 self.assertIn(project1_id, output)
                 self.assertNotIn(project2_id, output)
 
-    # Test is buggy and subject to change
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
+    @unittest.skip("Test is buggy and subject to change")
+    #@unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects_public(self):
         org_id = "org-infinite_spending_limit"
         with temporary_project() as project_1:

@@ -165,7 +165,7 @@ else:
 # subcommand with further subcommands, then the second word must be an
 # appropriate sub-subcommand.
 class DXCLICompleter():
-    subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions', 'analyses ', 'org_projects '],
+    subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions ', 'analyses ', 'org_projects '],
                    'new': ['record ', 'project ', 'workflow '],
                    'add': ['developers ', 'users ', 'stage '],
                    'remove': ['developers ', 'users ', 'stage '],
@@ -2278,14 +2278,11 @@ def find_apps(args):
 
 def org_find_projects(args):
     try_call(process_find_by_property_args, args)
-    if args.private_only:
-        args.public_only = False
-
     try:
         results = dxpy.org_find_projects(org_id=args.org_id, name=args.name, name_mode='glob',
                                          ids=args.ids, properties=args.properties, tags=args.tag,
                                          describe=(not args.brief),
-                                         public=args.public_only,
+                                         public=args.public,
                                          created_after=args.created_after,
                                          created_before=args.created_before)
         return _format_find_projects_results(args, results)
@@ -4419,19 +4416,16 @@ parser_find_projects.set_defaults(func=find_projects)
 register_subparser(parser_find_projects, subparsers_action=subparsers_find, categories='data')
 
 parser_find_org_projects = subparsers_find.add_parser('org_projects',
-                                                      help='Finds projects billed to the specified org subject to'
-                                                      + ' the given search parameters.',
+                                                      help=fill('Finds projects billed to the specified org subject to the given search parameters.'),
                                                       parents=[stdout_args, json_arg, delim_arg, env_args,
                                                                find_by_properties_and_tags_args],
                                                       prog='dx find org_projects')
 parser_find_org_projects.add_argument('org_id', help='Org ID')
 parser_find_org_projects.add_argument('--name', help='Name of the projects')
-parser_find_org_projects.add_argument('--ids', nargs='*', help='Possible IDs of projects to be listed. Project IDs may'
-                                      + ' be entered as arguments e.g. --ids project-1 project-2')
-ls_output_args = parser_ls.add_mutually_exclusive_group()
+parser_find_org_projects.add_argument('--ids', nargs='*', help='Possible project IDs to be listed. May be specified like "--ids project-1 project-2"')
 find_org_projects_permissions = parser_find_org_projects.add_mutually_exclusive_group()
-find_org_projects_permissions.add_argument('--public-only', help='Include ONLY public projects', action='store_true', default=None)
-find_org_projects_permissions.add_argument('--private-only', help='Exclude public projects', action='store_true', default=None)
+find_org_projects_permissions.add_argument('--public-only', dest='public', help='Include ONLY public projects', action='store_true', default=None)
+find_org_projects_permissions.add_argument('--private-only', dest='public', help='Exclude public projects', action='store_false', default=None)
 parser_find_org_projects.add_argument('--created-after',
                                       help='Date (e.g. 2012-01-31) or integer timestamp after which the project was ' +
                                       'created (negative number means ms in the past, or use suffix ' +
