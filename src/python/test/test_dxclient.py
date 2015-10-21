@@ -3617,7 +3617,6 @@ class TestDXClientFind(DXTestCase):
         for result in results:
             self.assertTrue(pattern.match(result))
 
-
 class TestDXClientNewOrg(DXTestCase):
 
     def test_create_new_org(self):
@@ -3649,22 +3648,51 @@ class TestDXClientNewOrg(DXTestCase):
         org_list = [result['id'] for result in dxpy.api.system_find_orgs({'level': 'ADMIN'})['results']]
         self.assertIn(output, org_list)
         expected = dxpy.api.org_describe(output) ['policies']['restrictProjectTransfer']
-
     
     def test_create_new_org_prompt(self):
+        wd=tempfile.mkdtemp()
         org_handle="dx_test_new_org_{t}".format(t=str(int(time.time())))
 
-        dx_new_org = pexpect.run("dx new org")
+        dx_new_org = pexpect.spawn("dx new org", env=override_environment(HOME=wd))
         dx_new_org.logfile = sys.stdout
         dx_new_org.expect("Enter descriptive name for organization")
         dx_new_org.sendline("Descriptive Org Name")
         dx_new_org.expect("Enter handle for organization")
         dx_new_org.sendline(org_handle)
-        dx.new_org.expect("")
+        dx.new_org.expect("Restrict visibility")
         #dx.new_org.sendline()
-        #dx.new_org.expect("Restrict project transfer to [ADMIN, MEMBER] (default: MEMBER): ")
+        #dx.new_org.expect("Restrict project transfer")
         #dx.new_org.sendline()
-        #dx.new_org.expect("Organization Descriptive Org Name created")
+
+    def test_update_org(self):
+        # Create new org
+        org_handle = "dx_test_new_org_{t}".format(t=str(int(time.time())))
+        org_id = run('dx new org "Test New Org" {o} --brief'.format(o=org_handle)).strip().split("\n")[0]
+        orig_name = dxpy.api.org_describe(org_id)["name"]
+        orig_policy = dxpy.api.org_describe(org_id)["policies"]
+        
+        # test --name flag
+        new_name = "'New Org Name'"
+        run('dx update org {o} --name {n} --brief'.format(o=org_id, n=new_name))
+        res = dxpy.api.org_describe(org_id)["name"]
+        self.assertEquals(res, new_name)
+        self.assertNotEquals(res, orig_name)
+
+        # test --member-list-visibility flag
+        policy = "MEMBER"
+        run('dx update org {o} --member-list-visibility {p} --brief'.format(o=org_id, p=policy))
+        res = dxpy.api.org_describe(org_id)["policies"]
+        self.assertEquals(res["memberListVisibility"], policy)
+        self.assertEquals(res["restrictProjectTransfer"], orig_policy["restrictProjectTransfer"])
+        self.assertNotEquals(res["memberListVisibility"], orig_policy["memberListVisibility"])
+
+        # test --project-transfer-ability
+        policy = "ADMIN"
+        run('dx update org {o} --project-transfer-ability {p} --brief'.format(o=org_id, p=policy))
+        res = dxpy.api.org_describe(org_id)["policies"]
+        self.assertEquals(res["restrictProjectTransfer"], policy)
+        self.assertEquals(res["memberListVisibility"], orig_policy["memberListVisibility"])
+        self.assertNotEquals(res["restrictProjectTransfer"], orig_policy["restrictProjectTransfer"])
 
 @unittest.skipUnless(testutil.TEST_WITH_AUTHSERVER,
                      'skipping tests that require a running authserver')

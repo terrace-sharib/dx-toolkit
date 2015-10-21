@@ -45,7 +45,7 @@ from ..cli.parsers import (no_color_arg, delim_arg, env_args, stdout_args, all_a
                            instance_type_arg, process_instance_type_arg)
 from ..cli.exec_io import (ExecutableInputs, format_choices_or_suggestions)
 from ..cli.org import (get_org_invite_args, add_membership, remove_membership,
-                       update_membership, find_orgs)
+                       update_membership, find_orgs, update_org)
 from ..exceptions import (err_exit, DXError, DXCLIError, DXAPIError, network_exceptions, default_expected_exceptions,
                           format_exception)
 from ..utils import warn, group_array_by_field, normalize_timedelta, normalize_time_input
@@ -1321,7 +1321,6 @@ def new_org(args):
         print("Organization " + args.name + " created")
     except:
         err_exit()
-
 
 def new_project(args):
     if args.name == None:
@@ -3887,6 +3886,18 @@ subcommands.''',
 subparsers_update = parser_update.add_subparsers(parser_class=DXArgumentParser)
 subparsers_update.metavar = 'target'
 register_subparser(parser_update, categories=())
+
+parser_update_org = subparsers_update.add_parser('org', help='Update information about an organization',
+                                                 description='Update information about an organization',
+                                                 parents=[stdout_args, env_args],
+                                                 prog='dx update org')
+parser_update_org.add_argument('org_id', help='ID of the org')
+parser_update_org.add_argument('--name', help='Name of the organization')
+parser_update_org.add_argument('--member-list-visibility', help='Org membership level needed to view membership status and permissions for any other member in the org', choices=["ADMIN", "MEMBER"])
+parser_update_org.add_argument('--project-transfer-ability', help='Org membership level needed change the billing account of a project in the org', choices=["ADMIN", "MEMBER"])
+parser_update_org.set_defaults(func=update_org)
+register_subparser(parser_update_org, subparsers_action=subparsers_update, categories=())
+
 
 parser_update_workflow = subparsers_update.add_parser('workflow', help='Update the metadata for a workflow',
                                                       description='Update the metadata for an existing workflow',
