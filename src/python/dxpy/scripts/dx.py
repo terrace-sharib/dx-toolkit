@@ -4435,14 +4435,8 @@ parser_find_org_projects.add_argument('--ids', nargs='*', help='Possible project
 find_org_projects_permissions = parser_find_org_projects.add_mutually_exclusive_group()
 find_org_projects_permissions.add_argument('--public-only', dest='public', help='Include ONLY public projects', action='store_true', default=None)
 find_org_projects_permissions.add_argument('--private-only', dest='public', help='Exclude public projects', action='store_false', default=None)
-parser_find_org_projects.add_argument('--created-after',
-                                      help='Date (e.g. 2012-01-31) or integer timestamp after which the project was ' +
-                                      'created (negative number means ms in the past, or use suffix ' +
-                                      's, m, h, d, w, M, y)')
-parser_find_org_projects.add_argument('--created-before',
-                                      help='Date (e.g. 2012-01-31) or integer timestamp after which the project was ' +
-                                      'created (negative number means ms in the past, or use suffix ' +
-                                      's, m, h, d, w, M, y)')
+parser_find_org_projects.add_argument('--created-after', help='Date (e.g. 2012-01-31) or integer timestamp after which the project was created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
+parser_find_org_projects.add_argument('--created-before', help='Date (e.g. 2012-01-31) or integer timestamp after which the project was created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
 parser_find_org_projects.set_defaults(func=org_find_projects)
 register_subparser(parser_find_org_projects, subparsers_action=subparsers_find, categories='data')
 

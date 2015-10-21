@@ -3490,26 +3490,24 @@ class TestDXClientFind(DXTestCase):
         assert_cmd_gives_ids("dx find jobs "+options3, [job_id])
         assert_cmd_gives_ids("dx find analyses "+options3, [])
 
-    @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org')
+    @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org and project')
     def test_dx_find_org_projects(self):
-        org_id = "org-infinite_spending_limit"
+        org_id = "org-piratelabs"
+        project_ppb = "project-0000000000000000000000pb"
         with temporary_project() as project_1:
             with temporary_project() as project_2:
                 project1_id = project_1.get_id()
                 project2_id = project_2.get_id()  # project not billed to org
                 dxpy.api.project_update(project1_id, {"billTo": org_id})
+                org_projects = [project_ppb, project1_id]
 
                 output = run("dx find org_projects " + pipes.quote(org_id) + " --brief").strip().split("\n")
-                # Assert project is not billed to org
-                self.assertEqual(dxpy.api.project_describe(project2_id)['billTo'], dxpy.whoami())
-                self.assertNotIn(project2_id, output)
-
-                # Basic test
-                #project_list = dxpy.api.org_find_projects(org_id)
-                #expected = [project['id'] for project in project_list['results']]
-                #self.assertEqual(output, expected)
+                # Basic test to check consistency of client output to directly invoking API
+                project_list = dxpy.api.org_find_projects(org_id)
+                expected = [project['id'] for project in project_list['results']]
+                self.assertEqual(output, expected)
                 self.assertEqual(dxpy.api.project_describe(project1_id)['billTo'], org_id)
-                self.assertIn(project1_id, output)
+                self.assertItemsEqual(output, org_projects)
 
                 # With --id flag
                 output = run("dx find org_projects " + pipes.quote(org_id) + " --ids").strip().split("\n")
@@ -3523,18 +3521,13 @@ class TestDXClientFind(DXTestCase):
                              + project1_id + " --brief").strip().split("\n")
                 self.assertEqual(output, [project1_id])
 
-                dxpy.api.project_update(project2_id, {"billTo": org_id})
-                output = run("dx find org_projects " + pipes.quote(org_id) + " --ids {p1} {p2} " +
-                        "--brief".format(o=org_id, p1=project1_id, p2=project2_id)).strip().split("\n")
-                dxpy.api.project_update(project2_id, {"billTo": dxpy.whoami()})
-
+                output = run("dx find org_projects {o} --ids {p1} {p2} --brief".format(o=org_id, p1=project1_id,
+                             p2=project_ppb)).strip().split("\n")
 
                 # Test --json output
                 output = json.loads(run("dx find org_projects " + pipes.quote(org_id) + " --json"))
-                output_ids = [result['id'] for result in output]
-                self.assertIn(project1_id, output_ids)
-                self.assertIn(dxpy.api.project_describe(project1_id), [result['describe'] for result in output])
-                self.assertNotIn(project2_id, output_ids)
+                self.assertItemsEqual([result['describe'] for result in output], [dxpy.api.project_describe(p) for p in
+                                      org_projects])
 
                 # With --tag
                 with self.assertSubprocessFailure(stderr_regexp='expected one argument', exit_code=2):
@@ -3544,19 +3537,17 @@ class TestDXClientFind(DXTestCase):
                 dxpy.api.project_add_tags(project2_id, {'tags': ['tag-1', 'tag-2']})
                 output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 " +
                              "--brief").strip().split("\n")
-                self.assertIn(project1_id, output)
-                self.assertNotIn(project2_id, output)
+                self.assertEqual(output, [project1_id])
 
                 # With multiple --tag
                 output = run("dx find org_projects " + pipes.quote(org_id) + " --tag tag-1 --tag tag-2"
                              + " --brief").strip().split("\n")
-                self.assertIn(project1_id, output)
-                self.assertNotIn(project2_id, output)
+                self.assertEqual(output, [project1_id])
 
     @unittest.skip("Test is buggy and subject to change")
     #@unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects_public(self):
-        org_id = "org-infinite_spending_limit"
+        org_id = "org-piratelabs"
         with temporary_project() as project_1:
             with temporary_project() as project_2:
                 dxpy.api.project_update(project_1.id, {"billTo": org_id})
@@ -3580,7 +3571,7 @@ class TestDXClientFind(DXTestCase):
     # Test is buggy and subject to change
     @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects_created(self):
-        org_id = "org-infinite_spending_limit"
+        org_id = "org-piratelabs"
         with temporary_project() as unique_project:
             project_id = unique_project.get_id()
             dxpy.api.project_update(project_id, {"billTo": org_id})
@@ -3601,7 +3592,7 @@ class TestDXClientFind(DXTestCase):
 
     @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects_format(self):
-        org_id = "org-infinite_spending_limit"
+        org_id = "org-piratelabs"
         cmd = "dx find org_projects {org} {t}"
 
         # Assert that only org ids are returned, line-separated
