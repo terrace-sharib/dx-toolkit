@@ -64,20 +64,21 @@ def prompt_for_yn(prompt_str, default=None):
         elif default is not None:
             return default
 
+
 def prompt_for_mult_choice(prompt_str, default=None):
     if default:
         prompt = prompt_str + ' (default: ' + default + '): '
-    
+
     while True:
         try:
             value = input(prompt)
-        except KyboardInterrupt:
+        except KeyboardInterrupt:
             print('')
             exit(1)
         except EOFError:
             print('')
             exit(1)
         if value != '':
-            return value.upper()[0]
+            return value.upper()
         elif default is not None:
             return default

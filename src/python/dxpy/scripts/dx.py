@@ -33,7 +33,7 @@ wrap_stdio_in_codecs()
 decode_command_line_args()
 
 import dxpy
-from ..cli import try_call, prompt_for_yn, prompt_for_mult_choice,INTERACTIVE_CLI
+from ..cli import try_call, prompt_for_yn, prompt_for_mult_choice, INTERACTIVE_CLI
 from ..cli import workflow as workflow_cli
 from ..cli.cp import cp
 from ..cli.download import (download_one_file, download)
@@ -166,10 +166,10 @@ else:
 # appropriate sub-subcommand.
 class DXCLICompleter():
     subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions ', 'analyses '],
-                   'new': ['record ', 'project ', 'workflow '],
+                   'new': ['record ', 'project ', 'workflow ', 'org '],
                    'add': ['developers ', 'users ', 'stage '],
                    'remove': ['developers ', 'users ', 'stage '],
-                   'update': ['stage ', 'workflow ']}
+                   'update': ['stage ', 'workflow ', 'org ']}
 
     silent_commands = set(['import'])
 
@@ -1298,21 +1298,21 @@ def new_user(args):
 
 
 def new_org(args):
-    if args.name == None:
-        if INTERACTIVE_CLI: 
+    if args.name is None:
+        if INTERACTIVE_CLI:
             args.name = input("Enter descriptive name for organization: ")
         else:
             parser.exit(1, parser_new_org.format_help() +
                         fill("No organization name supplied, and input is not interactive") + '\n')
-    if args.handle == None:    
+    if args.handle is None:
         args.handle = input("Enter handle for organization. This handle will be appended to 'org-': ")
         args.member_list_visibility = prompt_for_mult_choice("Restrict visibility of member list to [ADMIN, MEMBER]",
                                                              default=args.member_list_visibility)
-        args.project_transfer_ability = prompt_for_mult_choice("Restrict project billTo transfer ability to [ADMIN, MEMBER]",
-                                                                default=args.project_transfer_ability)
+        args.project_transfer_ability = prompt_for_mult_choice("Restrict project billing transfer ability to [ADMIN, MEMBER]",
+                                                               default=args.project_transfer_ability)
 
-    inputs = {"handle": args.handle, "name": args.name, "policies": {"memberListVisibility": args.member_list_visibility,
-              "restrictProjectTransfer": args.project_transfer_ability}}
+    inputs = {"handle": args.handle, "name": args.name, "policies": {"memberListVisibility":
+              args.member_list_visibility, "restrictProjectTransfer": args.project_transfer_ability}}
 
     try:
         resp = dxpy.api.org_new(inputs)
@@ -4148,9 +4148,9 @@ register_subparser(parser_new_user, subparsers_action=subparsers_new,
                    categories="other")
 
 parser_new_org = subparsers_new.add_parser('org', help='Create a new org',
-                                          description='Create a new org',
-                                          parents=[stdout_args, env_args],
-                                          prog='dx new org')
+                                           description='Create a new org',
+                                           parents=[stdout_args, env_args],
+                                           prog='dx new org')
 parser_new_org.add_argument('name', help='Descriptive name of the organization', nargs='?')
 parser_new_org.add_argument('handle', help='Unique handle for organization', nargs='?')
 parser_new_org.add_argument('--member-list-visibility', help='Org membership level needed to view membership status and permissions for any other member in the org', choices=["ADMIN", "MEMBER"], default="ADMIN")
