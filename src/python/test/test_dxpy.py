@@ -1915,25 +1915,27 @@ class TestDXSearch(unittest.TestCase):
         matching_ids = (result["id"] for result in dxpy.find_projects(created_before=created - 1000))
         self.assertNotIn(dxproject.id, matching_ids)
 
-    @unittest.skipUnless(testutil.TEST_CREATE_APPS, 'skipping test that requires presence of test org')
+    @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org')
     def test_find_org_projects_created(self):
-        org_id = "org-infinite_spending_limit"
+        org_id = "org-piratelabs"
         dxproject = dxpy.DXProject(self.proj_id)
         dxpy.api.project_update(dxproject.get_id(), {"billTo": org_id})
+        project_ppb = "project-0000000000000000000000pb"
+        org_projects = [dxproject.id, project_ppb]
 
         created = dxproject.created
         matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000))
-        self.assertIn(dxproject.id, matching_ids)
+        self.assertItemsEqual(matching_ids, org_projects)
 
         matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_after=created - 1000))
-        self.assertIn(dxproject.id, matching_ids)
+        self.assertItemsEqual(matching_ids, [dxproject.id])
 
         matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000,
                         created_after=created - 1000))
-        self.assertIn(dxproject.id, matching_ids)
+        self.assertItemsEqual(matching_ids, [dxproject.id])
 
         matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created - 1000))
-        self.assertNotIn(dxproject.id, matching_ids)
+        self.assertNotIn(matching_ids, [project_ppb])
 
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
     def test_find_executions(self):

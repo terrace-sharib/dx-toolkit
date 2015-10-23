@@ -689,7 +689,7 @@ def _org_find(api_method, org_id, query, first_page_size=100):
     """
     Takes an API method handler ``dxpy.api.org_find...`` and calls it with
     *org_id* and *query*, then wraps a generator around its output. Used by
-    ``org_find_members`` and ``org_find_projects`` below.
+    :meth:`org_find_members` and :meth:`org_find_projects` below.
 
     :param first_page_size: The number of results that the initial API call will return.
         Subsequent calls will raise this by multiplying by 2 up to a maximum of 1000.
@@ -697,7 +697,7 @@ def _org_find(api_method, org_id, query, first_page_size=100):
 
     """
     if "limit" not in query:
-        query["limit"] = first_page_size
+        query["limit"] = min(first_page_size, 1000)
 
     while True:
         resp = api_method(org_id, query)
@@ -715,27 +715,26 @@ def _org_find(api_method, org_id, query, first_page_size=100):
 def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, properties=None, tags=None, describe=False,
                       public=None, created_after=None, created_before=None):
     """
-    :param name: Name of the project (also see *name_mode*)
+    :param org_id: ID of the organization
+    :type org_id: string
+    :param name: Name that each result must have (also see *name_mode* param)
     :type name: string
-    :param name_mode: Method by which to interpret the *name* field ("exact": exact match,
+    :param name_mode: Method by which to interpret the *name* param ("exact": exact match,
         "glob": use "*" and "?" as wildcards, "regexp": interpret as a regular expression)
     :type name_mode: string
-    :param ids: list of project ids which will be intersected with any other
-        specified constraints
+    :param ids: List of project IDs. Each result must have a project ID that was specified in this list.
     :type ids: array of strings
     :param properties: Properties (key-value pairs) that each result must have
         (use value True to require the property key and allow any value)
     :type properties: dict
     :param tags: Tags that each result must have
     :type tags: list of strings
-    :param describe: Controls whether to also return the output of
-        calling describe() on each project. Supply False to omit
-        describe output, True to obtain the default describe output, or
-        a dict to be supplied as the describe call input (which may be
-        used to customize the set of fields that is returned)
+    :param describe: Whether or not to return the response of ``dxpy.api.project_describe`` for each result. False
+        omits the describe response; True includes it; a dict will be used as the input to
+        ``dxpy.api.project_describe`` (to customize the desired set of fields in the describe response.
     :type describe: bool or dict
-    :param public: Filter on the project being public. If True, matching projects must be public.
-        If False, matching projects must not be public. (None indicates no filter)
+    :param public: True indicates that each result must be public; False indicates that each result must be private;
+        None indicates that both public and private projects will be returned in the result set.
     :type public: boolean or None
     :param created_after: Timestamp after which each result was created
         (see note accompanying :meth:`find_data_objects()` for interpretation)
@@ -745,10 +744,8 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
     :type created_before: int or string
     :rtype: generator
 
-    Returns a generator that yields all projects that match the query.
-    It transparently handles paging through the result set if necessary.
-    For all parameters that are omitted, the search is not restricted by
-    the corresponding field.
+    Returns a generator that yields all projects that match the query that was formed by intersecting all specified
+    constraints. The search is not restricted by any parameters that were unspecified.
 
     """
     query = {}

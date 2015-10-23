@@ -45,7 +45,7 @@ from ..cli.parsers import (no_color_arg, delim_arg, env_args, stdout_args, all_a
                            instance_type_arg, process_instance_type_arg)
 from ..cli.exec_io import (ExecutableInputs, format_choices_or_suggestions)
 from ..cli.org import (get_org_invite_args, add_membership, remove_membership,
-                       update_membership, find_orgs)
+                       update_membership, find_orgs, org_find_projects)
 from ..exceptions import (err_exit, DXError, DXCLIError, DXAPIError, network_exceptions, default_expected_exceptions,
                           format_exception)
 from ..utils import warn, group_array_by_field, normalize_timedelta, normalize_time_input
@@ -2283,20 +2283,6 @@ def find_apps(args):
         err_exit()
 
 
-def org_find_projects(args):
-    try_call(process_find_by_property_args, args)
-    try:
-        results = dxpy.org_find_projects(org_id=args.org_id, name=args.name, name_mode='glob',
-                                         ids=args.ids, properties=args.properties, tags=args.tag,
-                                         describe=(not args.brief),
-                                         public=args.public,
-                                         created_after=args.created_after,
-                                         created_before=args.created_before)
-        return _format_find_projects_results(args, results)
-    except:
-        err_exit()
-
-
 def close(args):
     if '_DX_FUSE' in os.environ:
         from xattr import xattr
@@ -4431,10 +4417,11 @@ parser_find_org_projects = subparsers_find.add_parser('org_projects',
                                                       prog='dx find org_projects')
 parser_find_org_projects.add_argument('org_id', help='Org ID')
 parser_find_org_projects.add_argument('--name', help='Name of the projects')
-parser_find_org_projects.add_argument('--ids', nargs='*', help='Possible project IDs to be listed. May be specified like "--ids project-1 project-2"')
+parser_find_org_projects.add_argument('--ids', nargs='+', help='Possible project IDs. May be specified like "--ids project-1 project-2"')
 find_org_projects_permissions = parser_find_org_projects.add_mutually_exclusive_group()
 find_org_projects_permissions.add_argument('--public-only', dest='public', help='Include ONLY public projects', action='store_true', default=None)
-find_org_projects_permissions.add_argument('--private-only', dest='public', help='Exclude public projects', action='store_false', default=None)
+find_org_projects_permissions.add_argument('--private-only', dest='public', help='Include ONLY private projects (i.e. those in which the PUBLIC entity does not have any permission)', action='store_false', default=None)
+# TODO fix help strings for --created after normalize_time_input update
 parser_find_org_projects.add_argument('--created-after', help='Date (e.g. 2012-01-31) or integer timestamp after which the project was created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
 parser_find_org_projects.add_argument('--created-before', help='Date (e.g. 2012-01-31) or integer timestamp after which the project was created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
 parser_find_org_projects.set_defaults(func=org_find_projects)
