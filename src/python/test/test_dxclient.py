@@ -3601,17 +3601,17 @@ class TestDXClientFind(DXTestCase):
             created = int(dxpy.api.project_describe(project_id)['created'])
 
             self.assertIn(project_id, run("dx find org_projects " + pipes.quote(org_id) + " --created-before=" +
-                                          str(int((created + 1000)/1000)) + " --brief").strip().split("\n"))
+                                          str(int((created + 1000))) + " --brief").strip().split("\n"))
 
             self.assertIn(project_id, run("dx find org_projects " + pipes.quote(org_id) + " --created-after=" +
-                                          str(int((created - 1000)/1000)) + " --brief").strip().split("\n"))
+                                          str(int((created - 1000))) + " --brief").strip().split("\n"))
 
             self.assertIn(project_id, run("dx find org_projects " + pipes.quote(org_id) + " --created-after=" +
-                                          str(int((created - 1000)/1000)) + " --created-before=" +
-                                          str(int((created + 1000)/1000)) + " --brief").strip().split("\n"))
+                                          str(int((created - 1000))) + " --created-before=" +
+                                          str(int((created + 1000))) + " --brief").strip().split("\n"))
 
             self.assertNotIn(project_id, run("dx find org_projects " + pipes.quote(org_id) + " --created-before=" +
-                                             str(int((created - 1000)/1000)) + " --brief").strip().split("\n"))
+                                             str(int((created - 1000))) + " --brief").strip().split("\n"))
 
     @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org')
     def test_dx_find_org_projects_format(self):

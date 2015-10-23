@@ -1924,17 +1924,17 @@ class TestDXSearch(unittest.TestCase):
         org_projects = [dxproject.id, project_ppb]
 
         created = dxproject.created
-        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000))
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=str(created + 1000)))
         self.assertItemsEqual(matching_ids, org_projects)
 
-        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_after=created - 1000))
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_after=str(created - 1000)))
         self.assertItemsEqual(matching_ids, [dxproject.id])
 
-        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000,
-                        created_after=created - 1000))
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=str(created + 1000),
+                        created_after=str(created - 1000)))
         self.assertItemsEqual(matching_ids, [dxproject.id])
 
-        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created - 1000))
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=str(created - 1000)))
         self.assertNotIn(matching_ids, [project_ppb])
 
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
