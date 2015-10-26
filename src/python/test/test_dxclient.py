@@ -399,55 +399,6 @@ class TestDXClient(DXTestCase):
         with self.assertSubprocessFailure(stderr_regexp='Unable to resolve', exit_code=3):
             run("dx untag nonexistent atag")
 
-    @unittest.skipUnless(testutil.TEST_ISOLATED_ENV,
-                         'skipping test that requires presence of test org')
-    def test_dx_create_new_project_with_bill_to(self):
-        curr_bill_to = dxpy.api.user_describe(dxpy.whoami())['billTo']
-        alice_id = "user-000000000000000000000000"
-        org_id = "org-piratelabs"
-        project_name = "test_dx_create_project"
-
-        # Check that requesting user has createProjectsAndApps permission in org
-        member_access = dxpy.api.org_get_member_access(org_id, {'user': dxpy.whoami()})
-        self.assertTrue(member_access['level'] == 'ADMIN' or member_access['createProjectsAndApps'])
-
-        # Check that billTo of requesting user is the requesting user
-        dxpy.api.user_update(dxpy.whoami(), {'billTo': alice_id})
-        self.assertEquals(dxpy.api.user_describe(dxpy.whoami())['billTo'], alice_id)
-
-        # Create project billTo org
-        project_id = run("dx new project {name} --bill-to {billTo} --brief".format(name=project_name,
-                         billTo=org_id)).strip()
-        self.assertEquals(dxpy.api.project_describe(project_id, {'fields': {'billTo': True}})['billTo'], org_id)
-        dxpy.api.project_destroy(project_id)
-
-        # Create project billTo requesting user
-        project_id = run("dx new project {name} --bill-to {billTo} --brief".format(name=project_name,
-                         billTo=dxpy.whoami())).strip()
-        self.assertEquals(dxpy.api.project_describe(project_id, {'fields': {'billTo': True}})['billTo'], dxpy.whoami())
-        dxpy.api.project_destroy(project_id)
-
-        # Create project billTo invalid org
-        with self.assertSubprocessFailure(stderr_regexp='ResourceNotFound', exit_code=3):
-            run("dx new project {name} --bill-to {billTo} --brief".format(name=project_name, billTo='org-invalid'))
-
-        # With user's billTo set to org
-        dxpy.api.user_update(dxpy.whoami(), {'billTo': org_id})
-        self.assertEqual(dxpy.api.user_describe(dxpy.whoami())['billTo'], org_id)
-
-        project_id = run("dx new project {name} --bill-to {billTo} --brief".format(name=project_name,
-                         billTo=dxpy.whoami())).strip()
-        self.assertEquals(dxpy.api.project_describe(project_id, {'fields': {'billTo': True}})['billTo'], dxpy.whoami())
-        dxpy.api.project_destroy(project_id)
-
-        project_id = run("dx new project {name} --bill-to {billTo} --brief".format(name=project_name,
-                         billTo=org_id)).strip()
-        self.assertEquals(dxpy.api.project_describe(project_id, {'fields': {'billTo': True}})['billTo'], org_id)
-        dxpy.api.project_destroy(project_id)
-
-        # reset original user settings
-        dxpy.api.user_update(dxpy.whoami(), {'billTo': curr_bill_to})
-
     def test_dx_project_tagging(self):
         the_tags = ["$my.tag", "secoиdtag", "тhird тagggg"]
         # tag
@@ -1394,6 +1345,15 @@ dxpy.run()
         run("cd {wd}; rm test; touch test".format(wd=wd))
         run("cd {wd}; dx download -f test".format(wd=wd))
         assert_md5_checksum(os.path.join(wd, "test"), hashlib.md5(part1 + part2))
+
+    def test_upload_binary_data_with_debugging_info(self):
+        # Really a test that the _DX_DEBUG output doesn't barf on binary data
+        with chdir(tempfile.mkdtemp()):
+            with open('binary', 'wb') as f:
+                f.write(b'\xee\xee\xee\xef')
+            run('_DX_DEBUG=1 dx upload binary')
+            run('_DX_DEBUG=2 dx upload binary')
+            run('_DX_DEBUG=3 dx upload binary')
 
 
 class TestDXClientDownloadDataEgressBilling(DXTestCase):
@@ -3842,6 +3802,65 @@ class TestDXClientFind(DXTestCase):
         pattern = re.compile("^org-[a-zA-Z0-9_]* @ .*$")
         for result in results:
             self.assertTrue(pattern.match(result))
+
+
+class TestDXClientNewProject(DXTestCase):
+    def test_dx_new_project_with_region(self):
+        project_id = run("dx new project --brief --region aws:us-east-1 ProjectInUSEast").strip()
+        self.assertEquals(dxpy.api.project_describe(project_id, {})['region'], "aws:us-east-1")
+        dxpy.api.project_destroy(project_id, {})
+
+        with self.assertRaisesRegexp(subprocess.CalledProcessError, "InvalidInput"):
+            run("dx new project --brief --region aws:not-a-region InvalidRegionProject")
+
+    @unittest.skipUnless(testutil.TEST_ISOLATED_ENV,
+                         'skipping test that requires presence of test org')
+    def test_dx_create_new_project_with_bill_to(self):
+        curr_bill_to = dxpy.api.user_describe(dxpy.whoami())['billTo']
+        alice_id = "user-000000000000000000000000"
+        org_id = "org-piratelabs"
+        project_name = "test_dx_create_project"
+
+        # Check that requesting user has createProjectsAndApps permission in org
+        member_access = dxpy.api.org_get_member_access(org_id, {'user': dxpy.whoami()})
+        self.assertTrue(member_access['level'] == 'ADMIN' or member_access['createProjectsAndApps'])
+
+        # Check that billTo of requesting user is the requesting user
+        dxpy.api.user_update(dxpy.whoami(), {'billTo': alice_id})
+        self.assertEquals(dxpy.api.user_describe(dxpy.whoami())['billTo'], alice_id)
+
+        # Create project billTo org
+        project_id = run("dx new project {name} --bill-to {billTo} --brief".format(name=project_name,
+                         billTo=org_id)).strip()
+        self.assertEquals(dxpy.api.project_describe(project_id, {'fields': {'billTo': True}})['billTo'], org_id)
+        dxpy.api.project_destroy(project_id)
+
+        # Create project billTo requesting user
+        project_id = run("dx new project {name} --bill-to {billTo} --brief".format(name=project_name,
+                         billTo=dxpy.whoami())).strip()
+        self.assertEquals(dxpy.api.project_describe(project_id, {'fields': {'billTo': True}})['billTo'], dxpy.whoami())
+        dxpy.api.project_destroy(project_id)
+
+        # Create project billTo invalid org
+        with self.assertSubprocessFailure(stderr_regexp='ResourceNotFound', exit_code=3):
+            run("dx new project {name} --bill-to {billTo} --brief".format(name=project_name, billTo='org-invalid'))
+
+        # With user's billTo set to org
+        dxpy.api.user_update(dxpy.whoami(), {'billTo': org_id})
+        self.assertEqual(dxpy.api.user_describe(dxpy.whoami())['billTo'], org_id)
+
+        project_id = run("dx new project {name} --bill-to {billTo} --brief".format(name=project_name,
+                         billTo=dxpy.whoami())).strip()
+        self.assertEquals(dxpy.api.project_describe(project_id, {'fields': {'billTo': True}})['billTo'], dxpy.whoami())
+        dxpy.api.project_destroy(project_id)
+
+        project_id = run("dx new project {name} --bill-to {billTo} --brief".format(name=project_name,
+                         billTo=org_id)).strip()
+        self.assertEquals(dxpy.api.project_describe(project_id, {'fields': {'billTo': True}})['billTo'], org_id)
+        dxpy.api.project_destroy(project_id)
+
+        # reset original user settings
+        dxpy.api.user_update(dxpy.whoami(), {'billTo': curr_bill_to})
 
 
 @unittest.skipUnless(testutil.TEST_ISOLATED_ENV and testutil.TEST_WITH_AUTHSERVER,
