@@ -1300,12 +1300,12 @@ def new_user(args):
 def new_org(args):
     if args.name is None:
         if INTERACTIVE_CLI:
-            args.name = input("Enter descriptive name for organization: ")
+            args.name = input("Enter descriptive name for org: ")
         else:
             parser.exit(1, parser_new_org.format_help() +
-                        fill("No organization name supplied, and input is not interactive") + '\n')
+                        fill("No org name supplied, and input is not interactive") + '\n')
     if args.handle is None:
-        args.handle = input("Enter handle for organization. This handle will be appended to 'org-': ")
+        args.handle = input("Enter handle for org. This handle will be appended to 'org-': ")
         args.member_list_visibility = prompt_for_mult_choice("Restrict visibility of member list to [ADMIN, MEMBER]",
                                                              default=args.member_list_visibility)
         args.project_transfer_ability = prompt_for_mult_choice("Restrict project billing transfer ability to [ADMIN, MEMBER]",
@@ -1318,7 +1318,7 @@ def new_org(args):
         resp = dxpy.api.org_new(inputs)
         if args.brief:
             print(resp['id'])
-        print("Organization " + args.name + " created")
+        print("Org " + args.name + " created")
     except:
         err_exit()
 
@@ -3887,16 +3887,16 @@ subparsers_update = parser_update.add_subparsers(parser_class=DXArgumentParser)
 subparsers_update.metavar = 'target'
 register_subparser(parser_update, categories=())
 
-parser_update_org = subparsers_update.add_parser('org', help='Update information about an organization',
-                                                 description='Update information about an organization',
+parser_update_org = subparsers_update.add_parser('org', help='Update information about an org',
+                                                 description='Update information about an org',
                                                  parents=[stdout_args, env_args],
                                                  prog='dx update org')
 parser_update_org.add_argument('org_id', help='ID of the org')
-parser_update_org.add_argument('--name', help='Name of the organization')
-parser_update_org.add_argument('--member-list-visibility', help='Org membership level needed to view membership status and permissions for any other member in the org', choices=["ADMIN", "MEMBER"])
-parser_update_org.add_argument('--project-transfer-ability', help='Org membership level needed change the billing account of a project in the org', choices=["ADMIN", "MEMBER"])
+parser_update_org.add_argument('--name', help='New name of the org')
+parser_update_org.add_argument('--member-list-visibility', help='New org membership level needed to view membership status and permissions for any other member in the org', choices=["ADMIN", "MEMBER"])
+parser_update_org.add_argument('--project-transfer-ability', help='New org membership level needed change the billing account of a project in the org', choices=["ADMIN", "MEMBER"])
 parser_update_org.set_defaults(func=update_org)
-register_subparser(parser_update_org, subparsers_action=subparsers_update, categories=())
+register_subparser(parser_update_org, subparsers_action=subparsers_update, categories=("other"))
 
 
 parser_update_workflow = subparsers_update.add_parser('workflow', help='Update the metadata for a workflow',
@@ -4151,12 +4151,12 @@ parser_new_org = subparsers_new.add_parser('org', help='Create a new org',
                                            description='Create a new org',
                                            parents=[stdout_args, env_args],
                                            prog='dx new org')
-parser_new_org.add_argument('name', help='Descriptive name of the organization', nargs='?')
-parser_new_org.add_argument('handle', help='Unique handle for organization', nargs='?')
-parser_new_org.add_argument('--member-list-visibility', help='Org membership level needed to view membership status and permissions for any other member in the org', choices=["ADMIN", "MEMBER"], default="ADMIN")
-parser_new_org.add_argument('--project-transfer-ability', help='Org membership level needed change the billing account of a project in the org', choices=["ADMIN", "MEMBER"], default="MEMBER")
+parser_new_org.add_argument('name', help='Descriptive name of the org', nargs='?')
+parser_new_org.add_argument('handle', help='Unique handle for org', nargs='?')
+parser_new_org.add_argument('--member-list-visibility', help='Org membership level required to be able to list the members of the org, or to view the membership level or permissions of any other member of the org', choices=["ADMIN", "MEMBER"], default="ADMIN")
+parser_new_org.add_argument('--project-transfer-ability', help='Org membership level required to be able to change the billing account of an org-billed project to any other entity', choices=["ADMIN", "MEMBER"], default="ADMIN")
 parser_new_org.set_defaults(func=new_org)
-register_subparser(parser_new_org, subparsers_action=subparsers_new, categories='fs')
+register_subparser(parser_new_org, subparsers_action=subparsers_new, categories='other')
 
 parser_new_project = subparsers_new.add_parser('project', help='Create a new project',
                                                description='Create a new project',
