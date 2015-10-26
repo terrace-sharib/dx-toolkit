@@ -761,7 +761,10 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
     if ids is not None:
         query["id"] = ids
     if properties is not None:
-        query["properties"] = properties
+        if len(properties.keys()) == 1:
+            query["properties"] = properties
+        else:
+             query["properties"] = {"$and": [properties]}
     if tags is not None:
         if len(tags) == 1:
             query["tags"] = tags[0]
