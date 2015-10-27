@@ -766,7 +766,7 @@ def org_find_projects(org_id=None, name=None, name_mode='exact', ids=None, prope
         else:
             p = [None]*len(properties.keys())
             n = 0
-            for k, v in properties:
+            for k, v in properties.items():
                 p[n] = {k: v}
                 n += 1
             query["properties"] = {"$and": p}

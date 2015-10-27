@@ -53,7 +53,7 @@ from ..utils import warn, group_array_by_field, normalize_timedelta, normalize_t
 from ..app_categories import APP_CATEGORIES
 from ..utils.printing import (CYAN, BLUE, YELLOW, GREEN, RED, WHITE, UNDERLINE, BOLD, ENDC, DNANEXUS_LOGO,
                               DNANEXUS_X, set_colors, set_delimiter, get_delimiter, DELIMITER, fill,
-                              tty_rows, tty_cols, pager)
+                              tty_rows, tty_cols, pager, format_find_projects_results)
 from ..utils.pretty_print import format_tree, format_table
 from ..utils.resolver import (pick, paginate_and_pick, is_hashid, is_data_obj_id, is_container_id, is_job_id,
                               is_analysis_id, get_last_pos_of_char, resolve_container_id_or_name, resolve_path,
@@ -2205,18 +2205,6 @@ def find_data(args):
                     print_ls_l_desc(result["describe"], include_folder=True, include_project=args.all_projects)
     except:
         err_exit()
-
-
-def format_find_projects_results(args, results):
-    if args.json:
-        print(json.dumps(list(results), indent=4))
-    elif args.brief:
-        for result in results:
-            print(result['id'])
-    else:
-        for result in results:
-            print(result["id"] + DELIMITER(" : ") + result['describe']['name'] +
-                  DELIMITER(' (') + result["level"] + DELIMITER(')'))
 
 
 def find_projects(args):
@@ -4418,14 +4406,14 @@ parser_find_org_projects = subparsers_find.add_parser('org_projects',
 parser_find_org_projects.add_argument('org_id', help='Org ID')
 parser_find_org_projects.add_argument('--name', help='Name of the projects')
 parser_find_org_projects.add_argument('--ids', nargs='+', help='Possible project IDs. May be specified like "--ids project-1 project-2"')
-find_org_projects_permissions = parser_find_org_projects.add_mutually_exclusive_group()
-find_org_projects_permissions.add_argument('--public-only', dest='public', help='Include ONLY public projects', action='store_true', default=None)
-find_org_projects_permissions.add_argument('--private-only', dest='public', help='Include ONLY private projects (i.e. those in which the PUBLIC entity does not have any permission)', action='store_false', default=None)
+find_org_projects_public = parser_find_org_projects.add_mutually_exclusive_group()
+find_org_projects_public.add_argument('--public-only', dest='public', help='Include ONLY public projects', action='store_true', default=None)
+find_org_projects_public.add_argument('--private-only', dest='public', help='Include ONLY private projects (i.e. those in which the PUBLIC entity does not have any permission)', action='store_false', default=None)
 # TODO fix help strings for --created after normalize_time_input update
 parser_find_org_projects.add_argument('--created-after', help='Date (e.g. 2012-01-31) or integer timestamp after which the project was created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
 parser_find_org_projects.add_argument('--created-before', help='Date (e.g. 2012-01-31) or integer timestamp after which the project was created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
 parser_find_org_projects.set_defaults(func=org_find_projects)
-register_subparser(parser_find_org_projects, subparsers_action=subparsers_find, categories='data')
+register_subparser(parser_find_org_projects, subparsers_action=subparsers_find, categories='other')
 
 parser_find_orgs = subparsers_find.add_parser(
     "orgs",

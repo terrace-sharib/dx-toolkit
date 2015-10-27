@@ -24,7 +24,7 @@ import dxpy
 from ..cli import try_call
 from ..cli.parsers import process_find_by_property_args
 from ..exceptions import (DXCLIError, err_exit)
-from dxpy.utils.printing import (fill, DELIMITER)
+from dxpy.utils.printing import (fill, DELIMITER, format_find_projects_results)
 import json
 
 
