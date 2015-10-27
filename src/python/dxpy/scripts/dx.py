@@ -2207,7 +2207,7 @@ def find_data(args):
         err_exit()
 
 
-def _format_find_projects_results(args, results):
+def format_find_projects_results(args, results):
     if args.json:
         print(json.dumps(list(results), indent=4))
     elif args.brief:
@@ -2230,7 +2230,7 @@ def find_projects(args):
                                      public=(args.public if args.public else None),
                                      created_after=args.created_after,
                                      created_before=args.created_before)
-        return _format_find_projects_results(args, results)
+        return format_find_projects_results(args, results)
     except:
         err_exit()
 

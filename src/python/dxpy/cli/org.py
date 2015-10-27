@@ -147,18 +147,6 @@ def find_orgs(args):
             ))
 
 
-def _format_find_projects_results(args, results):
-    if args.json:
-        print(json.dumps(list(results), indent=4))
-    elif args.brief:
-        for result in results:
-            print(result['id'])
-    else:
-        for result in results:
-            print(result["id"] + DELIMITER(" : ") + result['describe']['name'] +
-                  DELIMITER(' (') + result["level"] + DELIMITER(')'))
-
-
 def org_find_projects(args):
     try_call(process_find_by_property_args, args)
     try:
@@ -168,6 +156,6 @@ def org_find_projects(args):
                                          public=args.public,
                                          created_after=args.created_after,
                                          created_before=args.created_before)
-        return _format_find_projects_results(args, results)
+        return format_find_projects_results(args, results)
     except:
         err_exit()
