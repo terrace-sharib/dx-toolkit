@@ -601,7 +601,14 @@ class DXFile(DXDataObject):
                 self._request_iterator,
                 self._http_threadpool
             )
-        return next(self._response_iterator)
+        try:
+            return next(self._response_iterator)
+        except:
+            # TODO: ensure that _pos is set back to its original value, as if
+            # the read had never happened at all
+            self._response_iterator = None
+            self._request_iterator = None
+            raise
 
     def read(self, length=None, use_compression=None, project=None, **kwargs):
         '''

@@ -439,9 +439,19 @@ class TestDXFile(unittest.TestCase):
         with testutil.temporary_project() as p, self.assertRaises(ResourceNotFound):
             # The file doesn't exist in this project
             dxfile.read(project=p.get_id())
+        # Try the same thing again, just to make sure read() doesn't have the
+        # side effect of wedging the DXFile when it fails
+        with testutil.temporary_project() as p, self.assertRaises(ResourceNotFound):
+            dxfile.read(project=p.get_id())
+        # Try the same thing again, now we should be able to succeed
+        self.assertEqual(dxfile.read(), self.foo_str)
+
+        dxfile = dxpy.upload_string(self.foo_str, wait_on_close=True)
         with self.assertRaises(ResourceNotFound):
             # This project doesn't even exist
             dxfile.read(project="project-012301230123012301230123")
+        # Try the same thing again, now we should be able to succeed
+        self.assertEqual(dxfile.read(), self.foo_str)
 
     def test_dxfile_sequential_optimization(self):
         # Make data longer than 128k to trigger the
