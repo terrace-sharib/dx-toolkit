@@ -26,7 +26,8 @@ import subprocess
 
 import dxpy
 import dxpy_testutil as testutil
-from dxpy.exceptions import DXAPIError, DXFileError, DXError, DXJobFailureError, ServiceUnavailable, InvalidInput
+from dxpy.exceptions import (DXAPIError, DXFileError, DXError, DXJobFailureError, ServiceUnavailable, InvalidInput,
+                             ResourceNotFound)
 from dxpy.utils import pretty_print, warn
 from dxpy.utils.resolver import resolve_path, resolve_existing_path, ResolutionError, is_project_explicit
 
@@ -492,6 +493,12 @@ class TestDXFile(unittest.TestCase):
             url3 = dxfile.get_download_url(duration=60, **opts)
             url4 = dxfile.get_download_url(**opts)
             self.assertNotEqual(url3, url4)
+
+    def test_download_url_rejects_invalid_project(self):
+        dxfile = dxpy.upload_string(self.foo_str, wait_on_close=True)
+        with testutil.temporary_project() as p, self.assertRaises(ResourceNotFound):
+            # The file doesn't exist in this project
+            dxfile.get_download_url(project=p.get_id())
 
 
 @unittest.skipUnless(testutil.TEST_GTABLE, 'skipping test that would create a GTable')

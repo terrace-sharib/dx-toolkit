@@ -520,9 +520,10 @@ class DXFile(DXDataObject):
         :type filename: str
         :param project: project to use as context for this download (may affect
                 which billing account is billed for this download). If None, no
-                hint is supplied to the API server. It is an error to supply a
-                project that does not contain this file.
+                hint is supplied to the API server.
         :type project: str or None
+        :raises: :exc:`~dxpy.exceptions.ResourceNotFound` if the project does
+                not contain this file.
         :returns: download URL and dict containing HTTP headers to be supplied
                 with the request
         :rtype: tuple (str, dict)
@@ -602,8 +603,8 @@ class DXFile(DXDataObject):
 
     def read(self, length=None, use_compression=None, project=None, **kwargs):
         '''
-        :param size: Maximum number of bytes to be read
-        :type size: integer
+        :param length: Maximum number of bytes to be read
+        :type length: integer
         :param project: project to use as context for this download (may affect
                 which billing account is billed for this download). If None, or
                 if the project supplied does not contain this file, no hint is
@@ -611,9 +612,9 @@ class DXFile(DXDataObject):
         :type project: str or None
         :rtype: string
 
-        Returns the next *size* bytes, or all the bytes until the end of
-        file (if no *size* is given or there are fewer than *size* bytes
-        left in the file).
+        Returns the next *length* bytes, or all the bytes until the end of file
+        (if no *length* is given or there are fewer than *length* bytes left in
+        the file).
 
         .. note:: After the first call to read(), the project arg and
            passthrough kwargs are not respected while using the same
