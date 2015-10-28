@@ -1390,7 +1390,7 @@ class TestDXClientDownloadDataEgressBilling(DXTestCase):
             file2_name = "file2"
             file2_id = self.gen_file(file2_name, data2, proj2.get_id()).get_id()
 
-            # Success: project from context contains file specifed by ID
+            # Success: project from context contains file specified by ID
             buf = run("dx download -o - {f}".format(f=file1_id))
             self.assertEqual(buf, data1)
             # Project context alone, when combined with file by ID, is
@@ -1398,38 +1398,38 @@ class TestDXClientDownloadDataEgressBilling(DXTestCase):
             # project
             self.assertEqual(self.get_billed_project(), "")
 
-            # Success: project from context contains file specifed by name
+            # Success: project from context contains file specified by name
             buf = run("dx download -o - {f}".format(f=file1_name))
             self.assertEqual(buf, data1)
             self.assertEqual(self.get_billed_project(), proj.get_id())
 
-            # Success: project specified by context does not contains file specifed by ID
+            # Success: project specified by context does not contains file specified by ID
             buf = run("dx download -o - {f}".format(f=file2_id))
             self.assertEqual(buf, data2)
             self.assertEqual(self.get_billed_project(), "")
 
-            # Failure: project specified by context does not contains file specifed by name
+            # Failure: project specified by context does not contains file specified by name
             with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
                 run("dx download -o - {f}".format(f=file2_name))
 
             # Test api call parameters when downloading to local file instead of cat to std out
 
-            # Success: project from context contains file specifed by ID
+            # Success: project from context contains file specified by ID
             run("dx download -f --no-progress {f}".format(f=file1_id))
             # Project context alone, when combined with file by ID, is
             # not sufficient to indicate user's intent to use that
             # project
             self.assertEqual(self.get_billed_project(), "")
 
-            # Success: project from context contains file specifed by name
+            # Success: project from context contains file specified by name
             run("dx download -f --no-progress {f}".format(f=file1_name))
             self.assertEqual(self.get_billed_project(), proj.get_id())
 
-            # Success: project specified by context does not contains file specifed by ID
+            # Success: project specified by context does not contains file specified by ID
             buf = run("dx download -f --no-progress {f}".format(f=file2_id))
             self.assertEqual(self.get_billed_project(), "")
 
-            # Failure: project specified by context does not contains file specifed by name
+            # Failure: project specified by context does not contains file specified by name
             with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
                 run("dx download -f --no-progress {f}".format(f=file2_name))
 
@@ -1450,73 +1450,73 @@ class TestDXClientDownloadDataEgressBilling(DXTestCase):
 
             # Explicit project provided
 
-            # Success: project specified by ID contains file specifed by ID
+            # Success: project specified by ID contains file specified by ID
             buf = run("dx download -o - {p}:{f}".format(p=proj2.get_id(), f=file2_id))
             self.assertEqual(buf, data2)
             self.assertEqual(self.get_billed_project(), proj2.get_id())
 
-            # Success: project specified by ID contains file specifed by name
+            # Success: project specified by ID contains file specified by name
             buf = run("dx download -o - {p}:{f}".format(p=proj.get_id(), f=file1_name))
             self.assertEqual(buf, data1)
             self.assertEqual(self.get_billed_project(), proj.get_id())
 
-            # Success: project specified by name contains file specifed by ID
-            buf = run("dx download -o - {p}:{f}".format(p=proj2_name, f=file2_name))
+            # Success: project specified by name contains file specified by ID
+            buf = run("dx download -o - {p}:{f}".format(p=proj2_name, f=file2_id))
             self.assertEqual(buf, data2)
             self.assertEqual(self.get_billed_project(), proj2.get_id())
 
-            # Success: project specified by name contains file specifed by name
+            # Success: project specified by name contains file specified by name
             buf = run("dx download -o - {p}:{f}".format(p=proj1_name, f=file1_name))
             self.assertEqual(buf, data1)
             self.assertEqual(self.get_billed_project(), proj.get_id())
 
-            # Failure: project specified by ID does not contain file specifed by ID
+            # Failure: project specified by ID does not contain file specified by ID
             with self.assertSubprocessFailure(stderr_regexp="Error: project does not", exit_code=1):
                 run("dx download -o - {p}:{f}".format(p=proj2.get_id(), f=file1_id))
 
-            # Failure: project specified by ID does not contain file specifed by name
+            # Failure: project specified by ID does not contain file specified by name
             with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
                 run("dx download -o - {p}:{f}".format(p=proj.get_id(), f=file2_name))
 
-            # Failure: project specified by name does not contain file specifed by ID
+            # Failure: project specified by name does not contain file specified by ID
             with self.assertSubprocessFailure(stderr_regexp="Error: project does not", exit_code=1):
                 run("dx download -o - {p}:{f}".format(p=proj2_name, f=file1_id))
 
-            # Failure: project specified by name does not contain file specifed by name
+            # Failure: project specified by name does not contain file specified by name
             with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
                 run("dx download -o - {p}:{f}".format(p=proj1_name, f=file2_name))
 
             # Test api call parameters when downloading to local file instead of cat to std out
 
-            # Success: project specified by ID contains file specifed by ID
+            # Success: project specified by ID contains file specified by ID
             run("dx download -f --no-progress {p}:{f}".format(p=proj2.get_id(), f=file2_id))
             self.assertEqual(self.get_billed_project(), proj2.get_id())
 
-            # Success: project specified by ID contains file specifed by name
+            # Success: project specified by ID contains file specified by name
             run("dx download -f --no-progress {p}:{f}".format(p=proj.get_id(), f=file1_name))
             self.assertEqual(self.get_billed_project(), proj.get_id())
 
-            # Success: project specified by name contains file specifed by ID
+            # Success: project specified by name contains file specified by ID
             run("dx download -f --no-progress {p}:{f}".format(p=proj2_name, f=file2_name))
             self.assertEqual(self.get_billed_project(), proj2.get_id())
 
-            # Success: project specified by name contains file specifed by name
+            # Success: project specified by name contains file specified by name
             run("dx download -f --no-progress {p}:{f}".format(p=proj1_name, f=file1_name))
             self.assertEqual(self.get_billed_project(), proj.get_id())
 
-            # Failure: project specified by ID does not contain file specifed by ID
+            # Failure: project specified by ID does not contain file specified by ID
             with self.assertSubprocessFailure(stderr_regexp="Error: specified project does not", exit_code=1):
                 run("dx download -f --no-progress {p}:{f}".format(p=proj2.get_id(), f=file1_id))
 
-            # Failure: project specified by ID does not contain file specifed by name
+            # Failure: project specified by ID does not contain file specified by name
             with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
                 run("dx download -f --no-progress {p}:{f}".format(p=proj.get_id(), f=file2_name))
 
-            # Failure: project specified by name does not contain file specifed by ID
+            # Failure: project specified by name does not contain file specified by ID
             with self.assertSubprocessFailure(stderr_regexp="Error: specified project does not", exit_code=1):
                 run("dx download -f --no-progress {p}:{f}".format(p=proj2_name, f=file1_id))
 
-            # Failure: project specified by name does not contain file specifed by name
+            # Failure: project specified by name does not contain file specified by name
             with self.assertSubprocessFailure(stderr_regexp="Unable to resolve", exit_code=3):
                 run("dx download -f --no-progress {p}:{f}".format(p=proj1_name, f=file2_name))
 
@@ -1534,22 +1534,22 @@ class TestDXClientDownloadDataEgressBilling(DXTestCase):
             file2_name = "file1"
             file2_id = self.gen_file(file2_name, data2, proj2.get_id()).get_id()
 
-            # Success: project specified by ID contains file specifed by ID
+            # Success: project specified by ID contains file specified by ID
             buf = run("dx download -o - {pid}:{f}".format(pid=proj2.get_id(), f=file2_id))
             self.assertEqual(buf, data2)
             self.assertEqual(self.get_billed_project(), proj2.get_id())
 
-            # Failure: project specified by name contains file specifed by ID
+            # Failure: project specified by name contains file specified by ID
             with self.assertSubprocessFailure(stderr_regexp="ResolutionError: Found multiple projects", exit_code=3):
                 run("dx download -o - {pname}:{f}".format(pname=proj_name, f=file2_id))
 
             # Replicate same tests for non-cat (download to file) route
 
-            # Success: project specified by ID contains file specifed by ID
+            # Success: project specified by ID contains file specified by ID
             run("dx download -f --no-progress {pid}:{f}".format(pid=proj.get_id(), f=file1_id))
             self.assertEqual(self.get_billed_project(), proj.get_id())
 
-            # Failure: project specified by name contains file specifed by ID
+            # Failure: project specified by name contains file specified by ID
             with self.assertSubprocessFailure(stderr_regexp="ResolutionError: Found multiple projects", exit_code=3):
                 run("dx download -f --no-progress {pname}:{f}".format(pname=proj_name, f=file2_id))
 
