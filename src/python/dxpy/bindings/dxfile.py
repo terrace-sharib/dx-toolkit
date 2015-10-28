@@ -604,8 +604,6 @@ class DXFile(DXDataObject):
         try:
             return next(self._response_iterator)
         except:
-            # TODO: ensure that _pos is set back to its original value, as if
-            # the read had never happened at all
             self._response_iterator = None
             self._request_iterator = None
             raise
