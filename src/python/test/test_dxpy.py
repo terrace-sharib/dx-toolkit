@@ -237,10 +237,10 @@ class TestDXFileFunctions(unittest.TestCase):
 
     def test_generate_read_requests(self):
         dxfile = dxpy.upload_string("foo", wait_on_close=True)
-        with testutil.temporary_project() as p, self.assertRaises(TypeError):
+        with testutil.temporary_project() as p, self.assertRaises(ResourceNotFound):
             # The file doesn't exist in this project
             list(dxfile._generate_read_requests(project=p.get_id()))
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ResourceNotFound):
             # This project doesn't even exist
             list(dxfile._generate_read_requests(project="project-012301230123012301230123"))
 
@@ -418,20 +418,30 @@ class TestDXFile(unittest.TestCase):
                 self.assertEqual(fd.read(), "")
             tmp.close()
 
-            # Project specified that doesn't contain the file. The call should
-            # fail.
+            # Project specified in read() that doesn't contain the file. The
+            # call should fail.
             dxpy.api.project_remove_objects(p2.get_id(), {"objects": [f.get_id()]})
-            f3 = dxpy.DXFile(dxid=f.get_id(), project=p2.get_id())
-            f3.read(4)
+            f4 = dxpy.DXFile(dxid=f.get_id())
+            with self.assertRaises(ResourceNotFound):
+                f4.read(4, project=p2.get_id())
+
+            # Project specified in handler that doesn't contain the file. The
+            # call must succeed for backward compatibility (and bill no project
+            # in particular).
+            f5 = dxpy.DXFile(dxid=f.get_id(), project=p2.get_id())
+            f5.read(4)
+            with open(tmp.name, "r") as fd:
+                self.assertEqual(fd.read(), "")
+            tmp.close()
 
             del os.environ['_DX_DUMP_BILLED_PROJECT']
 
     def test_read_with_invalid_project(self):
         dxfile = dxpy.upload_string(self.foo_str, wait_on_close=True)
-        with testutil.temporary_project() as p, self.assertRaises(TypeError):
+        with testutil.temporary_project() as p, self.assertRaises(ResourceNotFound):
             # The file doesn't exist in this project
             dxfile.read(project=p.get_id())
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ResourceNotFound):
             # This project doesn't even exist
             dxfile.read(project="project-012301230123012301230123")
 

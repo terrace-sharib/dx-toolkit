@@ -608,19 +608,22 @@ class DXFile(DXDataObject):
         :param length: Maximum number of bytes to be read
         :type length: integer
         :param project: project to use as context for this download (may affect
-            which billing account is billed for this download). If None, or if
-            the project supplied does not contain this file, no hint is
-            supplied to the API server.
+            which billing account is billed for this download). If specified,
+            must be a project in which this file exists. If not specified, the
+            project ID specified in the handler is used for the download, IF it
+            contains this file.
         :type project: str or None
         :rtype: string
+        :raises: :exc:`~dxpy.exceptions.ResourceNotFound` if *project* is
+            supplied and it does not contain this file
 
         Returns the next *length* bytes, or all the bytes until the end of file
         (if no *length* is given or there are fewer than *length* bytes left in
         the file).
 
         .. note:: After the first call to read(), the project arg and
-           passthrough kwargs are not respected while using the same
-           response iterator (i.e.  until next seek).
+           passthrough kwargs are not respected while using the same response
+           iterator (i.e. until next seek).
 
         '''
         if self._file_length == None:
@@ -648,17 +651,23 @@ class DXFile(DXDataObject):
         if length == None or length > self._file_length - self._pos:
             length = self._file_length - self._pos
 
-        # Verify that the file is in the specified project. If it's not, do not
-        # supply a hint to the API server.
+        # Project specified explicitly to this method read(project=...) is
+        # treated strictly. If supplied, it must be a project in which this
+        # file exists. Otherwise, it's an error.
         #
-        # It would be nice to reject such requests with an error, but we
-        # probably have to keep this here for backwards compatibility. I am
-        # guessing that callers may be relying on the fact they may use a
-        # handler (without having explicitly specified a project) to download a
-        # file where the file is ONLY available through some OTHER project to
-        # which they also have access
-        if project and not object_exists_in_project(self.get_id(), project):
-            project = None
+        # If project=None, we fall back to the project attached to this handler
+        # (if any). If this is supplied, it's treated as a hint: if it's a
+        # project in which this file exists, it's passed on to the
+        # apiserver. Otherwise, NO hint is supplied. In principle supplying a
+        # project in the handler that doesn't contain this file ought to be an
+        # error, but it's this way for backwards compatibility. We don't know
+        # who might be doing downloads and creating handlers without being
+        # careful that the project encoded in the handler contains the file
+        # being downloaded. They may now rely on such behavior.
+        if not project:
+            project_from_handler = self.get_proj_id()
+            if project_from_handler and object_exists_in_project(self.get_id(), project_from_handler):
+                project = project_from_handler
 
         buf = self._read_buf
         buf_remaining_bytes = dxpy.utils.string_buffer_length(buf) - buf.tell()
