@@ -26,8 +26,7 @@ import subprocess
 
 import dxpy
 import dxpy_testutil as testutil
-from dxpy.exceptions import (DXAPIError, DXFileError, DXError, DXJobFailureError, ServiceUnavailable, InvalidInput,
-                             ResourceNotFound)
+from dxpy.exceptions import (DXAPIError, DXFileError, DXError, DXJobFailureError, ResourceNotFound)
 from dxpy.utils import pretty_print, warn
 from dxpy.utils.resolver import resolve_path, resolve_existing_path, ResolutionError, is_project_explicit
 
@@ -391,33 +390,30 @@ class TestDXFile(unittest.TestCase):
             dxpy.api.project_clone(p.get_id(), {"objects": [f.get_id()], "project": p2.get_id()})
 
             # Project specified in handler: bill that project for download
-            tmp = tempfile.TemporaryFile()
-            os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
-            f1 = dxpy.DXFile(dxid=f.get_id(), project=p.get_id())
-            f1.read(4)
-            with open(tmp.name, "r") as fd:
-                self.assertEqual(fd.read(), p.get_id())
-            tmp.close()
+            with tempfile.NamedTemporaryFile() as tmp:
+                os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
+                f1 = dxpy.DXFile(dxid=f.get_id(), project=p.get_id())
+                f1.read(4)
+                with open(tmp.name, "r") as fd:
+                    self.assertEqual(fd.read(), p.get_id())
 
             # Project specified in read() call: overrides project specified in
             # handler
-            tmp = tempfile.TemporaryFile()
-            os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
-            f2 = dxpy.DXFile(dxid=f.get_id(), project=p.get_id())
-            f2.read(4, project=p2.get_id())
-            with open(tmp.name, "r") as fd:
-                self.assertEqual(fd.read(), p2.get_id())
-            tmp.close()
+            with tempfile.NamedTemporaryFile() as tmp:
+                os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
+                f2 = dxpy.DXFile(dxid=f.get_id(), project=p.get_id())
+                f2.read(4, project=p2.get_id())
+                with open(tmp.name, "r") as fd:
+                    self.assertEqual(fd.read(), p2.get_id())
 
             # Project specified in neither handler nor read() call: set no hint
             # when making API call
-            tmp = tempfile.TemporaryFile()
-            os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
-            f3 = dxpy.DXFile(dxid=f.get_id())  # project defaults to project context
-            f3.read(4)
-            with open(tmp.name, "r") as fd:
-                self.assertEqual(fd.read(), "")
-            tmp.close()
+            with tempfile.NamedTemporaryFile() as tmp:
+                os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
+                f3 = dxpy.DXFile(dxid=f.get_id())  # project defaults to project context
+                f3.read(4)
+                with open(tmp.name, "r") as fd:
+                    self.assertEqual(fd.read(), "")
 
             # Project specified in read() that doesn't contain the file. The
             # call should fail.
@@ -429,11 +425,12 @@ class TestDXFile(unittest.TestCase):
             # Project specified in handler that doesn't contain the file. The
             # call must succeed for backward compatibility (and bill no project
             # in particular).
-            f5 = dxpy.DXFile(dxid=f.get_id(), project=p2.get_id())
-            f5.read(4)
-            with open(tmp.name, "r") as fd:
-                self.assertEqual(fd.read(), "")
-            tmp.close()
+            with tempfile.NamedTemporaryFile() as tmp:
+                os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
+                f5 = dxpy.DXFile(dxid=f.get_id(), project=p2.get_id())
+                f5.read(4)
+                with open(tmp.name, "r") as fd:
+                    self.assertEqual(fd.read(), "")
 
             del os.environ['_DX_DUMP_BILLED_PROJECT']
 
@@ -2479,7 +2476,7 @@ class TestResolver(testutil.DXTestCase):
         self.assertTrue(is_project_explicit("./path/to/my/file"))
         self.assertTrue(is_project_explicit("myproject:./path/to/my/file"))
         self.assertTrue(is_project_explicit("project-012301230123012301230123:./path/to/my/file"))
-        # Paths that specity an explicit project with a colon are understood as
+        # Paths that specify an explicit project with a colon are understood as
         # explicitly indicating a project (even if the file is specified by ID)
         self.assertTrue(is_project_explicit("projectname:file-012301230123012301230123"))
         self.assertTrue(is_project_explicit("project-012301230123012301230123:file-012301230123012301230123"))
