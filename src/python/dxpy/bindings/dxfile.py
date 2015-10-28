@@ -531,6 +531,7 @@ class DXFile(DXDataObject):
 
         Obtains a URL that can be used to directly download the associated
         file.
+
         """
         # Test hook to write 'project' argument passed to API call to a
         # local file
@@ -607,9 +608,9 @@ class DXFile(DXDataObject):
         :param length: Maximum number of bytes to be read
         :type length: integer
         :param project: project to use as context for this download (may affect
-                which billing account is billed for this download). If None, or
-                if the project supplied does not contain this file, no hint is
-                supplied to the API server.
+            which billing account is billed for this download). If None, or if
+            the project supplied does not contain this file, no hint is
+            supplied to the API server.
         :type project: str or None
         :rtype: string
 
