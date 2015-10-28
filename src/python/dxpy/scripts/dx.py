@@ -315,7 +315,8 @@ def login(args):
         while attempt <= 3:
             try:
                 credentials = get_credentials(reuse=reuse, get_otp=using_otp)
-                token_res = get_token(expires=normalize_time_input(args.timeout, future=True), **credentials)
+                token_res = get_token(expires=normalize_time_input(args.timeout, future=True, input_units='s'),
+                                      **credentials)
                 break
             except (KeyboardInterrupt, EOFError):
                 err_exit()
@@ -398,8 +399,7 @@ def login(args):
         tip = "Use " + BOLD("dx login --timeout") + " to control the expiration date, or " + BOLD("dx logout") + \
               " to end this session."
         print(fill(msg.format(conf_dir=dxpy.config.get_user_conf_dir(),
-                              timeout=datetime.timedelta(seconds=normalize_time_input(args.timeout)/1000),
-                              tip=tip)))
+              timeout=datetime.timedelta(seconds=normalize_time_input(args.timeout, input_units='s')/1000), tip=tip)))
 
 def logout(args):
     if dxpy.AUTH_HELPER is not None:
@@ -3786,7 +3786,7 @@ parser_add_member = subparsers_add.add_parser("member", help="Grant a user membe
 parser_add_member.add_argument("org_id", help="ID of the org")
 parser_add_member.add_argument("username", help="Username")
 parser_add_member.add_argument("--level", required=True, choices=["ADMIN", "MEMBER"], help="Org membership level that will be granted to the specified user")
-parser_add_member.add_argument("--allow-billable-activities", default=False, action="store_true", help='Grant the specified user "createProjectsAndApps" in the org')
+parser_add_member.add_argument("--allow-billable-activities", default=False, action="store_true", help='Grant the specified user "allowBillableActivities" in the org')
 parser_add_member.add_argument("--no-app-access", default=True, action="store_false", dest="app_access", help='Disable "appAccess" for the specified user in the org')
 parser_add_member.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], default="CONTRIBUTE", help='The default implicit maximum permission the specified user will receive to projects explicitly shared with the org; default CONTRIBUTE')
 parser_add_member.add_argument("--no-email", default=False, action="store_true", help="Disable org invitation email notification to the specified user")
@@ -3919,7 +3919,7 @@ parser_update_member = subparsers_update.add_parser("member", help="Update the m
 parser_update_member.add_argument("org_id", help="ID of the org")
 parser_update_member.add_argument("username", help="Username")
 parser_update_member.add_argument("--level", required=True, choices=["ADMIN", "MEMBER"], help="The new org membership level of the specified user")
-parser_update_member.add_argument("--allow-billable-activities", choices=["true", "false"], help='The new "createProjectsAndApps" membership permission of the specified user in the org')
+parser_update_member.add_argument("--allow-billable-activities", choices=["true", "false"], help='The new "allowBillableActivities" membership permission of the specified user in the org')
 parser_update_member.add_argument("--app-access", choices=["true", "false"], help='The new "appAccess" membership permission of the specified user in the org')
 parser_update_member.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], help='The new default implicit maximum permission the specified user will receive to projects explicitly shared with the org')
 parser_update_member.set_defaults(func=update_membership)
@@ -4116,7 +4116,7 @@ parser_new_user_org_opts = parser_new_user.add_argument_group("Org options", "Op
 parser_new_user_org_opts.add_argument("--org", help="ID of the org")
 parser_new_user_org_opts.add_argument("--level", choices=["ADMIN", "MEMBER"], default="MEMBER", action=DXNewUserOrgArgsAction, help="Org membership level that will be granted to the new user; default MEMBER")
 parser_new_user_org_opts.add_argument("--set-bill-to", default=False, action=DXNewUserOrgArgsAction, help='Set the default "billTo" field of the new user to the org; implies --allow-billable-activities')
-parser_new_user_org_opts.add_argument("--allow-billable-activities", default=False, action=DXNewUserOrgArgsAction, help='Grant the new user "createProjectsAndApps" in the org')
+parser_new_user_org_opts.add_argument("--allow-billable-activities", default=False, action=DXNewUserOrgArgsAction, help='Grant the new user "allowBillableActivities" in the org')
 parser_new_user_org_opts.add_argument("--no-app-access", default=True, action=DXNewUserOrgArgsAction, dest="app_access", help='Disable "appAccess" for the new user in the org')
 parser_new_user_org_opts.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], default="CONTRIBUTE", action=DXNewUserOrgArgsAction, help='The "projectAccess" to grant the new user in the org; default CONTRIBUTE')
 parser_new_user_org_opts.add_argument("--no-email", default=False, action=DXNewUserOrgArgsAction, help="Disable org invitation email notification to the new user")
