@@ -315,7 +315,8 @@ def login(args):
         while attempt <= 3:
             try:
                 credentials = get_credentials(reuse=reuse, get_otp=using_otp)
-                token_res = get_token(expires=normalize_time_input(args.timeout, future=True), **credentials)
+                token_res = get_token(expires=normalize_time_input(args.timeout, future=True, input_units='s'),
+                                      **credentials)
                 break
             except (KeyboardInterrupt, EOFError):
                 err_exit()
@@ -398,8 +399,7 @@ def login(args):
         tip = "Use " + BOLD("dx login --timeout") + " to control the expiration date, or " + BOLD("dx logout") + \
               " to end this session."
         print(fill(msg.format(conf_dir=dxpy.config.get_user_conf_dir(),
-                              timeout=datetime.timedelta(seconds=normalize_time_input(args.timeout)/1000),
-                              tip=tip)))
+              timeout=datetime.timedelta(seconds=normalize_time_input(args.timeout, input_units='s')/1000), tip=tip)))
 
 def logout(args):
     if dxpy.AUTH_HELPER is not None:
@@ -1307,6 +1307,8 @@ def new_project(args):
     inputs = {"name": args.name}
     if args.bill_to:
         inputs["billTo"] = args.bill_to
+    if args.region:
+        inputs["region"] = args.region
 
     try:
         resp = dxpy.api.project_new(inputs)
@@ -1319,6 +1321,7 @@ def new_project(args):
             set_wd('/', write=True)
     except:
         err_exit()
+
 
 def new_record(args):
     try_call(process_dataobject_args, args)
@@ -1336,7 +1339,7 @@ def new_record(args):
         folder = dxpy.config.get('DX_CLI_WD', u'/')
         name = None
     else:
-        project, folder, name = resolve_path(args.output)
+        project, folder, name = try_call(resolve_path, args.output)
 
     dxrecord = None
     try:
@@ -1363,7 +1366,7 @@ def new_gtable(args):
         folder = dxpy.config.get('DX_CLI_WD', u'/')
         name = None
     else:
-        project, folder, name = resolve_path(args.output)
+        project, folder, name = try_call(resolve_path, args.output)
 
     args.columns = split_unescaped(',', args.columns)
     for i in range(len(args.columns)):
@@ -1865,7 +1868,7 @@ def upload_one(args):
         folder = dxpy.config.get('DX_CLI_WD', u'/')
         name = None if args.filename == '-' else os.path.basename(args.filename)
     else:
-        project, folder, name = resolve_path(args.path)
+        project, folder, name = try_call(resolve_path, args.path)
         if name is None and args.filename != '-':
             name = os.path.basename(args.filename)
 
@@ -3765,7 +3768,7 @@ parser_add_member = subparsers_add.add_parser("member", help="Grant a user membe
 parser_add_member.add_argument("org_id", help="ID of the org")
 parser_add_member.add_argument("username", help="Username")
 parser_add_member.add_argument("--level", required=True, choices=["ADMIN", "MEMBER"], help="Org membership level that will be granted to the specified user")
-parser_add_member.add_argument("--allow-billable-activities", default=False, action="store_true", help='Grant the specified user "createProjectsAndApps" in the org')
+parser_add_member.add_argument("--allow-billable-activities", default=False, action="store_true", help='Grant the specified user "allowBillableActivities" in the org')
 parser_add_member.add_argument("--no-app-access", default=True, action="store_false", dest="app_access", help='Disable "appAccess" for the specified user in the org')
 parser_add_member.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], default="CONTRIBUTE", help='The default implicit maximum permission the specified user will receive to projects explicitly shared with the org; default CONTRIBUTE')
 parser_add_member.add_argument("--no-email", default=False, action="store_true", help="Disable org invitation email notification to the specified user")
@@ -3841,6 +3844,7 @@ parser_remove_member.add_argument("org_id", help="ID of the org")
 parser_remove_member.add_argument("username", help="Username")
 parser_remove_member.add_argument("--keep-explicit-project-permissions", default=True, action="store_false", dest="revoke_project_permissions", help="Disable revocation of explicit project permissions of the specified user to projects billed to the org; implicit project permissions (i.e. those granted to the specified user via his membership in this org) will always be revoked")
 parser_remove_member.add_argument("--keep-explicit-app-permissions", default=True, action="store_false", dest="revoke_app_permissions", help="Disable revocation of explicit app developer and user permissions of the specified user to apps billed to the org; implicit app permissions (i.e. those granted to the specified user via his membership in this org) will always be revoked")
+parser_remove_member.add_argument("-y", "--yes", action="store_false", dest="confirm", help="Do not ask for confirmation")
 parser_remove_member.set_defaults(func=remove_membership)
 register_subparser(parser_remove_member, subparsers_action=subparsers_remove, categories="other")
 
@@ -3897,7 +3901,7 @@ parser_update_member = subparsers_update.add_parser("member", help="Update the m
 parser_update_member.add_argument("org_id", help="ID of the org")
 parser_update_member.add_argument("username", help="Username")
 parser_update_member.add_argument("--level", required=True, choices=["ADMIN", "MEMBER"], help="The new org membership level of the specified user")
-parser_update_member.add_argument("--allow-billable-activities", choices=["true", "false"], help='The new "createProjectsAndApps" membership permission of the specified user in the org')
+parser_update_member.add_argument("--allow-billable-activities", choices=["true", "false"], help='The new "allowBillableActivities" membership permission of the specified user in the org')
 parser_update_member.add_argument("--app-access", choices=["true", "false"], help='The new "appAccess" membership permission of the specified user in the org')
 parser_update_member.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], help='The new default implicit maximum permission the specified user will receive to projects explicitly shared with the org')
 parser_update_member.set_defaults(func=update_membership)
@@ -4094,7 +4098,7 @@ parser_new_user_org_opts = parser_new_user.add_argument_group("Org options", "Op
 parser_new_user_org_opts.add_argument("--org", help="ID of the org")
 parser_new_user_org_opts.add_argument("--level", choices=["ADMIN", "MEMBER"], default="MEMBER", action=DXNewUserOrgArgsAction, help="Org membership level that will be granted to the new user; default MEMBER")
 parser_new_user_org_opts.add_argument("--set-bill-to", default=False, action=DXNewUserOrgArgsAction, help='Set the default "billTo" field of the new user to the org; implies --allow-billable-activities')
-parser_new_user_org_opts.add_argument("--allow-billable-activities", default=False, action=DXNewUserOrgArgsAction, help='Grant the new user "createProjectsAndApps" in the org')
+parser_new_user_org_opts.add_argument("--allow-billable-activities", default=False, action=DXNewUserOrgArgsAction, help='Grant the new user "allowBillableActivities" in the org')
 parser_new_user_org_opts.add_argument("--no-app-access", default=True, action=DXNewUserOrgArgsAction, dest="app_access", help='Disable "appAccess" for the new user in the org')
 parser_new_user_org_opts.add_argument("--project-access", choices=["ADMINISTER", "CONTRIBUTE", "UPLOAD", "VIEW", "NONE"], default="CONTRIBUTE", action=DXNewUserOrgArgsAction, help='The "projectAccess" to grant the new user in the org; default CONTRIBUTE')
 parser_new_user_org_opts.add_argument("--no-email", default=False, action=DXNewUserOrgArgsAction, help="Disable org invitation email notification to the new user")
@@ -4107,6 +4111,7 @@ parser_new_project = subparsers_new.add_parser('project', help='Create a new pro
                                                parents=[stdout_args, env_args],
                                                prog='dx new project')
 parser_new_project.add_argument('name', help='Name of the new project', nargs='?')
+parser_new_project.add_argument('--region', help='Region affinity of the new project')
 parser_new_project.add_argument('-s', '--select', help='Select the new project as current after creating',
                                 action='store_true')
 parser_new_project.add_argument('--bill-to', help='ID of the user or org to which the project will be billed. The default value is the billTo of the requesting user.')

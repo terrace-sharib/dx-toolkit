@@ -349,9 +349,17 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
     url = APISERVER + resource if prepend_srv else resource
     method = method.upper() # Convert method name to uppercase, to ease string comparisons later
     if _DEBUG >= 3:
-        print(method, url, "=>\n" + json.dumps(data, indent=2), file=sys.stderr)
+        try:
+            formatted_data = json.dumps(data, indent=2)
+        except UnicodeDecodeError:
+            formatted_data = "<binary data>"
+        print(method, url, "=>\n" + formatted_data, file=sys.stderr)
     elif _DEBUG == 2:
-        print(method, url, "=>", json.dumps(data), file=sys.stderr)
+        try:
+            formatted_data = json.dumps(data)
+        except UnicodeDecodeError:
+            formatted_data = "<binary data>"
+        print(method, url, "=>", formatted_data, file=sys.stderr)
     elif _DEBUG > 0:
         from repr import Repr
         print(method, url, "=>", Repr().repr(data), file=sys.stderr)
@@ -401,7 +409,11 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                 # response.headers key lookup is case-insensitive
                 if response.headers.get('content-type', '').startswith('application/json'):
                     content = json.loads(response.data.decode('utf-8'))
-                    error_class = getattr(exceptions, content["error"]["type"], exceptions.DXAPIError)
+                    try:
+                        error_class = getattr(exceptions, content["error"]["type"], exceptions.DXAPIError)
+                    except (KeyError, AttributeError):
+                        error_class = exceptions.HTTPError(
+                            "Unable to extract error class from response")
                     raise error_class(content, response.status)
                 raise HTTPError("{} {}".format(response.status, response.reason))
 
