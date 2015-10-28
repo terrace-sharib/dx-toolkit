@@ -510,23 +510,24 @@ class DXFile(DXDataObject):
     def get_download_url(self, duration=24*3600, preauthenticated=False, filename=None, project=None, **kwargs):
         """
         :param duration: number of seconds for which the generated URL will be
-                valid
+            valid
         :type duration: int
         :param preauthenticated: if True, generates a 'preauthenticated'
-                download URL, which embeds authentication info in the URL and
-                does not require additional headers
+            download URL, which embeds authentication info in the URL and does
+            not require additional headers
         :type preauthenticated: bool
         :param filename: desired filename of the downloaded file
         :type filename: str
-        :param project: project to use as context for this download (may affect
-                which billing account is billed for this download). If None, no
-                hint is supplied to the API server.
-        :type project: str or None
-        :raises: :exc:`~dxpy.exceptions.ResourceNotFound` if the project does
-                not contain this file.
+        :param project: ID of a project containing the file (the download URL
+            will be associated with this project, and this may affect which
+            billing account is billed for this download). If None, no hint is
+            supplied to the API server.
+        :type project: str
         :returns: download URL and dict containing HTTP headers to be supplied
-                with the request
+            with the request
         :rtype: tuple (str, dict)
+        :raises: :exc:`~dxpy.exceptions.ResourceNotFound` if the project does
+            not contain this file.
 
         Obtains a URL that can be used to directly download the associated
         file.

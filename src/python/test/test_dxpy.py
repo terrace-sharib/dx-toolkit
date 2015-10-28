@@ -235,6 +235,15 @@ class TestDXFileFunctions(unittest.TestCase):
             "python -c 'import dxpy; print dxpy.bindings.dxfile.DEFAULT_BUFFER_SIZE'", shell=True, env=env)
         self.assertEqual(int(buffer_size), 16 * 1024 * 1024)
 
+    def test_generate_read_requests(self):
+        dxfile = dxpy.upload_string("foo", wait_on_close=True)
+        with testutil.temporary_project() as p, self.assertRaises(TypeError):
+            # The file doesn't exist in this project
+            list(dxfile._generate_read_requests(project=p.get_id()))
+        with self.assertRaises(TypeError):
+            # This project doesn't even exist
+            list(dxfile._generate_read_requests(project="project-012301230123012301230123"))
+
 
 class TestDXFile(unittest.TestCase):
 
@@ -417,6 +426,15 @@ class TestDXFile(unittest.TestCase):
 
             del os.environ['_DX_DUMP_BILLED_PROJECT']
 
+    def test_read_with_invalid_project(self):
+        dxfile = dxpy.upload_string(self.foo_str, wait_on_close=True)
+        with testutil.temporary_project() as p, self.assertRaises(TypeError):
+            # The file doesn't exist in this project
+            dxfile.read(project=p.get_id())
+        with self.assertRaises(TypeError):
+            # This project doesn't even exist
+            dxfile.read(project="project-012301230123012301230123")
+
     def test_dxfile_sequential_optimization(self):
         # Make data longer than 128k to trigger the
         # first-sequential-read optimization
@@ -499,6 +517,9 @@ class TestDXFile(unittest.TestCase):
         with testutil.temporary_project() as p, self.assertRaises(ResourceNotFound):
             # The file doesn't exist in this project
             dxfile.get_download_url(project=p.get_id())
+        with self.assertRaises(ResourceNotFound):
+            # This project doesn't even exist
+            dxfile.get_download_url(project="project-012301230123012301230123")
 
 
 @unittest.skipUnless(testutil.TEST_GTABLE, 'skipping test that would create a GTable')
