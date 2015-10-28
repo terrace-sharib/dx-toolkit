@@ -156,6 +156,7 @@ def refill_paragraphs(string, ignored_prefix='    '):
     refilled_paragraphs = [fill(paragraph) if not paragraph.startswith(ignored_prefix) else paragraph for paragraph in paragraphs]
     return '\n\n'.join(refilled_paragraphs).strip('\n')
 
+
 def format_find_projects_results(args, results):
     if args.json:
         print(json.dumps(list(results), indent=4))

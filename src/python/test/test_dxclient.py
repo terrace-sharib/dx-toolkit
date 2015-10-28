@@ -3525,8 +3525,9 @@ class TestDXClientFind(DXTestCase):
 
                 # Test --json output
                 output = json.loads(run("dx find org_projects {o} --json".format(o=org_id)))
-                self.assertItemsEqual([result['describe'] for result in output], [dxpy.api.project_describe(p) for p in
-                                      org_projects])
+                for result in output:
+                    self.assertIn(result['id'], org_projects)
+                    self.assertDictEqual(result['describe'], dxpy.api.project_describe(result['id']))
 
                 # With --tag
                 with self.assertSubprocessFailure(stderr_regexp='expected one argument', exit_code=2):
