@@ -669,7 +669,7 @@ class DXFile(DXDataObject):
         # who might be doing downloads and creating handlers without being
         # careful that the project encoded in the handler contains the file
         # being downloaded. They may now rely on such behavior.
-        if not project:
+        if project is None:
             project_from_handler = self.get_proj_id()
             if project_from_handler and object_exists_in_project(self.get_id(), project_from_handler):
                 project = project_from_handler

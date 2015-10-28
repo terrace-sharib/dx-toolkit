@@ -1769,7 +1769,7 @@ def cat(args):
         # If the user explicitly provided the project and it doesn't contain
         # the file, don't allow the download.
         if is_project_explicit(path) and not object_exists_in_project(entity_result['describe']['id'], project):
-            parser.exit(1, fill('Error: project does not contain speqcified file object') + '\n')
+            parser.exit(1, fill('Error: project does not contain specified file object') + '\n')
 
         try:
             dxfile = dxpy.DXFile(entity_result['id'])

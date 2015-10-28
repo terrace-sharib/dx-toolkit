@@ -1497,7 +1497,7 @@ class TestDXClientDownloadDataEgressBilling(DXTestCase):
             self.assertEqual(self.get_billed_project(), proj.get_id())
 
             # Success: project specified by name contains file specified by ID
-            run("dx download -f --no-progress {p}:{f}".format(p=proj2_name, f=file2_name))
+            run("dx download -f --no-progress {p}:{f}".format(p=proj2_name, f=file2_id))
             self.assertEqual(self.get_billed_project(), proj2.get_id())
 
             # Success: project specified by name contains file specified by name
