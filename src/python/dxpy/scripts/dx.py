@@ -45,7 +45,7 @@ from ..cli.parsers import (no_color_arg, delim_arg, env_args, stdout_args, all_a
                            instance_type_arg, process_instance_type_arg)
 from ..cli.exec_io import (ExecutableInputs, format_choices_or_suggestions)
 from ..cli.org import (get_org_invite_args, add_membership, remove_membership,
-                       update_membership, find_orgs, org_find_projects)
+                       update_membership, find_orgs, org_find_members, org_find_projects)
 from ..exceptions import (err_exit, DXError, DXCLIError, DXAPIError, network_exceptions, default_expected_exceptions,
                           format_exception)
 from ..utils import warn, group_array_by_field, normalize_timedelta, normalize_time_input
@@ -165,7 +165,7 @@ else:
 # subcommand with further subcommands, then the second word must be an
 # appropriate sub-subcommand.
 class DXCLICompleter():
-    subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions ', 'analyses ', 'org_projects '],
+    subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions ', 'analyses ', 'org_members ', 'org_projects '],
                    'new': ['record ', 'project ', 'workflow '],
                    'add': ['developers ', 'users ', 'stage '],
                    'remove': ['developers ', 'users ', 'stage '],
@@ -4401,6 +4401,15 @@ parser_find_projects.add_argument('--created-before',
                                   'created (negative number means ms in the past, or use suffix s, m, h, d, w, M, y)')
 parser_find_projects.set_defaults(func=find_projects)
 register_subparser(parser_find_projects, subparsers_action=subparsers_find, categories='data')
+
+parser_find_org_members = subparsers_find.add_parser('org_members',
+                                                     help=fill('Finds members in specified org subject to the given search parameters'),
+                                                     parents=[stdout_args, json_arg, delim_arg, env_args],
+                                                     prog='dx find org_members')
+parser_find_org_members.add_argument('org_id', help='Org ID')
+parser_find_org_members.add_argument('--level', choice=["ADMIN", "MEMBER"], help='Restrict the result set to contain only users with at least the specified membership level')
+parser_find_org_projects.set_defaults(func=org_find_members)
+register_subparser(parser_find_org_members, subparsers_action=subparsers_find, categories='other')
 
 parser_find_org_projects = subparsers_find.add_parser('org_projects',
                                                       help=fill('Finds projects billed to the specified org subject to the given search parameters.'),
