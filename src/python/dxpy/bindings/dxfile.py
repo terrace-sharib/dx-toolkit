@@ -604,6 +604,9 @@ class DXFile(DXDataObject):
         try:
             return next(self._response_iterator)
         except:
+            # If an exception is raised, the iterator is unusable for
+            # retrieving any more items. Destroy it so we'll reinitialize it
+            # next time.
             self._response_iterator = None
             self._request_iterator = None
             raise
