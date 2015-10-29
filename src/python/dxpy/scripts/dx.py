@@ -4407,8 +4407,8 @@ parser_find_org_members = subparsers_find.add_parser('org_members',
                                                      parents=[stdout_args, json_arg, delim_arg, env_args],
                                                      prog='dx find org_members')
 parser_find_org_members.add_argument('org_id', help='Org ID')
-parser_find_org_members.add_argument('--level', choice=["ADMIN", "MEMBER"], help='Restrict the result set to contain only users with at least the specified membership level')
-parser_find_org_projects.set_defaults(func=org_find_members)
+parser_find_org_members.add_argument('--level', choices=["ADMIN", "MEMBER"], help='Restrict the result set to contain only users with at least the specified membership level')
+parser_find_org_members.set_defaults(func=org_find_members)
 register_subparser(parser_find_org_members, subparsers_action=subparsers_find, categories='other')
 
 parser_find_org_projects = subparsers_find.add_parser('org_projects',

@@ -177,19 +177,18 @@ def find_orgs(args):
 
 
 def org_find_members(args):
-    try_call(process_find_by_property_args, args)
     try:
         results = dxpy.org_find_members(org_id=args.org_id, level=args.level, describe=(not args.brief))
 
-      if args.json:
-          print(json.dumps(list(results), indent=4))
-      elif args.brief:
-          for result in results:
-              print(result['id'])
-      else:
-          for result in results:
-              print(result["id"] + DELIMITER(" : ") + result['describe']['first'] + DELIMITER(' ') + result['describe']['last'] +
-                    DELIMITER(' ') + DELIMITER(' (') + result["level"] + DELIMITER(')'))
+        if args.json:
+            print(json.dumps(list(results), indent=4))
+        elif args.brief:
+            for result in results:
+                print(result['id'])
+        else:
+            for result in results:
+                print(result["id"] + DELIMITER(" : ") + result['describe']['first'] + DELIMITER(' ') + result['describe']['last'] +
+                      DELIMITER(' ') + DELIMITER(' (') + result["level"] + DELIMITER(')'))
     except:
       err_exit()
 
