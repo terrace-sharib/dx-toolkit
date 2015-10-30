@@ -1301,7 +1301,7 @@ def new_org(args):
     if args.name is None:
         if INTERACTIVE_CLI:
             args.name = input("Enter descriptive name for org: ")
-            
+
             if args.member_list_visibility is None:
                     args.member_list_visibility = prompt_for_mult_choice("Restrict visibility of member list to [ADMIN, MEMBER]",
                                                                          default="ADMIN")

@@ -3660,7 +3660,7 @@ class TestDXClientOrg(DXTestCase):
 
         dx_new_org = pexpect.spawn('dx new org --project-transfer-ability MEMBER', logfile=sys.stderr)
         dx_new_org.expect('error')
-        
+
         dx_new_org = pexpect.spawn('dx new org --member-list-visibility ADMIN --project-transfer-ability MEMBER',
                                    logfile=sys.stderr)
         dx_new_org.expect('error')
@@ -3739,7 +3739,7 @@ class TestDXClientOrg(DXTestCase):
         res_policies = dxpy.api.org_describe(org_id)['policies']
         self.assertEqual(res_policies["memberListVisibility"], "MEMBER")
         self.assertEqual(res_policies["restrictProjectTransfer"], "ADMIN")
-        
+
         org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
         dx_new_org = pexpect.spawn('dx new org --handle {h} --member-list-visibility {p}'.format(h=org_handle,
                                    p="MEMBER"), logfile=sys.stderr)
@@ -3809,7 +3809,6 @@ class TestDXClientOrg(DXTestCase):
         res_policies = dxpy.api.org_describe(org_id)['policies']
         self.assertEqual(res_policies["memberListVisibility"], "MEMBER")
         self.assertEqual(res_policies["restrictProjectTransfer"], "MEMBER")
-        
 
     def test_update_org(self):
         # Create new org
