@@ -3618,12 +3618,12 @@ class TestDXClientFind(DXTestCase):
             self.assertTrue(pattern.match(result))
 
 
-class TestDXClientNewOrg(DXTestCase):
+class TestDXClientOrg(DXTestCase):
 
     def test_create_new_org(self):
         # Basic test
         org_handle = "dx_test_new_org_{t}".format(t=str(int(time.time())))
-        output = run('dx new org "Test New Org" {o} --brief'
+        output = run('dx new org "Test New Org" --handle {o} --brief'
                      .format(o=org_handle)).strip().split("\n")[0]
         org_list = [result['id'] for result in dxpy.api.system_find_orgs({'level': 'ADMIN'})['results']]
         self.assertIn(output, org_list)
@@ -3634,7 +3634,7 @@ class TestDXClientNewOrg(DXTestCase):
         # Test --member-list-visibility flag
         org_handle = "dx_test_new_org_{t}".format(t=str(int(time.time())))
         policy = "MEMBER"
-        output = run('dx new org "Test New Org" {o} --member-list-visibility {p} --brief'
+        output = run('dx new org "Test New Org" --handle {o} --member-list-visibility {p} --brief'
                      .format(o=org_handle, p=policy)).strip().split("\n")[0]
         org_list = [result['id'] for result in dxpy.api.system_find_orgs({'level': 'ADMIN'})['results']]
         self.assertIn(output, org_list)
@@ -3644,18 +3644,31 @@ class TestDXClientNewOrg(DXTestCase):
         # Test --project-transfer-ability flag
         org_handle = "dx_test_new_org_{t}".format(t=str(int(time.time())))
         policy = "ADMIN"
-        output = run('dx new org "Test New Org" {o} --project-transfer-ability {p} --brief'
+        output = run('dx new org "Test New Org" --handle {o} --project-transfer-ability {p} --brief'
                      .format(o=org_handle, p=policy)).strip().split("\n")[0]
         org_list = [result['id'] for result in dxpy.api.system_find_orgs({'level': 'ADMIN'})['results']]
         self.assertIn(output, org_list)
         expected = dxpy.api.org_describe(output)['policies']['restrictProjectTransfer']
 
     def test_create_new_org_prompt(self):
-        org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
+        # No handle supplied
         dx_new_org = pexpect.spawn('dx new org', logfile=sys.stderr)
-        dx_new_org.expect('Enter descriptive name for org')
-        dx_new_org.sendline("Descriptive Org Name")
-        dx_new_org.expect('Enter handle for org')
+        dx_new_org.expect('error')
+
+        dx_new_org = pexpect.spawn('dx new org --member-list-visibility MEMBER', logfile=sys.stderr)
+        dx_new_org.expect('error')
+
+        dx_new_org = pexpect.spawn('dx new org --project-transfer-ability MEMBER', logfile=sys.stderr)
+        dx_new_org.expect('error')
+        
+        dx_new_org = pexpect.spawn('dx new org --member-list-visibility ADMIN --project-transfer-ability MEMBER',
+                                   logfile=sys.stderr)
+        dx_new_org.expect('error')
+
+        # Prompt with only handle
+        org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
+        dx_new_org = pexpect.spawn('dx new org --handle {h}'.format(h=org_handle), logfile=sys.stderr)
+        dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline(org_handle)
         dx_new_org.expect("Restrict visibility")
         dx_new_org.sendline()
@@ -3669,30 +3682,43 @@ class TestDXClientNewOrg(DXTestCase):
         self.assertEqual(res_policies["restrictProjectTransfer"], "ADMIN")
 
         org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
-        dx_new_org = pexpect.spawn('dx new org "New Org"', logfile=sys.stderr)
-        dx_new_org.expect('Enter handle for org')
-        dx_new_org.sendline(org_handle)
-        dx_new_org.expect("Restrict visibility")
-        dx_new_org.sendline()
-        dx_new_org.expect("Restrict project billing transfer")
-        dx_new_org.sendline()
-        org_id = "org-" + org_handle
-        org_list = run('dx find orgs --level "ADMIN" --brief').strip().split("\n")
-        self.assertIn(org_id, org_list)
-        res_policies = dxpy.api.org_describe(org_id)['policies']
-        self.assertEqual(res_policies["memberListVisibility"], "ADMIN")
-        self.assertEqual(res_policies["restrictProjectTransfer"], "ADMIN")
-
-        org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
-        dx_new_org = pexpect.spawn('dx new org', logfile=sys.stderr)
+        dx_new_org = pexpect.spawn('dx new org --handle {h}'.format(h=org_handle), logfile=sys.stderr)
         dx_new_org.expect('Enter descriptive name for org')
         dx_new_org.sendline("Descriptive Org Name")
-        dx_new_org.expect('Enter handle for org')
-        dx_new_org.sendline(org_handle)
         dx_new_org.expect("Restrict visibility")
         dx_new_org.sendline("MEMBER")
         dx_new_org.expect("Restrict project billing transfer")
+        dx_new_org.sendline("MEMBER")
+        org_id = "org-" + org_handle
+        org_list = run('dx find orgs --level "ADMIN" --brief').strip().split("\n")
+        self.assertIn(org_id, org_list)
+        res_policies = dxpy.api.org_describe(org_id)['policies']
+        self.assertEqual(res_policies["memberListVisibility"], "MEMBER")
+        self.assertEqual(res_policies["restrictProjectTransfer"], "MEMBER")
+
+        org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
+        dx_new_org = pexpect.spawn('dx new org --handle {h}'.format(h=org_handle), logfile=sys.stderr)
+        dx_new_org.expect('Enter descriptive name for org')
+        dx_new_org.sendline("Descriptive Org Name")
+        dx_new_org.expect("Restrict visibility")
         dx_new_org.sendline("ADMIN")
+        dx_new_org.expect("Restrict project billing transfer")
+        dx_new_org.sendline("ADMIN")
+        org_id = "org-" + org_handle
+        org_list = run('dx find orgs --level "ADMIN" --brief').strip().split("\n")
+        self.assertIn(org_id, org_list)
+        res_policies = dxpy.api.org_describe(org_id)['policies']
+        self.assertEqual(res_policies["memberListVisibility"], "ADMIN")
+        self.assertEqual(res_policies["restrictProjectTransfer"], "ADMIN")
+
+        # Prompt with "--member-list-visibility"
+        org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
+        dx_new_org = pexpect.spawn('dx new org --handle {h} --member-list-visibility {p}'.format(h=org_handle,
+                                   p="MEMBER"), logfile=sys.stderr)
+        dx_new_org.expect('Enter descriptive name')
+        dx_new_org.sendline(org_handle)
+        dx_new_org.expect("Restrict project billing transfer")
+        dx_new_org.sendline()
         org_id = "org-" + org_handle
         org_list = run('dx find orgs --level "ADMIN" --brief').strip().split("\n")
         self.assertIn(org_id, org_list)
@@ -3701,15 +3727,41 @@ class TestDXClientNewOrg(DXTestCase):
         self.assertEqual(res_policies["restrictProjectTransfer"], "ADMIN")
 
         org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
-        dx_new_org = pexpect.spawn('dx new org', logfile=sys.stderr)
-        dx_new_org.expect('Enter descriptive name for org')
-        dx_new_org.sendline("Descriptive Org Name")
-        dx_new_org.expect('Enter handle for org')
+        dx_new_org = pexpect.spawn('dx new org --handle {h} --member-list-visibility {p}'.format(h=org_handle,
+                                   p="MEMBER"), logfile=sys.stderr)
+        dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline(org_handle)
-        dx_new_org.expect("Restrict visibility")
+        dx_new_org.expect("Restrict project billing transfer")
         dx_new_org.sendline("ADMIN")
+        org_id = "org-" + org_handle
+        org_list = run('dx find orgs --level "ADMIN" --brief').strip().split("\n")
+        self.assertIn(org_id, org_list)
+        res_policies = dxpy.api.org_describe(org_id)['policies']
+        self.assertEqual(res_policies["memberListVisibility"], "MEMBER")
+        self.assertEqual(res_policies["restrictProjectTransfer"], "ADMIN")
+        
+        org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
+        dx_new_org = pexpect.spawn('dx new org --handle {h} --member-list-visibility {p}'.format(h=org_handle,
+                                   p="MEMBER"), logfile=sys.stderr)
+        dx_new_org.expect('Enter descriptive name')
+        dx_new_org.sendline(org_handle)
         dx_new_org.expect("Restrict project billing transfer")
         dx_new_org.sendline("MEMBER")
+        org_id = "org-" + org_handle
+        org_list = run('dx find orgs --level "ADMIN" --brief').strip().split("\n")
+        self.assertIn(org_id, org_list)
+        res_policies = dxpy.api.org_describe(org_id)['policies']
+        self.assertEqual(res_policies["memberListVisibility"], "MEMBER")
+        self.assertEqual(res_policies["restrictProjectTransfer"], "MEMBER")
+
+        # Prompt with "--project-transfer-ability"
+        org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
+        dx_new_org = pexpect.spawn('dx new org --handle {h} --project-transfer-ability {p}'.format(h=org_handle,
+                                   p="MEMBER"), logfile=sys.stderr)
+        dx_new_org.expect('Enter descriptive name')
+        dx_new_org.sendline(org_handle)
+        dx_new_org.expect("Restrict visibility")
+        dx_new_org.sendline()
         org_id = "org-" + org_handle
         org_list = run('dx find orgs --level "ADMIN" --brief').strip().split("\n")
         self.assertIn(org_id, org_list)
@@ -3717,12 +3769,54 @@ class TestDXClientNewOrg(DXTestCase):
         self.assertEqual(res_policies["memberListVisibility"], "ADMIN")
         self.assertEqual(res_policies["restrictProjectTransfer"], "MEMBER")
 
+        org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
+        dx_new_org = pexpect.spawn('dx new org --handle {h} --project-transfer-ability {p}'.format(h=org_handle,
+                                   p="MEMBER"), logfile=sys.stderr)
+        dx_new_org.expect('Enter descriptive name')
+        dx_new_org.sendline(org_handle)
+        dx_new_org.expect("Restrict visibility")
+        dx_new_org.sendline("ADMIN")
+        org_id = "org-" + org_handle
+        org_list = run('dx find orgs --level "ADMIN" --brief').strip().split("\n")
+        self.assertIn(org_id, org_list)
+        res_policies = dxpy.api.org_describe(org_id)['policies']
+        self.assertEqual(res_policies["memberListVisibility"], "ADMIN")
+        self.assertEqual(res_policies["restrictProjectTransfer"], "MEMBER")
+
+        org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
+        dx_new_org = pexpect.spawn('dx new org --handle {h} --project-transfer-ability {p}'.format(h=org_handle,
+                                   p="MEMBER"), logfile=sys.stderr)
+        dx_new_org.expect('Enter descriptive name')
+        dx_new_org.sendline(org_handle)
+        dx_new_org.expect("Restrict visibility")
+        dx_new_org.sendline("MEMBER")
+        org_id = "org-" + org_handle
+        org_list = run('dx find orgs --level "ADMIN" --brief').strip().split("\n")
+        self.assertIn(org_id, org_list)
+        res_policies = dxpy.api.org_describe(org_id)['policies']
+        self.assertEqual(res_policies["memberListVisibility"], "MEMBER")
+        self.assertEqual(res_policies["restrictProjectTransfer"], "MEMBER")
+
+        # Prompt with both "--member-list-visibility" and "--project-transfer-ability"
+        org_handle = 'dx_test_new_org_{t}'.format(t=str(int(time.time())))
+        dx_new_org = pexpect.spawn('dx new org --handle {h} --member-list-visibility {p} --project-transfer-ability {p}'.format(
+                                   h=org_handle, p="MEMBER"), logfile=sys.stderr)
+        dx_new_org.expect('Enter descriptive name')
+        dx_new_org.sendline(org_handle)
+        org_id = "org-" + org_handle
+        org_list = run('dx find orgs --level "ADMIN" --brief').strip().split("\n")
+        self.assertIn(org_id, org_list)
+        res_policies = dxpy.api.org_describe(org_id)['policies']
+        self.assertEqual(res_policies["memberListVisibility"], "MEMBER")
+        self.assertEqual(res_policies["restrictProjectTransfer"], "MEMBER")
+        
+
     def test_update_org(self):
         # Create new org
         org_handle = "dx_test_new_org_{t}".format(t=str(int(time.time())))
-        org_id = run('dx new org "Test New Org" {o} --brief'.format(o=org_handle)).strip().split("\n")[0]
+        org_id = run('dx new org "Test New Org" --handle {o} --brief'.format(o=org_handle)).strip().split("\n")[0]
         orig_name = dxpy.api.org_describe(org_id)["name"]
-        orig_policy = dxpy.api.org_describe(org_id)["policies"]
+        orig_policy = dxpy.api.org_describe(org_id)["policies"]  # default policies = ADMIN
 
         # test at least 1 argument required
         with self.assertRaises(subprocess.CalledProcessError):
@@ -3735,8 +3829,8 @@ class TestDXClientNewOrg(DXTestCase):
         self.assertEquals(res, new_name)
         self.assertNotEquals(res, orig_name)
 
-        # test --member-list-visibility flag
         policy = "MEMBER"
+        # test --member-list-visibility flag
         run('dx update org {o} --member-list-visibility {p} --brief'.format(o=org_id, p=policy))
         res = dxpy.api.org_describe(org_id)["policies"]
         self.assertEquals(res["memberListVisibility"], policy)
@@ -3744,7 +3838,6 @@ class TestDXClientNewOrg(DXTestCase):
         self.assertNotEquals(res["memberListVisibility"], orig_policy["memberListVisibility"])
 
         # test --project-transfer-ability
-        policy = "MEMBER"
         run('dx update org {o} --project-transfer-ability {p} --brief'.format(o=org_id, p=policy))
         res = dxpy.api.org_describe(org_id)["policies"]
         self.assertEquals(res["restrictProjectTransfer"], policy)

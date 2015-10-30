@@ -1301,18 +1301,24 @@ def new_org(args):
     if args.name is None:
         if INTERACTIVE_CLI:
             args.name = input("Enter descriptive name for org: ")
+            
+            if args.member_list_visibility is None:
+                    args.member_list_visibility = prompt_for_mult_choice("Restrict visibility of member list to [ADMIN, MEMBER]",
+                                                                         default="ADMIN")
+            if args.project_transfer_ability is None:
+                    args.project_transfer_ability = prompt_for_mult_choice("Restrict project billing transfer ability to [ADMIN, MEMBER]",
+                                                                           default="ADMIN")
         else:
             parser.exit(1, parser_new_org.format_help() +
                         fill("No org name supplied, and input is not interactive") + '\n')
-    if args.handle is None:
-        args.handle = input("Enter handle for org. This handle will be appended to 'org-': ")
-        args.member_list_visibility = prompt_for_mult_choice("Restrict visibility of member list to [ADMIN, MEMBER]",
-                                                             default=args.member_list_visibility)
-        args.project_transfer_ability = prompt_for_mult_choice("Restrict project billing transfer ability to [ADMIN, MEMBER]",
-                                                               default=args.project_transfer_ability)
 
-    inputs = {"handle": args.handle, "name": args.name, "policies": {"memberListVisibility":
-              args.member_list_visibility, "restrictProjectTransfer": args.project_transfer_ability}}
+    if args.member_list_visibility is None:
+        args.member_list_visibility = "ADMIN"
+    if args.project_transfer_ability is None:
+        args.project_transfer_ability = "ADMIN"
+    inputs = {"handle": args.handle, "name": args.name, "policies": {}}
+    inputs["policies"]["memberListVisibility"] = args.member_list_visibility
+    inputs["policies"]["restrictProjectTransfer"] = args.project_transfer_ability
 
     try:
         resp = dxpy.api.org_new(inputs)
@@ -4152,9 +4158,9 @@ parser_new_org = subparsers_new.add_parser('org', help='Create a new org',
                                            parents=[stdout_args, env_args],
                                            prog='dx new org')
 parser_new_org.add_argument('name', help='Descriptive name of the org', nargs='?')
-parser_new_org.add_argument('handle', help='Unique handle for org', nargs='?')
-parser_new_org.add_argument('--member-list-visibility', help='Org membership level required to be able to list the members of the org, or to view the membership level or permissions of any other member of the org', choices=["ADMIN", "MEMBER"], default="ADMIN")
-parser_new_org.add_argument('--project-transfer-ability', help='Org membership level required to be able to change the billing account of an org-billed project to any other entity', choices=["ADMIN", "MEMBER"], default="ADMIN")
+parser_new_org.add_argument('--handle', required=True, help='Unique handle for org. The specified handle will be converted to lowercase and appended to "org-" to form the org ID')
+parser_new_org.add_argument('--member-list-visibility', help='Org membership level required to be able to list the members of the org, or to view the membership level or permissions of any other member of the org', choices=["ADMIN", "MEMBER"])
+parser_new_org.add_argument('--project-transfer-ability', help='Org membership level required to be able to change the billing account of an org-billed project to any other entity', choices=["ADMIN", "MEMBER"])
 parser_new_org.set_defaults(func=new_org)
 register_subparser(parser_new_org, subparsers_action=subparsers_new, categories='other')
 
