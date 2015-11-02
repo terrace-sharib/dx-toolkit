@@ -24,7 +24,7 @@ import dxpy
 from ..cli import try_call
 from ..cli.parsers import process_find_by_property_args
 from ..exceptions import (DXCLIError, err_exit)
-from dxpy.utils.printing import (fill, DELIMITER, format_find_projects_results)
+from dxpy.utils.printing import (fill, DELIMITER, format_org_find_results)
 import json
 from . import prompt_for_yn
 
@@ -179,18 +179,9 @@ def find_orgs(args):
 def org_find_members(args):
     try:
         results = dxpy.org_find_members(org_id=args.org_id, level=args.level, describe=(not args.brief))
-
-        if args.json:
-            print(json.dumps(list(results), indent=4))
-        elif args.brief:
-            for result in results:
-                print(result['id'])
-        else:
-            for result in results:
-                print(result["id"] + DELIMITER(" : ") + result['describe']['first'] + DELIMITER(' ') + result['describe']['last'] +
-                      DELIMITER(' ') + DELIMITER(' (') + result["level"] + DELIMITER(')'))
+        format_org_find_results(args, results, members=True)
     except:
-      err_exit()
+        err_exit()
 
 
 def org_find_projects(args):
@@ -202,6 +193,6 @@ def org_find_projects(args):
                                          public=args.public,
                                          created_after=args.created_after,
                                          created_before=args.created_before)
-        format_find_projects_results(args, results)
+        format_org_find_results(args, results)
     except:
         err_exit()

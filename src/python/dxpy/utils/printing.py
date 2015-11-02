@@ -158,7 +158,7 @@ def refill_paragraphs(string, ignored_prefix='    '):
     return '\n\n'.join(refilled_paragraphs).strip('\n')
 
 
-def format_find_projects_results(args, results):
+def format_org_find_results(args, results, members=False):
     if args.json:
         print(json.dumps(list(results), indent=4))
     elif args.brief:
@@ -166,5 +166,10 @@ def format_find_projects_results(args, results):
             print(result['id'])
     else:
         for result in results:
-            print(result["id"] + DELIMITER(" : ") + result['describe']['name'] +
-                  DELIMITER(' (') + result["level"] + DELIMITER(')'))
+            if members is True:
+                print(result["id"] + DELIMITER(" : ") + result['describe']['first'] + DELIMITER(' ') +
+                      result['describe']['last'] + DELIMITER(' ') + DELIMITER(' (') + result["level"] +
+                      DELIMITER(')'))
+            else:
+                print(result["id"] + DELIMITER(" : ") + result['describe']['name'] +
+                      DELIMITER(' (') + result["level"] + DELIMITER(')'))

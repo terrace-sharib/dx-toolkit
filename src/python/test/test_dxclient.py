@@ -3690,43 +3690,65 @@ class TestDXClientFind(DXTestCase):
         org_id = "org-piratelabs"
         user_alice = "user-000000000000000000000000"  # ADMIN
         user_bob = "user-000000000000000000000001"  # MEMBER
+        dxpy.api.org_invite(org_id, {"invitee": user_bob})
         org_members = [user_alice, user_bob]
 
         # Basic test to check consistency of client output to directly invoking API
         output = run("dx find org_members {o} --brief".format(o=org_id)).strip().split("\n")
         dx_api_output = dxpy.api.org_find_members(org_id)
         self.assertEqual(output, [member['id'] for member in dx_api_output['results']])
-        self.assertItemsEqual(output, org_members )
+        self.assertItemsEqual(output, org_members)
 
         # With --level flag
         with self.assertSubprocessFailure(stderr_regexp='expected one argument', exit_code=2):
-            run("dx find org_members " + pipes.quote(org_id) + " --level")
-        
+            run("dx find org_members {o} --level".format(o=org_id))
+
         output = run("dx find org_members {o} --level {l} --brief".format(o=org_id, l="ADMIN")).strip().split("\n")
         self.assertItemsEqual(output, [user_alice])
 
         output = run("dx find org_members {o} --level {l} --brief".format(o=org_id, l="MEMBER")).strip().split("\n")
         self.assertItemsEqual(output, [user_bob])
 
+    @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org and project')
+    def test_dx_find_org_members_format(self):
+        org_id = "org-piratelabs"
+        user_alice = "user-000000000000000000000000"  # ADMIN
+        user_bob = "user-000000000000000000000001"  # MEMBER
+        dxpy.api.org_invite(org_id, {"invitee": user_bob})
+        cmd = "dx find org_members {org} {opts}"
+
+        # Assert that only member ids are returned, line-separated
+        output = run(cmd.format(org=org_id, opts="--brief")).strip().split("\n")
+        pattern = "^user-[a-zA-Z0-9]*$"
+        for result in output:
+            self.assertRegexpMatches(result, pattern)
+
+        # Assert that return format is like: "<user_id><user_name><level>"
+        levels = "(?:ADMIN|MEMBER)"
+        output = run(cmd.format(org=org_id, opts="")).strip().split("\n")
+        pattern = "^user-[a-zA-Z0-9]* : .* \(" + levels + "\)$"
+        for result in output:
+            self.assertRegexpMatches(result, pattern)
+
         # Test --json output
+        # TODO: Deprecate 'createProjectsAndApps'
         output = json.loads(run("dx find org_members {o} --json".format(o=org_id)))
         query_user_describe = {"fields": {"class": True, "first": True, "last": True, "middle": True, "handle": True}}
-        expected = [
-                    {"appAccess": True,
+        expected = [{"appAccess": True,
                      "projectAccess": "ADMINISTER",
                      "level": "ADMIN",
                      "createProjectsAndApps": True,
+                     "allowBillableActivities": True,
                      "id": user_alice,
                      "describe": dxpy.api.user_describe(user_alice, query_user_describe)},
-                    {"level": "MEMBER",
+                    {"appAccess": True,
+                     "projectAccess": "CONTRIBUTE",
+                     "createProjectsAndApps": False,
+                     "allowBillableActivities": False,
+                     "level": "MEMBER",
                      "id": user_bob,
-                     "describe": dxpy.api.user_describe(user_bob, query_user_describe)},
-                    ]
+                     "describe": dxpy.api.user_describe(user_bob, query_user_describe)}]
         self.assertEqual(output, expected)
-
-    @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org and project')
-    def test_dx_find_org_members_format(self):
-        pass
 
     @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org and project')
     def test_dx_find_org_projects(self):

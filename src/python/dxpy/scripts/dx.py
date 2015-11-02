@@ -53,7 +53,7 @@ from ..utils import warn, group_array_by_field, normalize_timedelta, normalize_t
 from ..app_categories import APP_CATEGORIES
 from ..utils.printing import (CYAN, BLUE, YELLOW, GREEN, RED, WHITE, UNDERLINE, BOLD, ENDC, DNANEXUS_LOGO,
                               DNANEXUS_X, set_colors, set_delimiter, get_delimiter, DELIMITER, fill,
-                              tty_rows, tty_cols, pager, format_find_projects_results)
+                              tty_rows, tty_cols, pager, format_org_find_results)
 from ..utils.pretty_print import format_tree, format_table
 from ..utils.resolver import (pick, paginate_and_pick, is_hashid, is_data_obj_id, is_container_id, is_job_id,
                               is_analysis_id, get_last_pos_of_char, resolve_container_id_or_name, resolve_path,
@@ -165,7 +165,8 @@ else:
 # subcommand with further subcommands, then the second word must be an
 # appropriate sub-subcommand.
 class DXCLICompleter():
-    subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions ', 'analyses ', 'org_members ', 'org_projects '],
+    subcommands = {'find': ['data ', 'projects ', 'apps ', 'jobs ', 'executions ', 'analyses ', 'org_members ',
+                            'org_projects '],
                    'new': ['record ', 'project ', 'workflow '],
                    'add': ['developers ', 'users ', 'stage '],
                    'remove': ['developers ', 'users ', 'stage '],
@@ -2221,7 +2222,7 @@ def find_projects(args):
                                      public=(args.public if args.public else None),
                                      created_after=args.created_after,
                                      created_before=args.created_before)
-        format_find_projects_results(args, results)
+        format_org_find_results(args, results)
     except:
         err_exit()
 

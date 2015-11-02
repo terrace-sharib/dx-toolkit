@@ -715,7 +715,7 @@ def org_find_members(org_id=None, level=None, describe=False):
     :param org_id: ID of the organization
     :type org_id: string
     :param level: The minimum membership level for which results should be returned (one of "MEMBER" or "ADMINISTER")
-    :type level: string 
+    :type level: string
     :param describe: Whether or not to return the response of ``dxpy.api.user_describe`` for each result. False omits
         the describe response; True includes it; a dict will be used as the input to ``dxpy.api.user_describe`` (to
         customize the desired set of fields in the describe response).
