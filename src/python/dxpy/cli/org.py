@@ -21,6 +21,7 @@ the org-based commands of the dx command-line client.
 from __future__ import (print_function, unicode_literals)
 
 import dxpy
+from ..cli import prompt_for_mult_choice, INTERACTIVE_CLI
 from ..exceptions import (err_exit, DXCLIError)
 from dxpy.utils.printing import (fill, DELIMITER)
 import json
@@ -143,6 +144,36 @@ def find_orgs(args):
                 d1=(DELIMITER(args.delimiter) if args.delimiter else " : "),
                 n=res["describe"]["name"]
             ))
+
+
+def new_org(args):
+    if args.name is None and INTERACTIVE_CLI:
+        args.name = input("Enter descriptive name for org: ")
+
+        if args.member_list_visibility is None:
+                args.member_list_visibility = prompt_for_mult_choice("Restrict visibility of member list to [ADMIN, MEMBER]",
+                                                                     default="ADMIN")
+        if args.project_transfer_ability is None:
+                args.project_transfer_ability = prompt_for_mult_choice("Restrict project billing transfer ability to [ADMIN, MEMBER]",
+                                                                       default="ADMIN")
+    elif args.name is None and INTERACTIVE_CLI is False:
+        err_exit("No org name supplied, and input is not interactive.")
+
+    if args.member_list_visibility is None:
+        args.member_list_visibility = "ADMIN"
+    if args.project_transfer_ability is None:
+        args.project_transfer_ability = "ADMIN"
+    
+    inputs = {"handle": args.handle, "name": args.name, "policies": {"memberListVisibility":
+        args.member_list_visibility, "restrictProjectTransfer": args.project_transfer_ability}}
+
+    try:
+        resp = dxpy.api.org_new(inputs)
+        if args.brief:
+            print(resp['id'])
+        print("Org " + args.name + " created")
+    except:
+        err_exit()
 
 
 def _get_update_org_args(args):

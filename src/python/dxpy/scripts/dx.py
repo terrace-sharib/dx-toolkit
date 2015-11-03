@@ -44,8 +44,7 @@ from ..cli.parsers import (no_color_arg, delim_arg, env_args, stdout_args, all_a
                            set_env_from_args, extra_args, process_extra_args, DXParserError, exec_input_args,
                            instance_type_arg, process_instance_type_arg)
 from ..cli.exec_io import (ExecutableInputs, format_choices_or_suggestions)
-from ..cli.org import (get_org_invite_args, add_membership, remove_membership,
-                       update_membership, find_orgs, update_org)
+from ..cli.org import (get_org_invite_args, add_membership, remove_membership, update_membership, find_orgs, new_org, update_org)
 from ..exceptions import (err_exit, DXError, DXCLIError, DXAPIError, network_exceptions, default_expected_exceptions,
                           format_exception)
 from ..utils import warn, group_array_by_field, normalize_timedelta, normalize_time_input
@@ -1297,36 +1296,36 @@ def new_user(args):
         )))
 
 
-def new_org(args):
-    if args.name is None:
-        if INTERACTIVE_CLI:
-            args.name = input("Enter descriptive name for org: ")
-
-            if args.member_list_visibility is None:
-                    args.member_list_visibility = prompt_for_mult_choice("Restrict visibility of member list to [ADMIN, MEMBER]",
-                                                                         default="ADMIN")
-            if args.project_transfer_ability is None:
-                    args.project_transfer_ability = prompt_for_mult_choice("Restrict project billing transfer ability to [ADMIN, MEMBER]",
-                                                                           default="ADMIN")
-        else:
-            parser.exit(1, parser_new_org.format_help() +
-                        fill("No org name supplied, and input is not interactive") + '\n')
-
-    if args.member_list_visibility is None:
-        args.member_list_visibility = "ADMIN"
-    if args.project_transfer_ability is None:
-        args.project_transfer_ability = "ADMIN"
-    inputs = {"handle": args.handle, "name": args.name, "policies": {}}
-    inputs["policies"]["memberListVisibility"] = args.member_list_visibility
-    inputs["policies"]["restrictProjectTransfer"] = args.project_transfer_ability
-
-    try:
-        resp = dxpy.api.org_new(inputs)
-        if args.brief:
-            print(resp['id'])
-        print("Org " + args.name + " created")
-    except:
-        err_exit()
+#def new_org(args):
+#    if args.name is None:
+#        if INTERACTIVE_CLI:
+#            args.name = input("Enter descriptive name for org: ")
+#
+#            if args.member_list_visibility is None:
+#                    args.member_list_visibility = prompt_for_mult_choice("Restrict visibility of member list to [ADMIN, MEMBER]",
+#                                                                         default="ADMIN")
+#            if args.project_transfer_ability is None:
+#                    args.project_transfer_ability = prompt_for_mult_choice("Restrict project billing transfer ability to [ADMIN, MEMBER]",
+#                                                                           default="ADMIN")
+#        else:
+#            parser.exit(1, parser_new_org.format_help() +
+#                        fill("No org name supplied, and input is not interactive") + '\n')
+#
+#    if args.member_list_visibility is None:
+#        args.member_list_visibility = "ADMIN"
+#    if args.project_transfer_ability is None:
+#        args.project_transfer_ability = "ADMIN"
+#    inputs = {"handle": args.handle, "name": args.name, "policies": {}}
+#    inputs["policies"]["memberListVisibility"] = args.member_list_visibility
+#    inputs["policies"]["restrictProjectTransfer"] = args.project_transfer_ability
+#
+#    try:
+#        resp = dxpy.api.org_new(inputs)
+#        if args.brief:
+#            print(resp['id'])
+#        print("Org " + args.name + " created")
+#    except:
+#        err_exit()
 
 def new_project(args):
     if args.name == None:
