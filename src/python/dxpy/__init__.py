@@ -349,9 +349,17 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
     url = APISERVER + resource if prepend_srv else resource
     method = method.upper() # Convert method name to uppercase, to ease string comparisons later
     if _DEBUG >= 3:
-        print(method, url, "=>\n" + json.dumps(data, indent=2), file=sys.stderr)
+        try:
+            formatted_data = json.dumps(data, indent=2)
+        except UnicodeDecodeError:
+            formatted_data = "<binary data>"
+        print(method, url, "=>\n" + formatted_data, file=sys.stderr)
     elif _DEBUG == 2:
-        print(method, url, "=>", json.dumps(data), file=sys.stderr)
+        try:
+            formatted_data = json.dumps(data)
+        except UnicodeDecodeError:
+            formatted_data = "<binary data>"
+        print(method, url, "=>", formatted_data, file=sys.stderr)
     elif _DEBUG > 0:
         from repr import Repr
         print(method, url, "=>", Repr().repr(data), file=sys.stderr)
@@ -401,7 +409,11 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                 # response.headers key lookup is case-insensitive
                 if response.headers.get('content-type', '').startswith('application/json'):
                     content = json.loads(response.data.decode('utf-8'))
-                    error_class = getattr(exceptions, content["error"]["type"], exceptions.DXAPIError)
+                    try:
+                        error_class = getattr(exceptions, content["error"]["type"], exceptions.DXAPIError)
+                    except (KeyError, AttributeError):
+                        error_class = exceptions.HTTPError(
+                            "Unable to extract error class from response")
                     raise error_class(content, response.status)
                 raise HTTPError("{} {}".format(response.status, response.reason))
 
@@ -615,6 +627,12 @@ def get_auth_server_name(host_override=None, port_override=None):
         return 'https://stagingauth.dnanexus.com'
     elif APISERVER_HOST == 'api.dnanexus.com':
         return 'https://auth.dnanexus.com'
+    elif APISERVER_HOST == "localhost" or APISERVER_HOST == "127.0.0.1":
+        if "DX_AUTHSERVER_HOST" not in os.environ or "DX_AUTHSERVER_PORT" not in os.environ:
+            err_msg = "Must set authserver env vars (DX_AUTHSERVER_HOST, DX_AUTHSERVER_PORT) if apiserver is {apiserver}."
+            raise exceptions.DXError(err_msg.format(apiserver=APISERVER_HOST))
+        else:
+            return os.environ["DX_AUTHSERVER_HOST"] + ":" + os.environ["DX_AUTHSERVER_PORT"]
     else:
         err_msg = "Could not determine which auth server is associated with {apiserver}."
         raise exceptions.DXError(err_msg.format(apiserver=APISERVER_HOST))

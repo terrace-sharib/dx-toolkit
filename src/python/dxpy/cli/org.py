@@ -21,9 +21,10 @@ the org-based commands of the dx command-line client.
 from __future__ import (print_function, unicode_literals)
 
 import dxpy
-from ..cli import prompt_for_mult_choice, INTERACTIVE_CLI
+from ..cli import try_call, prompt_for_yn, prompt_for_mult_choice, INTERACTIVE_CLI
+from ..cli.parsers import process_find_by_property_args
 from ..exceptions import (err_exit, DXCLIError)
-from dxpy.utils.printing import (fill, DELIMITER)
+from dxpy.utils.printing import (fill, DELIMITER, format_find_projects_results)
 import json
 
 
@@ -40,9 +41,9 @@ def get_org_invite_args(args):
     org_invite_args["level"] = args.level
     if "set_bill_to" in args and args.set_bill_to is True:
         # /org-x/invite is called in conjunction with /user/new.
-        org_invite_args["createProjectsAndApps"] = True
+        org_invite_args["allowBillableActivities"] = True
     else:
-        org_invite_args["createProjectsAndApps"] = args.allow_billable_activities
+        org_invite_args["allowBillableActivities"] = args.allow_billable_activities
     org_invite_args["appAccess"] = args.app_access
     org_invite_args["projectAccess"] = args.project_access
     org_invite_args["suppressEmailNotification"] = args.no_email
@@ -81,21 +82,49 @@ def remove_membership(args):
     dxpy.api.org_get_member_access(args.org_id,
                                    {"user": "user-" + args.username})
 
-    result = dxpy.api.org_remove_member(args.org_id,
-                                        _get_org_remove_member_args(args))
-    if args.brief:
-        print(result["id"])
+    confirmed = not args.confirm
+    if not confirmed:
+        # Request interactive confirmation.
+        print(fill("WARNING: About to remove user-{u} from {o}; project permissions will{rpp} be removed and app permissions will{rap} be removed".format(
+            u=args.username, o=args.org_id,
+            rpp="" if args.revoke_project_permissions else " not",
+            rap="" if args.revoke_app_permissions else " not")))
+
+        if prompt_for_yn("Please confirm"):
+            confirmed = True
+
+    if confirmed:
+        result = dxpy.api.org_remove_member(args.org_id,
+                                            _get_org_remove_member_args(args))
+        if args.brief:
+            print(result["id"])
+        else:
+            print(fill("Removed user-{u} from {o}".format(u=args.username,
+                                                          o=args.org_id)))
+            print(fill("Removed user-{u} from the following projects:".format(
+                u=args.username)))
+            if len(result["projects"].keys()) != 0:
+                for project_id in result["projects"].keys():
+                    print("\t{p}".format(p=project_id))
+            else:
+                print("\tNone")
+            print(fill("Removed user-{u} from the following apps:".format(
+                u=args.username)))
+            if len(result["apps"].keys()) != 0:
+                for app_id in result["apps"].keys():
+                    print("\t{a}".format(a=app_id))
+            else:
+                print("\tNone")
     else:
-        print(fill("Removed user-{u} from {o}. user-{u} has been removed from the following projects {p}. user-{u} has been removed from the following apps {a}.".format(
-          u=args.username, o=args.org_id, p=result["projects"].keys(),
-          a=result["apps"].keys())))
+        print(fill("Aborting removal of user-{u} from {o}".format(
+            u=args.username, o=args.org_id)))
 
 
 def _get_org_set_member_access_args(args):
     user_id = "user-" + args.username
     org_set_member_access_input = {user_id: {"level": args.level}}
     if args.allow_billable_activities is not None:
-        org_set_member_access_input[user_id]["createProjectsAndApps"] = (True if args.allow_billable_activities == "true" else False)
+        org_set_member_access_input[user_id]["allowBillableActivities"] = (True if args.allow_billable_activities == "true" else False)
     if args.app_access is not None:
         org_set_member_access_input[user_id]["appAccess"] = (True if args.app_access == "true" else False)
     if args.project_access is not None:
@@ -121,7 +150,7 @@ def _get_find_orgs_args(args):
     find_orgs_input = {"level": args.level}
 
     if args.with_billable_activities is not None:
-        find_orgs_input["createProjectsAndApps"] = args.with_billable_activities
+        find_orgs_input["allowBillableActivities"] = args.with_billable_activities
 
     if not args.brief:
         find_orgs_input["describe"] = True
@@ -200,3 +229,17 @@ def update_org(args):
         print(args.org_id)
     else:
         print(fill("Updated {o}".format(o=args.org_id)))
+
+
+def org_find_projects(args):
+    try_call(process_find_by_property_args, args)
+    try:
+        results = dxpy.org_find_projects(org_id=args.org_id, name=args.name, name_mode='glob',
+                                         ids=args.ids, properties=args.properties, tags=args.tag,
+                                         describe=(not args.brief),
+                                         public=args.public,
+                                         created_after=args.created_after,
+                                         created_before=args.created_before)
+        format_find_projects_results(args, results)
+    except:
+        err_exit()
