@@ -3969,20 +3969,6 @@ class TestDXClientOrg(DXTestCase):
     def _get_unique_org_handle(self):
         return "dx_test_new_org_{t}".format(t=time.time())
 
-    def _get_org_describe(self, org_id):
-        delay = 1
-        while delay < 16:
-            try:
-                dxpy.api.org_describe(org_id)['policies']
-                res = dxpy.api.org_describe(org_id)
-            except:
-                delay *= 2
-                time.sleep(delay)
-                continue
-            else:
-                break
-        return res
-
     def test_create_new_org_negative(self):
         # No handle supplied
         dx_new_org = pexpect.spawn('dx new org', logfile=sys.stderr)
@@ -4044,8 +4030,9 @@ class TestDXClientOrg(DXTestCase):
         dx_new_org = pexpect.spawn('dx new org --handle {h}'.format(h=org_handle), logfile=sys.stderr)
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
+        dx_new_org.expect('Created new org')
         org_id = "org-" + org_handle
-        res = self._get_org_describe(org_id)
+        res = dxpy.api.org_describe(org_id)
         self.assertEqual(res['handle'], org_handle)
         self.assertEqual(res['name'], "Test New Org Prompt")
         self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
@@ -4057,8 +4044,9 @@ class TestDXClientOrg(DXTestCase):
                                    p="MEMBER"), logfile=sys.stderr)
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
+        dx_new_org.expect('Created new org')
         org_id = "org-" + org_handle
-        res = self._get_org_describe(org_id)
+        res = dxpy.api.org_describe(org_id)
         self.assertEqual(res['handle'], org_handle)
         self.assertEqual(res['name'], "Test New Org Prompt")
         self.assertEqual(res['policies']["memberListVisibility"], "MEMBER")
@@ -4069,8 +4057,9 @@ class TestDXClientOrg(DXTestCase):
                                    p="ADMIN"), logfile=sys.stderr)
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
+        dx_new_org.expect('Created new org')
         org_id = "org-" + org_handle
-        res = self._get_org_describe(org_id)
+        res = dxpy.api.org_describe(org_id)
         self.assertEqual(res['handle'], org_handle)
         self.assertEqual(res['name'], "Test New Org Prompt")
         self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
@@ -4082,8 +4071,9 @@ class TestDXClientOrg(DXTestCase):
                                    p="MEMBER"), logfile=sys.stderr)
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
+        dx_new_org.expect('Created new org')
         org_id = "org-" + org_handle
-        res = self._get_org_describe(org_id)
+        res = dxpy.api.org_describe(org_id)
         self.assertEqual(res['handle'], org_handle)
         self.assertEqual(res['name'], "Test New Org Prompt")
         self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
@@ -4094,8 +4084,9 @@ class TestDXClientOrg(DXTestCase):
                                    p="ADMIN"), logfile=sys.stderr)
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
+        dx_new_org.expect('Created new org')
         org_id = "org-" + org_handle
-        res = self._get_org_describe(org_id)
+        res = dxpy.api.org_describe(org_id)
         self.assertEqual(res['handle'], org_handle)
         self.assertEqual(res['name'], "Test New Org Prompt")
         self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
@@ -4107,8 +4098,9 @@ class TestDXClientOrg(DXTestCase):
                                    h=org_handle, p="MEMBER"), logfile=sys.stderr)
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
+        dx_new_org.expect('Created new org')
         org_id = "org-" + org_handle
-        res = self._get_org_describe(org_id)
+        res = dxpy.api.org_describe(org_id)
         self.assertEqual(res['handle'], org_handle)
         self.assertEqual(res['name'], "Test New Org Prompt")
         self.assertEqual(res['policies']["memberListVisibility"], "MEMBER")
