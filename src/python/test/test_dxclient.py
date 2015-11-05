@@ -3969,54 +3969,74 @@ class TestDXClientOrg(DXTestCase):
     def _get_unique_org_handle(self):
         return "dx_test_new_org_{t}".format(t=time.time())
 
+    def _get_org_describe(self, org_id):
+        delay = 1
+        while delay < 16:
+            try:
+                dxpy.api.org_describe(org_id)['policies']
+                res = dxpy.api.org_describe(org_id)
+            except:
+                delay *= 2
+                time.sleep(delay)
+                continue
+            else:
+                break
+        return res
+
     def test_create_new_org_negative(self):
         # No handle supplied
         dx_new_org = pexpect.spawn('dx new org', logfile=sys.stderr)
-        dx_new_org.expect('error')
+        dx_new_org.expect('error: argument --handle is required')
+
+        dx_new_org = pexpect.spawn('dx new org "Test Org"', logfile=sys.stderr)
+        dx_new_org.expect('error: argument --handle is required')
 
         dx_new_org = pexpect.spawn('dx new org --member-list-visibility MEMBER', logfile=sys.stderr)
-        dx_new_org.expect('error')
+        dx_new_org.expect('error: argument --handle is required')
 
         dx_new_org = pexpect.spawn('dx new org --project-transfer-ability MEMBER', logfile=sys.stderr)
-        dx_new_org.expect('error')
+        dx_new_org.expect('error: argument --handle is required')
 
         dx_new_org = pexpect.spawn('dx new org --member-list-visibility ADMIN --project-transfer-ability MEMBER',
                                    logfile=sys.stderr)
-        dx_new_org.expect('error')
+        dx_new_org.expect('error: argument --handle is required')
 
     def test_create_new_org(self):
         # Basic test with only required input args; optional input arg defaults propagated properly.
         org_handle = self._get_unique_org_handle()
-        output = run('dx new org "Test New Org" --handle {h} --brief'.format(h=org_handle)).strip()
-        res = dxpy.api.org_describe(output)
-        self.assertEquals(res['handle'], org_handle)
-        self.assertEquals(res['policies']['memberListVisibility'], "ADMIN")
-        self.assertEquals(res['policies']['restrictProjectTransfer'], "ADMIN")
+        org_id = run('dx new org "Test New Org" --handle {h} --brief'.format(h=org_handle)).strip()
+        res = dxpy.api.org_describe(org_id)
+        self.assertEqual(res['handle'], org_handle)
+        self.assertEqual(res['name'], "Test New Org")
+        self.assertEqual(res['policies']['memberListVisibility'], "ADMIN")
+        self.assertEqual(res['policies']['restrictProjectTransfer'], "ADMIN")
 
         # Test --member-list-visibility flag
         org_handle = self._get_unique_org_handle()
         policy = "MEMBER"
-        output = run('dx new org "Test New Org" --handle {h} --member-list-visibility {mlv} --brief'
+        org_id = run('dx new org "Test New Org" --handle {h} --member-list-visibility {mlv} --brief'
                      .format(h=org_handle, mlv=policy)).strip()
-        res = dxpy.api.org_describe(output)
-        self.assertEquals(res['handle'], org_handle)
-        self.assertEquals(res['policies']['memberListVisibility'], policy)
-        self.assertEquals(res['policies']['restrictProjectTransfer'], "ADMIN")
+        res = dxpy.api.org_describe(org_id)
+        self.assertEqual(res['handle'], org_handle)
+        self.assertEqual(res['name'], "Test New Org")
+        self.assertEqual(res['policies']['memberListVisibility'], policy)
+        self.assertEqual(res['policies']['restrictProjectTransfer'], "ADMIN")
 
         # Test --project-transfer-ability flag
         org_handle = self._get_unique_org_handle()
         policy = "MEMBER"
-        output = run('dx new org "Test New Org" --handle {h} --project-transfer-ability {pta} --brief'
+        org_id = run('dx new org "Test New Org" --handle {h} --project-transfer-ability {pta} --brief'
                      .format(h=org_handle, pta=policy)).strip()
-        res = dxpy.api.org_describe(output)
-        self.assertEquals(res['handle'], org_handle)
-        self.assertEquals(res['policies']['memberListVisibility'], "ADMIN")
-        self.assertEquals(res['policies']['restrictProjectTransfer'], policy)
+        res = dxpy.api.org_describe(org_id)
+        self.assertEqual(res['handle'], org_handle)
+        self.assertEqual(res['name'], "Test New Org")
+        self.assertEqual(res['policies']['memberListVisibility'], "ADMIN")
+        self.assertEqual(res['policies']['restrictProjectTransfer'], policy)
 
         # Test output format
         org_handle = self._get_unique_org_handle()
-        output = run('dx new org "Test New Org" --handle {h}'.format(h=org_handle, p=policy)).strip()
-        self.assertEquals(output, "Org Test New Org created (org-" + org_handle + ")")
+        org_id = run('dx new org "Test New Org" --handle {h}'.format(h=org_handle, p=policy)).strip()
+        self.assertEquals(org_id, 'Created new org called "Test New Org" (org-' + org_handle + ')')
 
     def test_create_new_org_prompt(self):
         # Prompt with only handle
@@ -4025,11 +4045,11 @@ class TestDXClientOrg(DXTestCase):
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
         org_id = "org-" + org_handle
-        while 'policies' not in dxpy.api.org_describe(org_id):
-            res = dxpy.api.org_describe(org_id)
-            self.assertEqual(res['handle'], org_handle)
-            self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
-            self.assertEqual(res['policies']["restrictProjectTransfer"], "ADMIN")
+        res = self._get_org_describe(org_id)
+        self.assertEqual(res['handle'], org_handle)
+        self.assertEqual(res['name'], "Test New Org Prompt")
+        self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
+        self.assertEqual(res['policies']["restrictProjectTransfer"], "ADMIN")
 
         # Prompt with "--member-list-visibility"
         org_handle = self._get_unique_org_handle()
@@ -4038,11 +4058,11 @@ class TestDXClientOrg(DXTestCase):
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
         org_id = "org-" + org_handle
-        while 'policies' not in dxpy.api.org_describe(org_id):
-            res = dxpy.api.org_describe(org_id)
-            self.assertEqual(res['handle'], org_handle)
-            self.assertEqual(res['policies']["memberListVisibility"], "MEMBER")
-            self.assertEqual(res['policies']["restrictProjectTransfer"], "ADMIN")
+        res = self._get_org_describe(org_id)
+        self.assertEqual(res['handle'], org_handle)
+        self.assertEqual(res['name'], "Test New Org Prompt")
+        self.assertEqual(res['policies']["memberListVisibility"], "MEMBER")
+        self.assertEqual(res['policies']["restrictProjectTransfer"], "ADMIN")
 
         org_handle = self._get_unique_org_handle()
         dx_new_org = pexpect.spawn('dx new org --handle {h} --member-list-visibility {p}'.format(h=org_handle,
@@ -4050,11 +4070,11 @@ class TestDXClientOrg(DXTestCase):
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
         org_id = "org-" + org_handle
-        while 'policies' not in dxpy.api.org_describe(org_id):
-            res = dxpy.api.org_describe(org_id)
-            self.assertEqual(res['handle'], org_handle)
-            self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
-            self.assertEqual(res['policies']["restrictProjectTransfer"], "ADMIN")
+        res = self._get_org_describe(org_id)
+        self.assertEqual(res['handle'], org_handle)
+        self.assertEqual(res['name'], "Test New Org Prompt")
+        self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
+        self.assertEqual(res['policies']["restrictProjectTransfer"], "ADMIN")
 
         # Prompt with "--project-transfer-ability"
         org_handle = self._get_unique_org_handle()
@@ -4063,11 +4083,11 @@ class TestDXClientOrg(DXTestCase):
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
         org_id = "org-" + org_handle
-        while 'policies' not in dxpy.api.org_describe(org_id):
-            res = dxpy.api.org_describe(org_id)
-            self.assertEqual(res['handle'], org_handle)
-            self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
-            self.assertEqual(res['policies']["restrictProjectTransfer"], "MEMBER")
+        res = self._get_org_describe(org_id)
+        self.assertEqual(res['handle'], org_handle)
+        self.assertEqual(res['name'], "Test New Org Prompt")
+        self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
+        self.assertEqual(res['policies']["restrictProjectTransfer"], "MEMBER")
 
         org_handle = self._get_unique_org_handle()
         dx_new_org = pexpect.spawn('dx new org --handle {h} --project-transfer-ability {p}'.format(h=org_handle,
@@ -4075,11 +4095,11 @@ class TestDXClientOrg(DXTestCase):
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
         org_id = "org-" + org_handle
-        while 'policies' not in dxpy.api.org_describe(org_id):
-            res = dxpy.api.org_describe(org_id)
-            self.assertEqual(res['handle'], org_handle)
-            self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
-            self.assertEqual(res['policies']["restrictProjectTransfer"], "ADMIN")
+        res = self._get_org_describe(org_id)
+        self.assertEqual(res['handle'], org_handle)
+        self.assertEqual(res['name'], "Test New Org Prompt")
+        self.assertEqual(res['policies']["memberListVisibility"], "ADMIN")
+        self.assertEqual(res['policies']["restrictProjectTransfer"], "ADMIN")
 
         # Prompt with both "--member-list-visibility" and "--project-transfer-ability"
         org_handle = self._get_unique_org_handle()
@@ -4088,11 +4108,11 @@ class TestDXClientOrg(DXTestCase):
         dx_new_org.expect('Enter descriptive name')
         dx_new_org.sendline("Test New Org Prompt")
         org_id = "org-" + org_handle
-        while 'policies' not in dxpy.api.org_describe(org_id):
-            res = dxpy.api.org_describe(org_id)
-            self.assertEqual(res['handle'], org_handle)
-            self.assertEqual(res['policies']["memberListVisibility"], "MEMBER")
-            self.assertEqual(res['policies']["restrictProjectTransfer"], "MEMBER")
+        res = self._get_org_describe(org_id)
+        self.assertEqual(res['handle'], org_handle)
+        self.assertEqual(res['name'], "Test New Org Prompt")
+        self.assertEqual(res['policies']["memberListVisibility"], "MEMBER")
+        self.assertEqual(res['policies']["restrictProjectTransfer"], "MEMBER")
 
     def test_update_org(self):
         # Create new org
@@ -4109,23 +4129,23 @@ class TestDXClientOrg(DXTestCase):
         new_name = 'New Org Name'
         run('dx update org {o} --name "New Org Name" --brief'.format(o=org_id))
         res = dxpy.api.org_describe(org_id)["name"]
-        self.assertEquals(res, new_name)
-        self.assertNotEquals(res, orig_name)
+        self.assertEqual(res, new_name)
+        self.assertNotEqual(res, orig_name)
 
         policy = "MEMBER"
         # test --member-list-visibility flag
         run('dx update org {o} --member-list-visibility {p} --brief'.format(o=org_id, p=policy))
         res = dxpy.api.org_describe(org_id)["policies"]
-        self.assertEquals(res["memberListVisibility"], policy)
-        self.assertEquals(res["restrictProjectTransfer"], orig_policy["restrictProjectTransfer"])
-        self.assertNotEquals(res["memberListVisibility"], orig_policy["memberListVisibility"])
+        self.assertEqual(res["memberListVisibility"], policy)
+        self.assertEqual(res["restrictProjectTransfer"], orig_policy["restrictProjectTransfer"])
+        self.assertNotEqual(res["memberListVisibility"], orig_policy["memberListVisibility"])
 
         # test --project-transfer-ability
         run('dx update org {o} --project-transfer-ability {p} --brief'.format(o=org_id, p=policy))
         res = dxpy.api.org_describe(org_id)["policies"]
-        self.assertEquals(res["restrictProjectTransfer"], policy)
-        self.assertEquals(res["memberListVisibility"], "MEMBER")
-        self.assertNotEquals(res["restrictProjectTransfer"], orig_policy["restrictProjectTransfer"])
+        self.assertEqual(res["restrictProjectTransfer"], policy)
+        self.assertEqual(res["memberListVisibility"], "MEMBER")
+        self.assertNotEqual(res["restrictProjectTransfer"], orig_policy["restrictProjectTransfer"])
 
 
 @unittest.skipUnless(testutil.TEST_WITH_AUTHSERVER,

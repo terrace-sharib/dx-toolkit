@@ -178,22 +178,24 @@ def find_orgs(args):
 
 def new_org(args):
     if args.name is None and INTERACTIVE_CLI:
-        args.name = input("Enter descriptive name for org: ")
+        args.name = input("Enter descriptive name for new org: ")
 
     if args.name is None:
         err_exit("No org name supplied and input is not interactive.")
 
-    inputs = {"handle": args.handle, "name": args.name, "policies": {"memberListVisibility":
-              args.member_list_visibility, "restrictProjectTransfer": args.project_transfer_ability}}
+    org_new_input = {"handle": args.handle, "name": args.name,
+                     "policies": {"memberListVisibility": args.member_list_visibility,
+                                  "restrictProjectTransfer": args.project_transfer_ability}}
 
     try:
-        resp = dxpy.api.org_new(inputs)
-        if args.brief:
-            print(resp['id'])
-        else:
-            print("Org " + args.name + " created (org-" + args.handle + ")")
+        resp = dxpy.api.org_new(org_new_input)
     except:
         err_exit()
+
+    if args.brief:
+        print(resp['id'])
+    else:
+        print('Created new org called "' + args.name + '" (org-' + args.handle + ')')
 
 
 def _get_update_org_args(args):
