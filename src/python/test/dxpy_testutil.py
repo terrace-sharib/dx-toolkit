@@ -74,6 +74,12 @@ def check_output(*popenargs, **kwargs):
         raise ValueError('stdout argument not allowed, it will be overridden.')
     if 'stderr' in kwargs:
         raise ValueError('stderr argument not allowed, it will be overridden.')
+
+    return_stderr = False
+    if 'stderr_only' in kwargs:
+        return_stderr = True
+        del kwargs['stderr_only']
+
     # Unplug stdin (if not already overridden) so that dx doesn't prompt
     # user for input at the tty
     process = subprocess.Popen(stdin=kwargs.get('stdin', subprocess.PIPE),
@@ -91,7 +97,11 @@ def check_output(*popenargs, **kwargs):
             cmd = popenargs[0]
         exc = DXCalledProcessError(retcode, cmd, output=output, stderr=err)
         raise exc
-    return output
+
+    if return_stderr:
+        return err
+    else:
+        return output
 
 @contextmanager
 def temporary_project(name='dx client tests temporary project', cleanup=True, reclaim_permissions=False, select=False):
