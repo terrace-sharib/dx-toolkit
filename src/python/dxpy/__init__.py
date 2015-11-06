@@ -437,15 +437,15 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                             content = json.loads(content)
                             if _DEBUG > 0:
                                 t = int((time.time() - time_started) * 1000)
-                                request_id = response.headers.get('x-request-id')
+                                req_id = response.headers.get('x-request-id')
                             if _DEBUG >= 3:
-                                print(method, request_id, url, "<=", response.status, "(%dms)" % t,
+                                print(method, req_id, url, "<=", response.status, "(%dms)" % t,
                                       "\n" + json.dumps(content, indent=2), file=sys.stderr)
                             elif _DEBUG == 2:
-                                print(method, request_id, url, "<=", response.status, "(%dms)" % t, json.dumps(content),
+                                print(method, req_id, url, "<=", response.status, "(%dms)" % t, json.dumps(content),
                                       file=sys.stderr)
                             elif _DEBUG > 0:
-                                print(method, request_id, url, "<=", response.status, "(%dms)" % t, Repr().repr(content),
+                                print(method, req_id, url, "<=", response.status, "(%dms)" % t, Repr().repr(content),
                                       file=sys.stderr)
                         except ValueError:
                             # If a streaming API call (no content-length
