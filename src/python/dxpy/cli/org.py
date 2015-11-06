@@ -22,9 +22,9 @@ from __future__ import (print_function, unicode_literals)
 
 from ..compat import input
 import dxpy
-from ..cli import try_call, prompt_for_yn, INTERACTIVE_CLI
-from ..cli.parsers import process_find_by_property_args
-from ..exceptions import (err_exit, DXCLIError)
+from . import try_call, prompt_for_yn, INTERACTIVE_CLI
+from .parsers import process_find_by_property_args
+from ..exceptions import (DXCLIError, err_exit)
 from dxpy.utils.printing import (fill, DELIMITER, format_find_projects_results)
 import json
 
@@ -187,15 +187,11 @@ def new_org(args):
                      "policies": {"memberListVisibility": args.member_list_visibility,
                                   "restrictProjectTransfer": args.project_transfer_ability}}
 
-    try:
-        resp = dxpy.api.org_new(org_new_input)
-    except:
-        err_exit()
-
+    resp = try_call(dxpy.api.org_new, org_new_input)
     if args.brief:
         print(resp['id'])
     else:
-        print('Created new org called "' + args.name + '" (org-' + args.handle + ')')
+        print('Created new org called "' + args.name + '" (' + resp['id'] + ')')
 
 
 def _get_update_org_args(args):

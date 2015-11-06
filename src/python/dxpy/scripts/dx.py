@@ -4117,12 +4117,12 @@ parser_new_user.set_defaults(func=new_user)
 register_subparser(parser_new_user, subparsers_action=subparsers_new,
                    categories="other")
 
-parser_new_org = subparsers_new.add_parser('org', help='Create a new org',
+parser_new_org = subparsers_new.add_parser('org', help='Create new org',
                                            description='Create a new org',
                                            parents=[stdout_args, env_args],
                                            prog='dx new org')
 parser_new_org.add_argument('name', help='Descriptive name of the org', nargs='?')
-parser_new_org.add_argument('--handle', required=True, help='Unique handle for org. The specified handle will be converted to lowercase and appended to "org-" to form the org ID')
+parser_new_org.add_argument('--handle', required=True, help='Unique handle for the org. The specified handle will be converted to lowercase and appended to "org-" to form the org ID')
 parser_new_org.add_argument('--member-list-visibility', default="ADMIN", help='Org membership level required to be able to list the members of the org, or to view the membership level or permissions of any other member of the org; default ADMIN', choices=["ADMIN", "MEMBER"])
 parser_new_org.add_argument('--project-transfer-ability', default="ADMIN", help='Org membership level required to be able to change the billing account of an org-billed project to any other entity; default ADMIN', choices=["ADMIN", "MEMBER"])
 parser_new_org.set_defaults(func=new_org)
