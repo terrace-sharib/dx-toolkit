@@ -52,7 +52,6 @@ def run(command, **kwargs):
     print(output)
     return output
 
-
 def create_file_in_project(fname, trg_proj_id, folder=None):
     data = "foo"
     if folder is None:
@@ -183,6 +182,13 @@ class TestDXClient(DXTestCase):
     def test_dx_version(self):
         version = run("dx --version")
         self.assertIn("dx", version)
+
+    def test_dx_debug_request_id(self):
+        with self.assertRaises(subprocess.CalledProcessError):
+            run("dx")
+
+        stderr = run("_DX_DEBUG=1 dx ls", stderr_only=True)
+        self.assertRegexpMatches(stderr, "POST \d{13}-\d{6} http", msg="stderr does not appear to contain request ID")
 
     def test_dx_actions(self):
         with self.assertRaises(subprocess.CalledProcessError):
