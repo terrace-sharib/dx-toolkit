@@ -393,6 +393,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
             _method, _url, _headers = _process_method_url_headers(method, url, headers)
             response = _get_pool_manager(kwargs).request(_method, _url, headers=_headers, body=data,
                                                          timeout=timeout, retries=False, **kwargs)
+            req_id = response.headers.get("x-request-id")
 
             if _UPGRADE_NOTIFY and response.headers.get('x-upgrade-info', '').startswith('A recommended update is available') and not os.environ.has_key('_ARGCOMPLETE'):
                 logger.info(response.headers['x-upgrade-info'])
@@ -415,7 +416,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                         error_class = exceptions.HTTPError(
                             "Unable to extract error class from response")
                     raise error_class(content, response.status)
-                raise HTTPError("{} {}".format(response.status, response.reason))
+                raise HTTPError("{} {} [RequestID={}]".format(response.status, response.reason, req_id))
 
             if want_full_response:
                 return response
@@ -424,8 +425,9 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                     if int(response.headers['content-length']) != len(response.data):
                         range_str = (' (%s)' % (headers['Range'],)) if 'Range' in headers else ''
                         raise exceptions.ContentLengthError(
-                            "Received response with content-length header set to %s but content length is %d%s" %
-                            (response.headers['content-length'], len(response.data), range_str)
+                            "Received response with content-length header set to %s but content length is %d%s." +
+                            "[RequestID=%s]" %
+                            (response.headers['content-length'], len(response.data), range_str, req_id)
                         )
 
                 content = response.data
@@ -455,7 +457,8 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                             # the client sees unparseable JSON, and we
                             # should be able to recover.
                             streaming_response_truncated = 'content-length' not in response.headers
-                            raise HTTPError("Invalid JSON received from server")
+                            req_id = response.headers.get('x-request-id')
+                            raise HTTPError("Invalid JSON received from server. [RequestID=%s]" % req_id)
                 return content
             raise AssertionError('Should never reach this line: expected a result to have been returned by now')
         except Exception as e:
