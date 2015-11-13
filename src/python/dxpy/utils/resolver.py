@@ -181,6 +181,9 @@ def is_project_explicit(path):
     #
     # For an explanation of the rules, see the unit tests
     # (test_dxpy.TestResolver.test_is_project_explicit).
+    #
+    # Note, this method need not validate that the path can otherwise be
+    # resolved; it can assume this as a precondition.
     return not is_hashid(path)
 
 
