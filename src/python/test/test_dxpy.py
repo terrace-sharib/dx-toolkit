@@ -1962,7 +1962,7 @@ class TestDXSearch(unittest.TestCase):
     def test_find_projects(self):
         dxproject = dxpy.DXProject()
         results = list(dxpy.find_projects())
-        found_proj = False;
+        found_proj = False
         for result in results:
             if result["id"] == dxproject.get_id():
                 self.assertEqual(result["level"], 'ADMINISTER')
@@ -1971,7 +1971,7 @@ class TestDXSearch(unittest.TestCase):
         self.assertTrue(found_proj)
 
         results = list(dxpy.find_projects(level='VIEW', describe=True))
-        found_proj = False;
+        found_proj = False
         for result in results:
             if result["id"] == self.second_proj_id:
                 self.assertEqual(result["level"], 'ADMINISTER')
@@ -2003,6 +2003,28 @@ class TestDXSearch(unittest.TestCase):
 
         matching_ids = (result["id"] for result in dxpy.find_projects(created_before=created - 1000))
         self.assertNotIn(dxproject.id, matching_ids)
+
+    @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org')
+    def test_find_org_projects_created(self):
+        org_id = "org-piratelabs"
+        dxproject = dxpy.DXProject(self.proj_id)
+        dxpy.api.project_update(dxproject.get_id(), {"billTo": org_id})
+        project_ppb = "project-0000000000000000000000pb"
+        org_projects = [dxproject.get_id(), project_ppb]
+
+        created = dxproject.created
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000))
+        self.assertItemsEqual(matching_ids, org_projects)
+
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_after=created - 1000))
+        self.assertItemsEqual(matching_ids, [dxproject.get_id()])
+
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000,
+                        created_after=created - 1000))
+        self.assertItemsEqual(matching_ids, [dxproject.get_id()])
+
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created - 1000))
+        self.assertItemsEqual(matching_ids, [project_ppb])
 
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
     def test_find_executions(self):
@@ -2162,6 +2184,10 @@ class TestHTTPResponses(unittest.TestCase):
             dxpy.DXHTTPRequest('http://localhost:20406', {}, prepend_srv=False, always_retry=False, max_retries=1)
         self.assertTrue(dxpy._is_retryable_exception(exception_cm.exception))
 
+    def test_case_insensitive_response_headers(self):
+        # Verify that response headers support case-insensitive lookup.
+        res = dxpy.DXHTTPRequest("/system/whoami", {}, want_full_response=True)
+        self.assertTrue("CONTENT-type" in res.headers)
 
 class TestDataobjectFunctions(unittest.TestCase):
     def setUp(self):

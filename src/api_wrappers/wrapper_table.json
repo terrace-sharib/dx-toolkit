@@ -765,6 +765,15 @@
         }
     ],
     [
+        "/org-xxxx/findMembers",
+        "orgFindMembers(req, objectId)",
+        {
+            "objectMethod": true,
+            "retryable": true,
+            "wikiLink": "https://wiki.dnanexus.com/API-Specification-v1.0.0/Organizations#API-method%3A-%2Forg-xxxx%2FfindMembers"
+        }
+    ],
+    [
         "/org-xxxx/findProjects",
         "orgFindProjects(req, objectId)",
         {
@@ -1113,6 +1122,24 @@
             "objectMethod": false,
             "retryable": false,
             "wikiLink": "https://wiki.dnanexus.com/API-Specification-v1.0.0/Records#API-method%3A-%2Frecord%2Fnew"
+        }
+    ],
+    [
+        "/system/describeDataObjects",
+        "systemDescribeDataObjects(req)",
+        {
+            "objectMethod": false,
+            "retryable": true,
+            "wikiLink": "https://wiki.dnanexus.com/API-Specification-v1.0.0/System-Methods#API-method:-/system/describeDataObjects"
+        }
+    ],
+    [
+        "/system/describeProjects",
+        "systemDescribeProjects(req)",
+        {
+            "objectMethod": false,
+            "retryable": true,
+            "wikiLink": "https://wiki.dnanexus.com/API-Specification-v1.0.0/System-Methods#API-method:-/system/describeProjects"
         }
     ],
     [

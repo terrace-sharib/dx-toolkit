@@ -1552,6 +1552,24 @@ def org_describe(object_id, input_params={}, always_retry=True, **kwargs):
     """
     return DXHTTPRequest('/%s/describe' % object_id, input_params, always_retry=always_retry, **kwargs)
 
+def orgFindMembers(*args, **kwargs):
+    """
+
+    .. deprecated:: 0.42.0
+       Use :func:`org_find_members()` instead.
+
+    """
+    print("dxpy.orgFindMembers is deprecated; please use org_find_members instead.", file=sys.stderr)
+    return org_find_members(*args, **kwargs)
+
+def org_find_members(object_id, input_params={}, always_retry=True, **kwargs):
+    """
+    Invokes the /org-xxxx/findMembers API method.
+
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Organizations#API-method%3A-%2Forg-xxxx%2FfindMembers
+    """
+    return DXHTTPRequest('/%s/findMembers' % object_id, input_params, always_retry=always_retry, **kwargs)
+
 def orgFindProjects(*args, **kwargs):
     """
 
@@ -2253,6 +2271,42 @@ def record_new(input_params={}, always_retry=False, **kwargs):
     For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Records#API-method%3A-%2Frecord%2Fnew
     """
     return DXHTTPRequest('/record/new', input_params, always_retry=always_retry, **kwargs)
+
+def systemDescribeDataObjects(*args, **kwargs):
+    """
+
+    .. deprecated:: 0.42.0
+       Use :func:`system_describe_data_objects()` instead.
+
+    """
+    print("dxpy.systemDescribeDataObjects is deprecated; please use system_describe_data_objects instead.", file=sys.stderr)
+    return system_describe_data_objects(*args, **kwargs)
+
+def system_describe_data_objects(input_params={}, always_retry=True, **kwargs):
+    """
+    Invokes the /system/describeDataObjects API method.
+
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/System-Methods#API-method:-/system/describeDataObjects
+    """
+    return DXHTTPRequest('/system/describeDataObjects', input_params, always_retry=always_retry, **kwargs)
+
+def systemDescribeProjects(*args, **kwargs):
+    """
+
+    .. deprecated:: 0.42.0
+       Use :func:`system_describe_projects()` instead.
+
+    """
+    print("dxpy.systemDescribeProjects is deprecated; please use system_describe_projects instead.", file=sys.stderr)
+    return system_describe_projects(*args, **kwargs)
+
+def system_describe_projects(input_params={}, always_retry=True, **kwargs):
+    """
+    Invokes the /system/describeProjects API method.
+
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/System-Methods#API-method:-/system/describeProjects
+    """
+    return DXHTTPRequest('/system/describeProjects', input_params, always_retry=always_retry, **kwargs)
 
 def systemFindAffiliates(*args, **kwargs):
     """
