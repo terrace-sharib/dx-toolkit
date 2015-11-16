@@ -191,8 +191,8 @@ def object_exists_in_project(obj_id, proj_id):
     '''
     :param obj_id: object ID
     :type obj_id: str
-    :param project: project ID
-    :type project: string
+    :param proj_id: project ID
+    :type proj_id: str
 
     Returns True if the specified data object can be found in the specified
     project.
