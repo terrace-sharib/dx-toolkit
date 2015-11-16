@@ -1380,7 +1380,7 @@ class TestDXClientDownloadDataEgressBilling(DXTestCase):
             return fd.read()
 
     def setUp(self):
-        self.temp_file_fd = tempfile.TemporaryFile()
+        self.temp_file_fd = tempfile.NamedTemporaryFile()
         # set output file to verify api call is called with correct project
         os.environ['_DX_DUMP_BILLED_PROJECT'] = self.temp_file_fd.name
 
