@@ -142,7 +142,10 @@ def download(args):
 
         # TODO: this could also be returned as metadata by resolve_path since
         # resolve_path knows these things in some circumstances
-        path_has_explicit_proj = is_project_explicit(path)
+        #
+        # May have (is_project_explicit and (project is None)) if the input is
+        # a JBOR
+        path_has_explicit_proj = is_project_explicit(path) and project is not None
 
         matching_folders = []
         # project may be none if path is an ID and there is no project context
