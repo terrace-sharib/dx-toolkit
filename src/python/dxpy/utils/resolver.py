@@ -197,6 +197,10 @@ def object_exists_in_project(obj_id, proj_id):
     Returns True if the specified data object can be found in the specified
     project.
     '''
+    if obj_id is None:
+        raise ValueError("Expected obj_id to be a string")
+    if proj_id is None:
+        raise ValueError("Expected proj_id to be a string")
     if not is_container_id(proj_id):
         raise ValueError('Expected %r to be a container ID' % (proj_id,))
     return try_call(dxpy.DXHTTPRequest, '/' + obj_id + '/describe', {'project': proj_id})['project'] == proj_id

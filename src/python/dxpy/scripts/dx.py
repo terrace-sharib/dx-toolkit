@@ -1768,7 +1768,8 @@ def cat(args):
             project = None
         # If the user explicitly provided the project and it doesn't contain
         # the file, don't allow the download.
-        if is_project_explicit(path) and not object_exists_in_project(entity_result['describe']['id'], project):
+        if is_project_explicit(path) and project is not None and \
+           not object_exists_in_project(entity_result['describe']['id'], project):
             parser.exit(1, fill('Error: project does not contain specified file object') + '\n')
 
         try:
