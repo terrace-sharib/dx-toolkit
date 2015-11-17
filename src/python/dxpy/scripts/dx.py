@@ -1775,7 +1775,9 @@ def cat(args):
         try:
             dxfile = dxpy.DXFile(entity_result['id'])
             while True:
-                chunk = dxfile.read(1024*1024, project=project)
+                # If we decided the project specification was not explicit, do
+                # not allow the workspace setting to bleed through
+                chunk = dxfile.read(1024*1024, project=project or dxpy.DXFile.NO_PROJECT_HINT)
                 if len(chunk) == 0:
                     break
                 sys.stdout.buffer.write(chunk)

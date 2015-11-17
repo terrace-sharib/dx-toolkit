@@ -88,6 +88,8 @@ class DXFile(DXDataObject):
     _http_threadpool = None
     _http_threadpool_size = DXFILE_HTTP_THREADS
 
+    NO_PROJECT_HINT = 'NO_PROJECT_HINT'
+
     @classmethod
     def set_http_threadpool_size(cls, num_threads):
         cls._http_threadpool_size = num_threads
@@ -619,7 +621,9 @@ class DXFile(DXDataObject):
             which billing account is billed for this download). If specified,
             must be a project in which this file exists. If not specified, the
             project ID specified in the handler is used for the download, IF it
-            contains this file.
+            contains this file. If set to DXFile.NO_PROJECT_HINT, no project ID
+            is supplied for the download, even if the handler specifies a
+            project ID.
         :type project: str or None
         :rtype: string
         :raises: :exc:`~dxpy.exceptions.ResourceNotFound` if *project* is
@@ -676,6 +680,8 @@ class DXFile(DXDataObject):
             project_from_handler = self.get_proj_id()
             if project_from_handler and object_exists_in_project(self.get_id(), project_from_handler):
                 project = project_from_handler
+        elif project == DXFile.NO_PROJECT_HINT:
+            project = None
 
         buf = self._read_buf
         buf_remaining_bytes = dxpy.utils.string_buffer_length(buf) - buf.tell()
