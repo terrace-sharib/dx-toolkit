@@ -217,14 +217,11 @@ def _get_org_update_args(args):
 
 def update_org(args):
     org_update_inputs = _get_org_update_args(args)
-    try:
-        dxpy.api.org_update(args.org_id, org_update_inputs)
-    except:
-        err_exit('Error while updating organization')
+    res = try_call(dxpy.api.org_update, args.org_id, org_update_inputs)
     if args.brief:
-        print(args.org_id)
+        print(res["id"])
     else:
-        print(fill("Updated {o}".format(o=args.org_id)))
+        print(fill("Updated the policies of {o}".format(o=res["id"])))
 
 
 def org_find_projects(args):
