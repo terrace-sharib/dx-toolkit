@@ -4192,9 +4192,9 @@ class TestDXClientOrg(DXTestCase):
         orig_name = dxpy.api.org_describe(org_id)["name"]
         orig_policy = dxpy.api.org_describe(org_id)["policies"]  # default policies = ADMIN
 
-        # test at least 1 argument required
-        with self.assertRaises(subprocess.CalledProcessError):
-            run('dx update org {o}'.format(o=org_id))
+        # Do not need to actually update the org at all.
+        res = run('dx update org {o} --brief'.format(o=org_id)).strip()
+        self.assertEqual(res, org_id)
 
         # test --name flag
         new_name = 'New Org Name'

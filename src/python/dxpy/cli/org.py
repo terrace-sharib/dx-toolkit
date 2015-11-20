@@ -200,17 +200,19 @@ def new_org(args):
 
 
 def _get_update_org_args(args):
-    if not args.name and not args.member_list_visibility and not args.project_transfer_ability:
-        err_exit("At least 1 of --name, --member-list-visibility, or --project-transfer-ability required")
-    else:
-        inputs = {"policies": dxpy.api.org_describe(args.org_id)['policies']}
-        if args.name:
-            inputs["name"] = args.name
-        if args.member_list_visibility:
-            inputs["policies"]["memberListVisibility"] = args.member_list_visibility
-        if args.project_transfer_ability:
-            inputs["policies"]["restrictProjectTransfer"] = args.project_transfer_ability
-        return inputs
+    org_update_inputs = {}
+
+    if args.name is not None:
+        org_update_inputs["name"] = args.name
+
+    if args.member_list_visibility is not None or args.project_transfer_ability is not None:
+        org_update_inputs["policies"] = {}
+    if args.member_list_visibility is not None:
+        org_update_inputs["policies"]["memberListVisibility"] = args.member_list_visibility
+    if args.project_transfer_ability is not None:
+        org_update_inputs["policies"]["restrictProjectTransfer"] = args.project_transfer_ability
+
+    return org_update_inputs
 
 
 def update_org(args):
