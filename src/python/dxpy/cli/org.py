@@ -199,7 +199,7 @@ def new_org(args):
         print('Created new org called "' + args.name + '" (' + resp['id'] + ')')
 
 
-def _get_update_org_args(args):
+def _get_org_update_args(args):
     org_update_inputs = {}
 
     if args.name is not None:
@@ -216,9 +216,9 @@ def _get_update_org_args(args):
 
 
 def update_org(args):
-    inputs = _get_update_org_args(args)
+    org_update_inputs = _get_org_update_args(args)
     try:
-        dxpy.api.org_update(args.org_id, inputs)
+        dxpy.api.org_update(args.org_id, org_update_inputs)
     except:
         err_exit('Error while updating organization')
     if args.brief:
