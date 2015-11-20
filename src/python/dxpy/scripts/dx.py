@@ -3871,7 +3871,8 @@ subparsers_update = parser_update.add_subparsers(parser_class=DXArgumentParser)
 subparsers_update.metavar = 'target'
 register_subparser(parser_update, categories=())
 
-parser_update_org = subparsers_update.add_parser('org', help='Update information about an org',
+parser_update_org = subparsers_update.add_parser('org',
+                                                 help='Update information about an org',
                                                  description='Update information about an org',
                                                  parents=[stdout_args, env_args],
                                                  prog='dx update org')
