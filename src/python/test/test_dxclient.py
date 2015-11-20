@@ -4185,6 +4185,39 @@ class TestDXClientOrg(DXTestCase):
         self.assertEqual(res['policies']["memberListVisibility"], "MEMBER")
         self.assertEqual(res['policies']["restrictProjectTransfer"], "MEMBER")
 
+    def test_update_org(self):
+        # Create new org
+        org_handle = self._get_unique_org_handle()
+        org_id = run('dx new org "Test New Org" --handle {o} --brief'.format(o=org_handle)).strip().split("\n")[0]
+        orig_name = dxpy.api.org_describe(org_id)["name"]
+        orig_policy = dxpy.api.org_describe(org_id)["policies"]  # default policies = ADMIN
+
+        # test at least 1 argument required
+        with self.assertRaises(subprocess.CalledProcessError):
+            run('dx update org {o}'.format(o=org_id))
+
+        # test --name flag
+        new_name = 'New Org Name'
+        run('dx update org {o} --name "New Org Name" --brief'.format(o=org_id))
+        res = dxpy.api.org_describe(org_id)["name"]
+        self.assertEqual(res, new_name)
+        self.assertNotEqual(res, orig_name)
+
+        policy = "MEMBER"
+        # test --member-list-visibility flag
+        run('dx update org {o} --member-list-visibility {p} --brief'.format(o=org_id, p=policy))
+        res = dxpy.api.org_describe(org_id)["policies"]
+        self.assertEqual(res["memberListVisibility"], policy)
+        self.assertEqual(res["restrictProjectTransfer"], orig_policy["restrictProjectTransfer"])
+        self.assertNotEqual(res["memberListVisibility"], orig_policy["memberListVisibility"])
+
+        # test --project-transfer-ability
+        run('dx update org {o} --project-transfer-ability {p} --brief'.format(o=org_id, p=policy))
+        res = dxpy.api.org_describe(org_id)["policies"]
+        self.assertEqual(res["restrictProjectTransfer"], policy)
+        self.assertEqual(res["memberListVisibility"], "MEMBER")
+        self.assertNotEqual(res["restrictProjectTransfer"], orig_policy["restrictProjectTransfer"])
+
 
 class TestDXClientNewProject(DXTestCase):
     def test_dx_new_project_with_region(self):

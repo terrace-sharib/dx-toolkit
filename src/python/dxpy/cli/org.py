@@ -199,6 +199,32 @@ def new_org(args):
         print('Created new org called "' + args.name + '" (' + resp['id'] + ')')
 
 
+def _get_update_org_args(args):
+    if not args.name and not args.member_list_visibility and not args.project_transfer_ability:
+        err_exit("At least 1 of --name, --member-list-visibility, or --project-transfer-ability required")
+    else:
+        inputs = {"policies": dxpy.api.org_describe(args.org_id)['policies']}
+        if args.name:
+            inputs["name"] = args.name
+        if args.member_list_visibility:
+            inputs["policies"]["memberListVisibility"] = args.member_list_visibility
+        if args.project_transfer_ability:
+            inputs["policies"]["restrictProjectTransfer"] = args.project_transfer_ability
+        return inputs
+
+
+def update_org(args):
+    inputs = _get_update_org_args(args)
+    try:
+        dxpy.api.org_update(args.org_id, inputs)
+    except:
+        err_exit('Error while updating organization')
+    if args.brief:
+        print(args.org_id)
+    else:
+        print(fill("Updated {o}".format(o=args.org_id)))
+
+
 def org_find_projects(args):
     try_call(process_find_by_property_args, args)
     try:
