@@ -4218,37 +4218,78 @@ class TestDXClientOrg(DXTestCase):
         self.assertEqual(new_org_name, cur_org_name)
         self.assertEqual(new_org_policies, cur_org_policies)
 
-        # TODO: Fix this.
-        # --name
+        # --name.
         cur_org_name = new_org_name
         cur_org_policies = new_org_policies
-        new_org_name = "foo"
-        self.assertNotEqual(new_org_name, cur_org_name)
-        res = run('dx update org {o} --name "{n}" --brief'.format(o=self.org_id, n=new_org_name)).strip()
+        proposed_org_name = "foo"
+        self.assertNotEqual(proposed_org_name, cur_org_name)
+        res = run('dx update org {o} --name "{n}" --brief'.format(o=self.org_id, n=proposed_org_name)).strip()
         self.assertEqual(res, self.org_id)
         new_org_desc = dxpy.api.org_describe(res)
         new_org_name = new_org_desc["name"]
         new_org_policies = new_org_desc["policies"]
-        self.assertEqual(new_org_desc["name"], cur_org_name)
-        self.assertEqual(new_org_desc["policies"], cur_org_policies)
+        self.assertEqual(new_org_name, proposed_org_name)
+        self.assertEqual(new_org_policies, cur_org_policies)
+
+        # --member-list-visibility.
+        cur_org_name = new_org_name
+        cur_org_policies = new_org_policies
+        proposed_mlv = "MEMBER"
+        self.assertNotEqual(proposed_mlv, cur_org_policies["memberListVisibility"])
+        res = run('dx update org {o} --member-list-visibility {p} --brief'.format(o=self.org_id,
+                                                                                  p=proposed_mlv)).strip()
+        self.assertEqual(res, self.org_id)
+        new_org_desc = dxpy.api.org_describe(res)
+        new_org_name = new_org_desc["name"]
+        new_org_policies = new_org_desc["policies"]
+        self.assertEqual(new_org_name, cur_org_name)
+        self.assertEqual(new_org_policies["restrictProjectTransfer"], cur_org_policies["restrictProjectTransfer"])
+        self.assertEqual(new_org_policies["memberListVisibility"], proposed_mlv)
 
         cur_org_name = new_org_name
+        cur_org_policies = new_org_policies
+        proposed_mlv = "PUBLIC"
+        self.assertNotEqual(proposed_mlv, cur_org_policies["memberListVisibility"])
+        res = run('dx update org {o} --member-list-visibility {p} --brief'.format(o=self.org_id,
+                                                                                  p=proposed_mlv)).strip()
+        self.assertEqual(res, self.org_id)
+        new_org_desc = dxpy.api.org_describe(res)
+        new_org_name = new_org_desc["name"]
+        new_org_policies = new_org_desc["policies"]
+        self.assertEqual(new_org_name, cur_org_name)
+        self.assertEqual(new_org_policies["restrictProjectTransfer"], cur_org_policies["restrictProjectTransfer"])
+        self.assertEqual(new_org_policies["memberListVisibility"], proposed_mlv)
 
-        # --member-list-visibility flag
-        mlv = "MEMBER"
-        self.assertNotEqual(mlv, cur_org_policies["mlv"])
-        run('dx update org {o} --member-list-visibility {p} --brief'.format(o=self.org_id, p=policy))
-        res = dxpy.api.org_describe(self.org_id)["policies"]
-        self.assertEqual(res["memberListVisibility"], policy)
-        self.assertEqual(res["restrictProjectTransfer"], orig_policy["restrictProjectTransfer"])
-        self.assertNotEqual(res["memberListVisibility"], orig_policy["memberListVisibility"])
+        # --project-transfer-ability.
+        cur_org_name = new_org_name
+        cur_org_policies = new_org_policies
+        proposed_pta = "ADMIN"
+        self.assertNotEqual(proposed_pta, cur_org_policies["restrictProjectTransfer"])
+        res = run('dx update org {o} --project-transfer-ability {p} --brief'.format(o=self.org_id,
+                                                                                    p=proposed_pta)).strip()
+        self.assertEqual(res, self.org_id)
+        new_org_desc = dxpy.api.org_describe(res)
+        new_org_name = new_org_desc["name"]
+        new_org_policies = new_org_desc["policies"]
+        self.assertEqual(new_org_name, cur_org_name)
+        self.assertEqual(new_org_policies["memberListVisibility"], cur_org_policies["memberListVisibility"])
+        self.assertEqual(new_org_policies["restrictProjectTransfer"], proposed_pta)
 
-        # test --project-transfer-ability
-        run('dx update org {o} --project-transfer-ability {p} --brief'.format(o=self.org_id, p=policy))
-        res = dxpy.api.org_describe(self.org_id)["policies"]
-        self.assertEqual(res["restrictProjectTransfer"], policy)
-        self.assertEqual(res["memberListVisibility"], "MEMBER")
-        self.assertNotEqual(res["restrictProjectTransfer"], orig_policy["restrictProjectTransfer"])
+        # All args.
+        cur_org_name = new_org_name
+        cur_org_policies = new_org_policies
+        proposed_org_name = "bar"
+        proposed_mlv = "ADMIN"
+        proposed_pta = "MEMBER"
+        res = run('dx update org {o} --name {n} --member-list-visibility {mlv} --project-transfer-ability {pta} --brief'.format(
+            o=self.org_id, n=proposed_org_name, mlv=proposed_mlv, pta=proposed_pta)).strip()
+        self.assertEqual(res, self.org_id)
+        new_org_desc = dxpy.api.org_describe(res)
+        new_org_name = new_org_desc["name"]
+        new_org_policies = new_org_desc["policies"]
+        self.assertEqual(new_org_name, proposed_org_name)
+        self.assertEqual(new_org_policies["memberListVisibility"], proposed_mlv)
+        self.assertEqual(new_org_policies["restrictProjectTransfer"], proposed_pta)
 
 
 class TestDXClientNewProject(DXTestCase):
