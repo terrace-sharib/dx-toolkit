@@ -4280,6 +4280,13 @@ class TestDXClientOrg(DXTestCase):
         self.assertEqual(new_org_policies["memberListVisibility"], proposed_mlv)
         self.assertEqual(new_org_policies["restrictProjectTransfer"], proposed_pta)
 
+    def test_org_update_format(self):
+        res = run('dx update org {o}'.format(o=self.org_id)).strip()
+        self.assertRegexpMatches(res, "^Updated.*{o}$".format(o=self.org_id))
+
+        res = run('dx update org {o} --brief'.format(o=self.org_id)).strip()
+        self.assertRegexpMatches(res, "^{o}$".format(o=self.org_id))
+
 
 class TestDXClientNewProject(DXTestCase):
     def test_dx_new_project_with_region(self):
