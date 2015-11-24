@@ -221,7 +221,7 @@ def update_org(args):
     if args.brief:
         print(res["id"])
     else:
-        print(fill("Updated the policies of {o}".format(o=res["id"])))
+        print(fill("Updated {o}".format(o=res["id"])))
 
 
 def org_find_projects(args):
