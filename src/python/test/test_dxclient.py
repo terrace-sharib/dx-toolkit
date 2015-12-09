@@ -6668,6 +6668,11 @@ class TestDXCp(DXTestCase):
         rm_project(proj_id)
 
 
+class TestDXErrorHandling(DXTestCase):
+    def test_fake_errors(self):
+        xxxx = dxpy.api.fake_error({'name': 'TestDXBuildReportHtml Project'})
+
+
 if __name__ == '__main__':
     if 'DXTEST_FULL' not in os.environ:
         sys.stderr.write('WARNING: env var DXTEST_FULL is not set; tests that create apps or run jobs will not be run\n')
