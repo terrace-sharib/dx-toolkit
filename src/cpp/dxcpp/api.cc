@@ -838,6 +838,14 @@ namespace dx {
     return orgDescribe(object_id, input_params.toString(), safe_to_retry);
   }
 
+  JSON orgFindMembers(const std::string &object_id, const std::string &input_params, const bool safe_to_retry) {
+    return DXHTTPRequest(std::string("/") + object_id + std::string("/findMembers"), input_params, safe_to_retry);
+  }
+
+  JSON orgFindMembers(const std::string &object_id, const JSON &input_params, const bool safe_to_retry) {
+    return orgFindMembers(object_id, input_params.toString(), safe_to_retry);
+  }
+
   JSON orgFindProjects(const std::string &object_id, const std::string &input_params, const bool safe_to_retry) {
     return DXHTTPRequest(std::string("/") + object_id + std::string("/findProjects"), input_params, safe_to_retry);
   }
@@ -1150,6 +1158,22 @@ namespace dx {
     return recordNew(input_params.toString(), safe_to_retry);
   }
 
+  JSON systemDescribeDataObjects(const std::string &input_params, const bool safe_to_retry) {
+    return DXHTTPRequest("/system/describeDataObjects", input_params, safe_to_retry);
+  }
+
+  JSON systemDescribeDataObjects(const JSON &input_params, const bool safe_to_retry) {
+    return systemDescribeDataObjects(input_params.toString(), safe_to_retry);
+  }
+
+  JSON systemDescribeProjects(const std::string &input_params, const bool safe_to_retry) {
+    return DXHTTPRequest("/system/describeProjects", input_params, safe_to_retry);
+  }
+
+  JSON systemDescribeProjects(const JSON &input_params, const bool safe_to_retry) {
+    return systemDescribeProjects(input_params.toString(), safe_to_retry);
+  }
+
   JSON systemFindAffiliates(const std::string &input_params, const bool safe_to_retry) {
     return DXHTTPRequest("/system/findAffiliates", input_params, safe_to_retry);
   }
@@ -1228,6 +1252,14 @@ namespace dx {
 
   JSON systemFindProjectMembers(const JSON &input_params, const bool safe_to_retry) {
     return systemFindProjectMembers(input_params.toString(), safe_to_retry);
+  }
+
+  JSON systemFindOrgs(const std::string &input_params, const bool safe_to_retry) {
+    return DXHTTPRequest("/system/findOrgs", input_params, safe_to_retry);
+  }
+
+  JSON systemFindOrgs(const JSON &input_params, const bool safe_to_retry) {
+    return systemFindOrgs(input_params.toString(), safe_to_retry);
   }
 
   JSON systemGlobalSearch(const std::string &input_params, const bool safe_to_retry) {

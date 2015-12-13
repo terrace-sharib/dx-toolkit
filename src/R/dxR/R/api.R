@@ -1028,7 +1028,7 @@ appletAddTags <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fapplet-xxxx\%2Fdescribe}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fapplet-xxxx\%2Fdescribe}
 appletDescribe <- function(objectID,
                            inputParams=emptyNamedList,
                            jsonifyData=TRUE,
@@ -1061,7 +1061,7 @@ appletDescribe <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fapplet-xxxx\%2Fget}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fapplet-xxxx\%2Fget}
 appletGet <- function(objectID,
                       inputParams=emptyNamedList,
                       jsonifyData=TRUE,
@@ -1226,7 +1226,7 @@ appletRename <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fapplet-xxxx\%2Frun}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fapplet-xxxx\%2Frun}
 appletRun <- function(objectID,
                       inputParams=emptyNamedList,
                       jsonifyData=TRUE,
@@ -1291,7 +1291,7 @@ appletSetProperties <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fapplet\%2Fnew}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fapplet\%2Fnew}
 appletNew <- function(inputParams=emptyNamedList,
                       jsonifyData=TRUE,
                       alwaysRetry=FALSE) {
@@ -2626,7 +2626,7 @@ gtableNew <- function(inputParams=emptyNamedList,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fjob-xxxx\%2FaddTags}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fjob-xxxx\%2FaddTags}
 jobAddTags <- function(objectID,
                        inputParams=emptyNamedList,
                        jsonifyData=TRUE,
@@ -2659,7 +2659,7 @@ jobAddTags <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fjob-xxxx\%2Fdescribe}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fjob-xxxx\%2Fdescribe}
 jobDescribe <- function(objectID,
                         inputParams=emptyNamedList,
                         jsonifyData=TRUE,
@@ -2692,7 +2692,7 @@ jobDescribe <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fjob-xxxx\%2FgetLog}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fjob-xxxx\%2FgetLog}
 jobGetLog <- function(objectID,
                       inputParams=emptyNamedList,
                       jsonifyData=TRUE,
@@ -2725,7 +2725,7 @@ jobGetLog <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fjob-xxxx\%2FremoveTags}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fjob-xxxx\%2FremoveTags}
 jobRemoveTags <- function(objectID,
                           inputParams=emptyNamedList,
                           jsonifyData=TRUE,
@@ -2758,7 +2758,7 @@ jobRemoveTags <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fjob-xxxx\%2FsetProperties}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fjob-xxxx\%2FsetProperties}
 jobSetProperties <- function(objectID,
                              inputParams=emptyNamedList,
                              jsonifyData=TRUE,
@@ -2791,7 +2791,7 @@ jobSetProperties <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fjob-xxxx\%2Fterminate}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fjob-xxxx\%2Fterminate}
 jobTerminate <- function(objectID,
                          inputParams=emptyNamedList,
                          jsonifyData=TRUE,
@@ -2823,7 +2823,7 @@ jobTerminate <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets\%20and\%20Entry\%20Points#API-method\%3A-\%2Fjob\%2Fnew}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method\%3A-\%2Fjob\%2Fnew}
 jobNew <- function(inputParams=emptyNamedList,
                    jsonifyData=TRUE,
                    alwaysRetry=FALSE) {
@@ -2909,6 +2909,39 @@ orgDescribe <- function(objectID,
                         jsonifyData=TRUE,
                         alwaysRetry=TRUE) {
   resource <- paste('/', objectID, '/', 'describe', sep='')
+  dxHTTPRequest(resource,
+                inputParams,
+                jsonifyData=jsonifyData,
+                alwaysRetry=alwaysRetry)
+}
+
+##' orgFindMembers API wrapper
+##'
+##' This function makes an API call to the \code{/org-xxxx/findMembers} API
+##' method; it is a simple wrapper around the \code{\link{dxHTTPRequest}}
+##' function which makes POST HTTP requests to the API server.
+##'
+##' 
+##' @param objectID DNAnexus object ID
+##' @param inputParams Either an R object that will be converted into JSON
+##' using \code{RJSONIO::toJSON} to be used as the input to the API call.  If
+##' providing the JSON string directly, you must set \code{jsonifyData} to
+##' \code{FALSE}.
+##' @param jsonifyData Whether to call \code{RJSONIO::toJSON} on
+##' \code{inputParams} to create the JSON string or pass through the value of
+##' \code{inputParams} directly.  (Default is \code{TRUE}.)
+##' @param alwaysRetry Whether to always retry even when no response is
+##' received from the API server
+##' @return If the API call is successful, the parsed JSON of the API server
+##' response is returned (using \code{RJSONIO::fromJSON}).
+##' @export
+##' @seealso \code{\link{dxHTTPRequest}}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Organizations#API-method\%3A-\%2Forg-xxxx\%2FfindMembers}
+orgFindMembers <- function(objectID,
+                           inputParams=emptyNamedList,
+                           jsonifyData=TRUE,
+                           alwaysRetry=TRUE) {
+  resource <- paste('/', objectID, '/', 'findMembers', sep='')
   dxHTTPRequest(resource,
                 inputParams,
                 jsonifyData=jsonifyData,
@@ -3227,7 +3260,7 @@ projectClone <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Projects#API-method\%3A-\%2Fproject-xxxx\%2FdecreasePermissions}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Project-Permissions-and-Sharing#API-method\%3A-\%2Fproject-xxxx\%2FdecreasePermissions}
 projectDecreasePermissions <- function(objectID,
                                        inputParams=emptyNamedList,
                                        jsonifyData=TRUE,
@@ -3359,7 +3392,7 @@ projectInvite <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Projects#API-method\%3A-\%2Fproject-xxxx\%2Fleave}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Project-Permissions-and-Sharing#API-method\%3A-\%2Fproject-xxxx\%2Fleave}
 projectLeave <- function(objectID,
                          inputParams=emptyNamedList,
                          jsonifyData=TRUE,
@@ -3848,7 +3881,7 @@ recordAddTypes <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Data\%20Object-Lifecycle#API-method\%3A-\%2Fclass-xxxx\%2Fclose}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Data-Object-Lifecycle#API-method\%3A-\%2Fclass-xxxx\%2Fclose}
 recordClose <- function(objectID,
                         inputParams=emptyNamedList,
                         jsonifyData=TRUE,
@@ -4184,6 +4217,60 @@ recordNew <- function(inputParams=emptyNamedList,
   dxHTTPRequest('/record/new', inputParams, jsonifyData=jsonifyData, alwaysRetry=alwaysRetry)
 }
 
+##' systemDescribeDataObjects API wrapper
+##'
+##' This function makes an API call to the \code{/system/describeDataObjects} API
+##' method; it is a simple wrapper around the \code{\link{dxHTTPRequest}}
+##' function which makes POST HTTP requests to the API server.
+##'
+##' 
+##' @param inputParams Either an R object that will be converted into JSON
+##' using \code{RJSONIO::toJSON} to be used as the input to the API call.  If
+##' providing the JSON string directly, you must set \code{jsonifyData} to
+##' \code{FALSE}.
+##' @param jsonifyData Whether to call \code{RJSONIO::toJSON} on
+##' \code{inputParams} to create the JSON string or pass through the value of
+##' \code{inputParams} directly.  (Default is \code{TRUE}.)
+##' @param alwaysRetry Whether to always retry even when no response is
+##' received from the API server
+##' @return If the API call is successful, the parsed JSON of the API server
+##' response is returned (using \code{RJSONIO::fromJSON}).
+##' @export
+##' @seealso \code{\link{dxHTTPRequest}}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/System-Methods#API-method:-/system/describeDataObjects}
+systemDescribeDataObjects <- function(inputParams=emptyNamedList,
+                                      jsonifyData=TRUE,
+                                      alwaysRetry=TRUE) {
+  dxHTTPRequest('/system/describeDataObjects', inputParams, jsonifyData=jsonifyData, alwaysRetry=alwaysRetry)
+}
+
+##' systemDescribeProjects API wrapper
+##'
+##' This function makes an API call to the \code{/system/describeProjects} API
+##' method; it is a simple wrapper around the \code{\link{dxHTTPRequest}}
+##' function which makes POST HTTP requests to the API server.
+##'
+##' 
+##' @param inputParams Either an R object that will be converted into JSON
+##' using \code{RJSONIO::toJSON} to be used as the input to the API call.  If
+##' providing the JSON string directly, you must set \code{jsonifyData} to
+##' \code{FALSE}.
+##' @param jsonifyData Whether to call \code{RJSONIO::toJSON} on
+##' \code{inputParams} to create the JSON string or pass through the value of
+##' \code{inputParams} directly.  (Default is \code{TRUE}.)
+##' @param alwaysRetry Whether to always retry even when no response is
+##' received from the API server
+##' @return If the API call is successful, the parsed JSON of the API server
+##' response is returned (using \code{RJSONIO::fromJSON}).
+##' @export
+##' @seealso \code{\link{dxHTTPRequest}}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/System-Methods#API-method:-/system/describeProjects}
+systemDescribeProjects <- function(inputParams=emptyNamedList,
+                                   jsonifyData=TRUE,
+                                   alwaysRetry=TRUE) {
+  dxHTTPRequest('/system/describeProjects', inputParams, jsonifyData=jsonifyData, alwaysRetry=alwaysRetry)
+}
+
 ##' systemFindAffiliates API wrapper
 ##'
 ##' This function makes an API call to the \code{/system/findAffiliates} API
@@ -4451,6 +4538,33 @@ systemFindProjectMembers <- function(inputParams=emptyNamedList,
                                      jsonifyData=TRUE,
                                      alwaysRetry=TRUE) {
   dxHTTPRequest('/system/findProjectMembers', inputParams, jsonifyData=jsonifyData, alwaysRetry=alwaysRetry)
+}
+
+##' systemFindOrgs API wrapper
+##'
+##' This function makes an API call to the \code{/system/findOrgs} API
+##' method; it is a simple wrapper around the \code{\link{dxHTTPRequest}}
+##' function which makes POST HTTP requests to the API server.
+##'
+##' 
+##' @param inputParams Either an R object that will be converted into JSON
+##' using \code{RJSONIO::toJSON} to be used as the input to the API call.  If
+##' providing the JSON string directly, you must set \code{jsonifyData} to
+##' \code{FALSE}.
+##' @param jsonifyData Whether to call \code{RJSONIO::toJSON} on
+##' \code{inputParams} to create the JSON string or pass through the value of
+##' \code{inputParams} directly.  (Default is \code{TRUE}.)
+##' @param alwaysRetry Whether to always retry even when no response is
+##' received from the API server
+##' @return If the API call is successful, the parsed JSON of the API server
+##' response is returned (using \code{RJSONIO::fromJSON}).
+##' @export
+##' @seealso \code{\link{dxHTTPRequest}}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Search#API-method:-/system/findOrgs}
+systemFindOrgs <- function(inputParams=emptyNamedList,
+                           jsonifyData=TRUE,
+                           alwaysRetry=TRUE) {
+  dxHTTPRequest('/system/findOrgs', inputParams, jsonifyData=jsonifyData, alwaysRetry=alwaysRetry)
 }
 
 ##' systemGlobalSearch API wrapper
@@ -4744,7 +4858,7 @@ workflowAddTypes <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Data\%20Object-Lifecycle#API-method\%3A-\%2Fclass-xxxx\%2Fclose}
+##' @references API spec documentation: \url{https://wiki.dnanexus.com/API-Specification-v1.0.0/Data-Object-Lifecycle#API-method\%3A-\%2Fclass-xxxx\%2Fclose}
 workflowClose <- function(objectID,
                           inputParams=emptyNamedList,
                           jsonifyData=TRUE,

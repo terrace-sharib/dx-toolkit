@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -300,7 +300,7 @@ class DXExecDependencyInstaller(object):
             print(message)
 
     def generate_shellcode(self, dep_group):
-        base_apt_shellcode = "apt-get install --yes --no-install-recommends {p}"
+        base_apt_shellcode = "export DEBIAN_FRONTEND=noninteractive && apt-get install --yes --no-install-recommends {p}"
         dx_apt_update_shellcode = "apt-get update -o Dir::Etc::sourcelist=sources.list.d/nucleus.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0"
         change_apt_archive = r"sed -i -e s?http://.*.ec2.archive.ubuntu.com?http://us.archive.ubuntu.com? /etc/apt/sources.list"
         apt_err_msg = "APT failed, retrying with full update against ubuntu.com"

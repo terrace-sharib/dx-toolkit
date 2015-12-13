@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -30,6 +30,7 @@ import dxpy
 from . import DXDataObject, DXJob
 from ..utils import merge
 from ..exceptions import DXError
+from ..compat import basestring
 
 class DXExecutable:
     '''Methods in :class:`!DXExecutable` are used by

@@ -319,6 +319,9 @@ namespace dx {
   JSON orgDescribe(const std::string &object_id, const std::string &input_params="{}", const bool safe_to_retry=true);
   JSON orgDescribe(const std::string &object_id, const dx::JSON &input_params, const bool safe_to_retry=true);
 
+  JSON orgFindMembers(const std::string &object_id, const std::string &input_params="{}", const bool safe_to_retry=true);
+  JSON orgFindMembers(const std::string &object_id, const dx::JSON &input_params, const bool safe_to_retry=true);
+
   JSON orgFindProjects(const std::string &object_id, const std::string &input_params="{}", const bool safe_to_retry=true);
   JSON orgFindProjects(const std::string &object_id, const dx::JSON &input_params, const bool safe_to_retry=true);
 
@@ -436,6 +439,12 @@ namespace dx {
   JSON recordNew(const std::string &input_params="{}", const bool safe_to_retry=false);
   JSON recordNew(const dx::JSON &input_params, const bool safe_to_retry=false);
 
+  JSON systemDescribeDataObjects(const std::string &input_params="{}", const bool safe_to_retry=true);
+  JSON systemDescribeDataObjects(const dx::JSON &input_params, const bool safe_to_retry=true);
+
+  JSON systemDescribeProjects(const std::string &input_params="{}", const bool safe_to_retry=true);
+  JSON systemDescribeProjects(const dx::JSON &input_params, const bool safe_to_retry=true);
+
   JSON systemFindAffiliates(const std::string &input_params="{}", const bool safe_to_retry=true);
   JSON systemFindAffiliates(const dx::JSON &input_params, const bool safe_to_retry=true);
 
@@ -465,6 +474,9 @@ namespace dx {
 
   JSON systemFindProjectMembers(const std::string &input_params="{}", const bool safe_to_retry=true);
   JSON systemFindProjectMembers(const dx::JSON &input_params, const bool safe_to_retry=true);
+
+  JSON systemFindOrgs(const std::string &input_params="{}", const bool safe_to_retry=true);
+  JSON systemFindOrgs(const dx::JSON &input_params, const bool safe_to_retry=true);
 
   JSON systemGlobalSearch(const std::string &input_params="{}", const bool safe_to_retry=true);
   JSON systemGlobalSearch(const dx::JSON &input_params, const bool safe_to_retry=true);

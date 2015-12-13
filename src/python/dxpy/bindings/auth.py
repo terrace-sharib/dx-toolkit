@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -29,7 +29,7 @@ def user_info(authserver_host=None, authserver_port=None):
 
     """
     authserver = get_auth_server_name(authserver_host, authserver_port)
-    return DXHTTPRequest(authserver + "/user_info", {}, prepend_srv=False)
+    return DXHTTPRequest(authserver + "/system/getUserInfo", {}, prepend_srv=False)
 
 def whoami():
     """

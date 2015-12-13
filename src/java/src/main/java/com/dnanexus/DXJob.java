@@ -1,4 +1,4 @@
-// Copyright (C) 2013-2014 DNAnexus, Inc.
+// Copyright (C) 2013-2015 DNAnexus, Inc.
 //
 // This file is part of dx-toolkit (DNAnexus platform client libraries).
 //
@@ -434,7 +434,7 @@ public final class DXJob extends DXExecution {
 
     @Override
     public void terminate() {
-        DXAPI.jobTerminate(this.getId(), JobTerminateResponse.class);
+        DXAPI.jobTerminate(this.getId(), JobTerminateResponse.class, this.env);
     }
 
     /**

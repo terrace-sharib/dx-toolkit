@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -23,17 +23,16 @@ from __future__ import print_function, unicode_literals, division, absolute_impo
 # TODO: refactor all dx run helper functions here
 
 import os, sys, json, collections, pipes
-import re
 
 import dxpy
 from . import INTERACTIVE_CLI
 from ..exceptions import DXCLIError, DXError
-from ..utils.printing import (RED, GREEN, BLUE, YELLOW, WHITE, BOLD, ENDC, DELIMITER, UNDERLINE, get_delimiter, fill)
+from ..utils.printing import (RED, GREEN, WHITE, BOLD, ENDC, UNDERLINE, fill)
 from ..utils.describe import (get_find_executions_string, get_ls_l_desc, parse_typespec)
 from ..utils.resolver import (get_first_pos_of_char, is_hashid, is_job_id, is_localjob_id, paginate_and_pick, pick,
-                              resolve_existing_path, resolve_multiple_existing_paths, split_unescaped)
+                              resolve_existing_path, resolve_multiple_existing_paths, split_unescaped, is_analysis_id)
 from ..utils import OrderedDefaultdict
-from ..compat import input, str, shlex
+from ..compat import input, str, shlex, basestring
 
 ####################
 # -i Input Parsing #
@@ -460,7 +459,13 @@ class ExecutableInputs(object):
             entity_result = results[input_value]['name']
             if input_class is None:
                 if entity_result is not None:
-                    if is_hashid(input_value):
+                    if isinstance(entity_result, basestring):
+                        # Case: -ifoo=job-012301230123012301230123
+                        # Case: -ifoo=analysis-012301230123012301230123
+                        assert(is_job_id(entity_result) or
+                               (is_analysis_id(entity_result)))
+                        input_value = entity_result
+                    elif is_hashid(input_value):
                         input_value = {'$dnanexus_link': entity_result['id']}
                     elif 'describe' in entity_result:
                         # Then findDataObjects was called (returned describe hash)
@@ -525,16 +530,23 @@ class ExecutableInputs(object):
                 input_class = self.input_spec[input_name]['class']
 
         if input_class is None:
-            done = False
+            resolved_input_as_jbor = False
             try:
                 # Resolve "job-xxxx:output-name" syntax into a canonical job ref
                 job_id, field = split_unescaped(':', input_value)
-                if is_job_id(job_id) or is_localjob_id(job_id):
-                    input_value = _construct_jbor(job_id, field)
-                    done = True
             except:
                 pass
-            if not done:
+            else:
+                if is_job_id(job_id) or is_localjob_id(job_id):
+                    input_value = _construct_jbor(job_id, field)
+                    resolved_input_as_jbor = True
+
+            if resolved_input_as_jbor:
+                if isinstance(self.inputs[input_name], list):
+                    self.inputs[input_name].append(input_value)
+                else:
+                    self.inputs[input_name] = input_value
+            else:
                 try:
                     parsed_input_value = json.loads(input_value, object_pairs_hook=collections.OrderedDict)
                     if type(parsed_input_value) not in (collections.OrderedDict, list, int, long, float):

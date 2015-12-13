@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -32,6 +32,7 @@ import dxpy
 from . import DXDataObject
 from . import __dict__ as all_bindings
 from ..exceptions import DXError
+from ..compat import basestring
 
 def dxlink(object_id, project_id=None):
     '''
@@ -97,7 +98,7 @@ def _guess_link_target_type(link):
             link = link['$dnanexus_link']
         else:
             link = link['$dnanexus_link']['id']
-    class_name, _id = link.split("-")
+    class_name, _id = link.split("-", 1)
     class_name = 'DX'+class_name.capitalize()
     if class_name == 'DXGtable':
         class_name = 'DXGTable'

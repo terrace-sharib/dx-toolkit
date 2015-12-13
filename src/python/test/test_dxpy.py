@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -26,8 +26,9 @@ import subprocess
 
 import dxpy
 import dxpy_testutil as testutil
-from dxpy.exceptions import DXAPIError, DXFileError, DXError, DXJobFailureError, ServiceUnavailable, InvalidInput
+from dxpy.exceptions import (DXAPIError, DXFileError, DXError, DXJobFailureError, ResourceNotFound)
 from dxpy.utils import pretty_print, warn
+from dxpy.utils.resolver import resolve_path, resolve_existing_path, ResolutionError, is_project_explicit
 
 def get_objects_from_listf(listf):
     objects = []
@@ -91,6 +92,20 @@ class TestDXProject(unittest.TestCase):
             with self.assertRaises(DXError):
                 dxcontainer = dxpy.DXContainer()
                 dxcontainer.set_id(bad_value)
+
+    @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test user')
+    def test_invite_without_email(self):
+        user_id = 'user-000000000000000000000001'
+        dxproject = dxpy.DXProject(self.proj_id)
+
+        # Check that user is not already invited to project
+        project_members = dxpy.api.project_describe(dxproject.get_id(),
+                                                    {'fields': {'permissions': True}})['permissions']
+        self.assertNotIn(user_id, project_members.keys())
+
+        dxproject.invite(user_id, 'VIEW', send_email=False)
+        res = dxpy.api.project_describe(dxproject.get_id(), {'fields': {'permissions': True}})['permissions']
+        self.assertEquals(res[user_id], 'VIEW')
 
     def test_update_describe(self):
         dxproject = dxpy.DXProject()
@@ -219,6 +234,16 @@ class TestDXFileFunctions(unittest.TestCase):
             "python -c 'import dxpy; print dxpy.bindings.dxfile.DEFAULT_BUFFER_SIZE'", shell=True, env=env)
         self.assertEqual(int(buffer_size), 16 * 1024 * 1024)
 
+    def test_generate_read_requests(self):
+        with testutil.temporary_project() as host:
+            dxfile = dxpy.upload_string("foo", project=host.get_id(), wait_on_close=True)
+            with testutil.temporary_project() as p, self.assertRaises(ResourceNotFound):
+                # The file doesn't exist in this project
+                list(dxfile._generate_read_requests(project=p.get_id()))
+            with self.assertRaises(ResourceNotFound):
+                # This project doesn't even exist
+                list(dxfile._generate_read_requests(project="project-012301230123012301230123"))
+
 
 class TestDXFile(unittest.TestCase):
 
@@ -300,7 +325,15 @@ class TestDXFile(unittest.TestCase):
                          os.path.basename(self.foo_file.name))
 
         dxpy.download_dxfile(self.dxfile.get_id(), self.new_file.name)
+        self.assertTrue(filecmp.cmp(self.foo_file.name, self.new_file.name))
 
+        dxpy.download_dxfile(filename=self.new_file.name, dxid=self.dxfile.get_id())
+        self.assertTrue(filecmp.cmp(self.foo_file.name, self.new_file.name))
+
+        dxpy.download_dxfile(dxid=self.dxfile, filename=self.new_file.name)
+        self.assertTrue(filecmp.cmp(self.foo_file.name, self.new_file.name))
+
+        dxpy.download_dxfile(self.dxfile, filename=self.new_file.name)
         self.assertTrue(filecmp.cmp(self.foo_file.name, self.new_file.name))
 
     def test_upload_string_dxfile(self):
@@ -349,6 +382,76 @@ class TestDXFile(unittest.TestCase):
             same_dxfile.seek(-1, 2)
             buf = same_dxfile.read()
             self.assertEqual(self.foo_str[-1:], buf)
+
+    def test_download_project_selection(self):
+        with testutil.temporary_project() as p, testutil.temporary_project() as p2:
+            # Same file is available in both projects
+            f = dxpy.upload_string(self.foo_str, project=p.get_id(), wait_on_close=True)
+            dxpy.api.project_clone(p.get_id(), {"objects": [f.get_id()], "project": p2.get_id()})
+
+            # Project specified in handler: bill that project for download
+            with tempfile.NamedTemporaryFile() as tmp:
+                os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
+                f1 = dxpy.DXFile(dxid=f.get_id(), project=p.get_id())
+                f1.read(4)
+                with open(tmp.name, "r") as fd:
+                    self.assertEqual(fd.read(), p.get_id())
+
+            # Project specified in read() call: overrides project specified in
+            # handler
+            with tempfile.NamedTemporaryFile() as tmp:
+                os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
+                f2 = dxpy.DXFile(dxid=f.get_id(), project=p.get_id())
+                f2.read(4, project=p2.get_id())
+                with open(tmp.name, "r") as fd:
+                    self.assertEqual(fd.read(), p2.get_id())
+
+            # Project specified in neither handler nor read() call: set no hint
+            # when making API call
+            with tempfile.NamedTemporaryFile() as tmp:
+                os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
+                f3 = dxpy.DXFile(dxid=f.get_id())  # project defaults to project context
+                f3.read(4)
+                with open(tmp.name, "r") as fd:
+                    self.assertEqual(fd.read(), "")
+
+            # Project specified in read() that doesn't contain the file. The
+            # call should fail.
+            dxpy.api.project_remove_objects(p2.get_id(), {"objects": [f.get_id()]})
+            f4 = dxpy.DXFile(dxid=f.get_id())
+            with self.assertRaises(ResourceNotFound):
+                f4.read(4, project=p2.get_id())
+
+            # Project specified in handler that doesn't contain the file. The
+            # call must succeed for backward compatibility (and bill no project
+            # in particular).
+            with tempfile.NamedTemporaryFile() as tmp:
+                os.environ['_DX_DUMP_BILLED_PROJECT'] = tmp.name
+                f5 = dxpy.DXFile(dxid=f.get_id(), project=p2.get_id())
+                f5.read(4)
+                with open(tmp.name, "r") as fd:
+                    self.assertEqual(fd.read(), "")
+
+            del os.environ['_DX_DUMP_BILLED_PROJECT']
+
+    def test_read_with_invalid_project(self):
+        dxfile = dxpy.upload_string(self.foo_str, wait_on_close=True)
+        with testutil.temporary_project() as p, self.assertRaises(ResourceNotFound):
+            # The file doesn't exist in this project
+            dxfile.read(project=p.get_id())
+        # Try the same thing again, just to make sure read() doesn't have the
+        # side effect of wedging the DXFile when it fails
+        with testutil.temporary_project() as p, self.assertRaises(ResourceNotFound):
+            dxfile.read(project=p.get_id())
+        # Try the same thing again, now we should be able to succeed
+        self.assertEqual(dxfile.read(), self.foo_str)
+
+        dxfile = dxpy.upload_string(self.foo_str, wait_on_close=True)
+        with self.assertRaises(ResourceNotFound):
+            # This project doesn't even exist
+            dxfile.read(project="project-012301230123012301230123")
+        # Try the same thing again, now we should be able to succeed
+        self.assertEqual(dxfile.read(), self.foo_str)
 
     def test_dxfile_sequential_optimization(self):
         # Make data longer than 128k to trigger the
@@ -414,19 +517,30 @@ class TestDXFile(unittest.TestCase):
 
     def test_download_url_helper(self):
         dxfile = dxpy.upload_string(self.foo_str, wait_on_close=True)
-        for opts in {}, {"preauthenticated": True, "filename": "foo"}:
-            # File download token/URL is cached
-            dxfile = dxpy.open_dxfile(dxfile.get_id())
-            url1 = dxfile.get_download_url(**opts)
-            url2 = dxfile.get_download_url(**opts)
-            self.assertEqual(url1, url2)
-            # Cache is invalidated when the client knows the token has expired
-            # (subject to clock skew allowance of 60s)
-            dxfile = dxpy.open_dxfile(dxfile.get_id())
-            url3 = dxfile.get_download_url(duration=60, **opts)
-            url4 = dxfile.get_download_url(**opts)
-            self.assertNotEqual(url3, url4)
+        opts = {"preauthenticated": True, "filename": "foo"}
+        # File download token/URL is cached
+        dxfile = dxpy.open_dxfile(dxfile.get_id())
+        url1 = dxfile.get_download_url(**opts)
+        url2 = dxfile.get_download_url(**opts)
+        self.assertEqual(url1, url2)
+        # Cache is invalidated when the client knows the token has expired
+        # (subject to clock skew allowance of 60s)
+        dxfile = dxpy.open_dxfile(dxfile.get_id())
+        url3 = dxfile.get_download_url(duration=60, **opts)
+        url4 = dxfile.get_download_url(**opts)
+        self.assertNotEqual(url3, url4)
 
+    def test_download_url_rejects_invalid_project(self):
+        dxfile = dxpy.upload_string(self.foo_str, wait_on_close=True)
+        with testutil.temporary_project() as p, self.assertRaises(ResourceNotFound):
+            # The file doesn't exist in this project
+            dxfile.get_download_url(project=p.get_id())
+        with self.assertRaises(ResourceNotFound):
+            # This project doesn't even exist
+            dxfile.get_download_url(project="project-012301230123012301230123")
+
+
+@unittest.skipUnless(testutil.TEST_GTABLE, 'skipping test that would create a GTable')
 class TestDXGTable(unittest.TestCase):
     """
     TODO: Test iterators, gri, and other queries
@@ -1233,33 +1347,31 @@ def main(number):
                                                 "name": "stagename",
                                                 "executable": dxapplet.get_id()})['stage']
         # control (no request)
-        dxanalysis = dxworkflow.run({})
-        time.sleep(2)
-        dxjob = dxpy.DXJob(dxanalysis.describe()['stages'][0]['execution']['id'])
+        analysis_describe = testutil.analysis_describe_with_retry(dxworkflow.run({}))
+        dxjob = dxpy.DXJob(analysis_describe['stages'][0]['execution']['id'])
         self.assertEqual(dxjob.describe()['instanceType'], self.default_inst_type)
 
         # request for all stages and all entry points
-        dxanalysis = dxworkflow.run({}, instance_type="mem2_hdd2_x1")
-        time.sleep(2)
-        dxjob = dxpy.DXJob(dxanalysis.describe()['stages'][0]['execution']['id'])
+        analysis_describe = testutil.analysis_describe_with_retry(dxworkflow.run({}, instance_type="mem2_hdd2_x1"))
+        dxjob = dxpy.DXJob(analysis_describe['stages'][0]['execution']['id'])
         self.assertEqual(dxjob.describe()['instanceType'], 'mem2_hdd2_x1')
 
         # request for all stages, overriding some entry points
-        dxanalysis = dxworkflow.run({}, instance_type={"*": "mem2_hdd2_x1", "foo": "mem2_hdd2_x2"})
-        time.sleep(2)
-        dxjob = dxpy.DXJob(dxanalysis.describe()['stages'][0]['execution']['id'])
+        analysis_describe = testutil.analysis_describe_with_retry(
+            dxworkflow.run({}, instance_type={"*": "mem2_hdd2_x1", "foo": "mem2_hdd2_x2"}))
+        dxjob = dxpy.DXJob(analysis_describe['stages'][0]['execution']['id'])
         self.assertEqual(dxjob.describe()['instanceType'], 'mem2_hdd2_x1')
 
         # request for the stage specifically, for all entry points
-        dxanalysis = dxworkflow.run({}, stage_instance_types={stage_id: "mem2_hdd2_x2"})
-        time.sleep(2)
-        dxjob = dxpy.DXJob(dxanalysis.describe()['stages'][0]['execution']['id'])
+        analysis_describe = testutil.analysis_describe_with_retry(
+            dxworkflow.run({}, stage_instance_types={stage_id: "mem2_hdd2_x2"}))
+        dxjob = dxpy.DXJob(analysis_describe['stages'][0]['execution']['id'])
         self.assertEqual(dxjob.describe()['instanceType'], 'mem2_hdd2_x2')
 
         # request for the stage specifically, overriding some entry points
-        dxanalysis = dxworkflow.run({}, stage_instance_types={stage_id: {"*": "mem2_hdd2_x2", "foo": "mem2_hdd2_x1"}})
-        time.sleep(2)
-        dxjob = dxpy.DXJob(dxanalysis.describe()['stages'][0]['execution']['id'])
+        analysis_describe = testutil.analysis_describe_with_retry(
+            dxworkflow.run({}, stage_instance_types={stage_id: {"*": "mem2_hdd2_x2", "foo": "mem2_hdd2_x1"}}))
+        dxjob = dxpy.DXJob(analysis_describe['stages'][0]['execution']['id'])
         self.assertEqual(dxjob.describe()['instanceType'], 'mem2_hdd2_x2')
 
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
@@ -1292,16 +1404,13 @@ def main(number):
                                                                       second_stage_id: "quux"},
                                                        rerun_stages=['*'])
 
-        time.sleep(2) # allow time for jobs to be created so we can inspect their metadata
-
-        # make assertions
-        desc = control_dxanalysis.describe()
+        desc = testutil.analysis_describe_with_retry(control_dxanalysis)
         self.assertEqual(desc['stages'][0]['execution']['folder'], '/output/foo')
         self.assertEqual(desc['stages'][1]['execution']['folder'], '/myoutput')
-        desc = override_folders_dxanalysis.describe()
+        desc = testutil.analysis_describe_with_retry(override_folders_dxanalysis)
         self.assertEqual(desc['stages'][0]['execution']['folder'], '/foo')
         self.assertEqual(desc['stages'][1]['execution']['folder'], '/output/bar')
-        desc = use_default_folder_dxanalysis.describe()
+        desc = testutil.analysis_describe_with_retry(use_default_folder_dxanalysis)
         self.assertEqual(desc['stages'][0]['execution']['folder'], '/output/baz')
         self.assertEqual(desc['stages'][1]['execution']['folder'], '/output/quux')
 
@@ -1599,7 +1708,8 @@ def main(number):
         self.assertEqual(dxworkflow.stages[0]["executable"], second_applet.get_id())
         self.assertNotIn("my_input", dxworkflow.stages[0]["input"])
 
-@unittest.skipUnless(testutil.TEST_CREATE_APPS,
+
+@unittest.skipUnless(testutil.TEST_ISOLATED_ENV,
                      'skipping test that would create an app')
 class TestDXApp(unittest.TestCase):
     def setUp(self):
@@ -1852,7 +1962,7 @@ class TestDXSearch(unittest.TestCase):
     def test_find_projects(self):
         dxproject = dxpy.DXProject()
         results = list(dxpy.find_projects())
-        found_proj = False;
+        found_proj = False
         for result in results:
             if result["id"] == dxproject.get_id():
                 self.assertEqual(result["level"], 'ADMINISTER')
@@ -1861,7 +1971,7 @@ class TestDXSearch(unittest.TestCase):
         self.assertTrue(found_proj)
 
         results = list(dxpy.find_projects(level='VIEW', describe=True))
-        found_proj = False;
+        found_proj = False
         for result in results:
             if result["id"] == self.second_proj_id:
                 self.assertEqual(result["level"], 'ADMINISTER')
@@ -1879,6 +1989,42 @@ class TestDXSearch(unittest.TestCase):
                 found_proj = True
                 break
         self.assertTrue(found_proj)
+
+        created = dxproject.created
+        matching_ids = (result["id"] for result in dxpy.find_projects(created_before=created + 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in dxpy.find_projects(created_after=created - 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in
+                        dxpy.find_projects(created_before=created + 1000, created_after=created - 1000))
+        self.assertIn(dxproject.id, matching_ids)
+
+        matching_ids = (result["id"] for result in dxpy.find_projects(created_before=created - 1000))
+        self.assertNotIn(dxproject.id, matching_ids)
+
+    @unittest.skipUnless(testutil.TEST_ISOLATED_ENV, 'skipping test that requires presence of test org')
+    def test_find_org_projects_created(self):
+        org_id = "org-piratelabs"
+        dxproject = dxpy.DXProject(self.proj_id)
+        dxpy.api.project_update(dxproject.get_id(), {"billTo": org_id})
+        project_ppb = "project-0000000000000000000000pb"
+        org_projects = [dxproject.get_id(), project_ppb]
+
+        created = dxproject.created
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000))
+        self.assertItemsEqual(matching_ids, org_projects)
+
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_after=created - 1000))
+        self.assertItemsEqual(matching_ids, [dxproject.get_id()])
+
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created + 1000,
+                        created_after=created - 1000))
+        self.assertItemsEqual(matching_ids, [dxproject.get_id()])
+
+        matching_ids = (result["id"] for result in dxpy.org_find_projects(org_id, created_before=created - 1000))
+        self.assertItemsEqual(matching_ids, [project_ppb])
 
     @unittest.skipUnless(testutil.TEST_RUN_JOBS, 'skipping test that would run a job')
     def test_find_executions(self):
@@ -1908,18 +2054,8 @@ class TestDXSearch(unittest.TestCase):
         dxapplet.run(applet_input=prog_input)
         dxjob = dxapplet.run(applet_input=prog_input, tags=["foo", "bar"], properties={"foo": "baz"})
 
-        # Wait for job to be created
-        executions = [stage['execution']['id'] for stage in dxanalysis.describe()['stages']]
-        t = 0
-        while len(executions) > 0:
-            try:
-                dxpy.api.job_describe(executions[len(executions) - 1], {})
-                executions.pop()
-            except DXAPIError:
-                t += 1
-                if t > 20:
-                    raise Exception("Timeout while waiting for job to be created for an analysis stage")
-                time.sleep(1)
+        # Wait for jobs to be created
+        testutil.analysis_describe_with_retry(dxanalysis)
 
         me = None
         common_conditions = {'executable': dxapplet,
@@ -2035,7 +2171,7 @@ class TestHTTPResponses(unittest.TestCase):
     def test_bad_host(self):
         # Verify that the exception raised is one that dxpy would
         # consider to be retryable, but truncate the actual retry loop
-        with self.assertRaises(requests.exceptions.ConnectionError) as exception_cm:
+        with self.assertRaises(requests.packages.urllib3.exceptions.ProtocolError) as exception_cm:
             dxpy.DXHTTPRequest('http://doesnotresolve.dnanexus.com/', {}, prepend_srv=False, always_retry=False,
                                max_retries=1)
         self.assertTrue(dxpy._is_retryable_exception(exception_cm.exception))
@@ -2043,11 +2179,15 @@ class TestHTTPResponses(unittest.TestCase):
     def test_connection_refused(self):
         # Verify that the exception raised is one that dxpy would
         # consider to be retryable, but truncate the actual retry loop
-        with self.assertRaises(requests.exceptions.ConnectionError) as exception_cm:
+        with self.assertRaises(requests.packages.urllib3.exceptions.ProtocolError) as exception_cm:
             # Connecting to a port on which there is no server running
             dxpy.DXHTTPRequest('http://localhost:20406', {}, prepend_srv=False, always_retry=False, max_retries=1)
         self.assertTrue(dxpy._is_retryable_exception(exception_cm.exception))
 
+    def test_case_insensitive_response_headers(self):
+        # Verify that response headers support case-insensitive lookup.
+        res = dxpy.DXHTTPRequest("/system/whoami", {}, want_full_response=True)
+        self.assertTrue("CONTENT-type" in res.headers)
 
 class TestDataobjectFunctions(unittest.TestCase):
     def setUp(self):
@@ -2101,7 +2241,8 @@ class TestDataobjectFunctions(unittest.TestCase):
         self.assertEqual(handler.get_proj_id(), self.proj_id)
 
         # Handle project IDs
-        dxproject = dxpy.get_handler(self.proj_id)
+        handler = dxpy.get_handler(self.proj_id)
+        self.assertEqual(handler._dxid, self.proj_id)
 
         # Handle apps
         handler = dxpy.get_handler("app-foo")
@@ -2120,20 +2261,222 @@ class TestDataobjectFunctions(unittest.TestCase):
         self.assertIsNone(handler._name)
         self.assertIsNone(handler._alias)
 
-class TestResolver(unittest.TestCase):
+        # Test that we parse the "app" part out correctly when the app
+        # name itself has a hyphen in it
+        app_with_hyphen_in_name = "app-swiss-army-knife"
+        handler = dxpy.get_handler(app_with_hyphen_in_name)
+        self.assertIsNone(handler._dxid)
+        self.assertEqual(handler._name, "swiss-army-knife")
+        self.assertEqual(handler._alias, "default")
+
+        handler = dxpy.get_handler(app_with_hyphen_in_name + "/1.0.0")
+        self.assertIsNone(handler._dxid)
+        self.assertEqual(handler._name, "swiss-army-knife")
+        self.assertEqual(handler._alias, "1.0.0")
+
+
+class TestResolver(testutil.DXTestCase):
     def setUp(self):
+        super(TestResolver, self).setUp()
         setUpTempProjects(self)
 
     def tearDown(self):
         tearDownTempProjects(self)
+        super(TestResolver, self).tearDown()
 
-    def test_basic_ops(self):
-        from dxpy.utils.resolver import resolve_existing_path, ResolutionError
-        resolve_existing_path('')
+    def test_resolve_path(self):
+        need_project_context_to_resolve = ("^(Cannot resolve \".*\": e|E)xpected (a project name or ID to the left of "
+                                           "(a|the) colon,|the path to be qualified with a project name or ID, and a "
+                                           "colon;) or for a current project to be set$")
+
+        dxpy.WORKSPACE_ID = self.project
+        temp_proj_name = 'resolve_path_' + str(time.time())
+        not_a_project_name = 'doesnt_exist_' + str(time.time())
+        dxpy.config['DX_CLI_WD'] = '/a'
+        with testutil.temporary_project(name=temp_proj_name) as p:
+            self.assertEqual(resolve_path(""),
+                             (self.project, "/a", None))
+            with self.assertRaisesRegexp(ResolutionError, "expected the path to be a non-empty string"):
+                resolve_path("", allow_empty_string=False)
+            self.assertEqual(resolve_path(":"),
+                             (self.project, "/", None))
+
+            self.assertEqual(resolve_path("project-012301230123012301230123"),
+                             ("project-012301230123012301230123", "/", None))
+            self.assertEqual(resolve_path("container-012301230123012301230123"),
+                             ("container-012301230123012301230123", "/", None))
+            self.assertEqual(resolve_path("file-111111111111111111111111"),
+                             (self.project, None, "file-111111111111111111111111"))
+            # TODO: this shouldn't be treated as a data object ID
+            self.assertEqual(resolve_path("job-111111111111111111111111"),
+                             (self.project, None, "job-111111111111111111111111"))
+
+            with self.assertRaisesRegexp(ResolutionError, 'foo'):
+                resolve_path("project-012301230123012301230123:foo:bar")
+            with self.assertRaises(ResolutionError):
+                resolve_path(not_a_project_name + ":")
+            with self.assertRaises(ResolutionError):
+                resolve_path(not_a_project_name + ":foo")
+
+            self.assertEqual(resolve_path(":foo"),
+                             (self.project, "/", "foo"))
+            self.assertEqual(resolve_path(":foo/bar"),
+                             (self.project, "/foo", "bar"))
+            self.assertEqual(resolve_path(":/foo/bar"),
+                             (self.project, "/foo", "bar"))
+
+            self.assertEqual(resolve_path(temp_proj_name + ":"),
+                             (p.get_id(), "/", None))
+            self.assertEqual(resolve_path(temp_proj_name + ":foo"),
+                             (p.get_id(), "/", "foo"))
+            self.assertEqual(resolve_path(temp_proj_name + ":foo/bar"),
+                             (p.get_id(), "/foo", "bar"))
+            self.assertEqual(resolve_path(temp_proj_name + ":/foo/bar"),
+                             (p.get_id(), "/foo", "bar"))
+            # WD is ignored in project-qualified paths, even if the
+            # project is the project context
+            self.assertEqual(resolve_path(self.project + ":foo/bar"),
+                             (self.project, "/foo", "bar"))
+
+            self.assertEqual(resolve_path("job-111122223333111122223333:foo"),
+                             ("job-111122223333111122223333", None, "foo"))
+
+            self.assertEqual(resolve_path("foo"),
+                             (self.project, "/a", "foo"))
+            self.assertEqual(resolve_path("foo/bar"),
+                             (self.project, "/a/foo", "bar"))
+            self.assertEqual(resolve_path("../foo"),
+                             (self.project, "/", "foo"))
+            self.assertEqual(resolve_path("../../foo"),
+                             (self.project, "/", "foo"))
+            self.assertEqual(resolve_path("*foo"),
+                             (self.project, "/a", "*foo"))
+            self.assertEqual(resolve_path("/foo"),
+                             (self.project, "/", "foo"))
+            self.assertEqual(resolve_path("/foo/bar"),
+                             (self.project, "/foo", "bar"))
+
+            self.assertEqual(resolve_path("project-012301230123012301230123:foo"),
+                             ("project-012301230123012301230123", "/", "foo"))
+            self.assertEqual(resolve_path("container-012301230123012301230123:foo"),
+                             ("container-012301230123012301230123", "/", "foo"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:foo/bar"),
+                             ("project-012301230123012301230123", "/foo", "bar"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:/foo"),
+                             ("project-012301230123012301230123", "/", "foo"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:/foo/bar"),
+                             ("project-012301230123012301230123", "/foo", "bar"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:file-000011112222333344445555"),
+                             ("project-012301230123012301230123", "/", "file-000011112222333344445555"))
+
+            # JSON
+            self.assertEqual(resolve_path(json.dumps({"$dnanexus_link": "file-111111111111111111111111"})),
+                             (self.project, None, "file-111111111111111111111111"))
+            self.assertEqual(
+                resolve_path(json.dumps({"$dnanexus_link": {"project": "project-012301230123012301230123",
+                                                            "id": "file-111111111111111111111111"}})),
+                ("project-012301230123012301230123", "/", "file-111111111111111111111111")
+            )
+
+            # --- test some behavior when workspace is not set ---
+            dxpy.WORKSPACE_ID = None
+            with self.assertRaisesRegexp(ResolutionError, need_project_context_to_resolve):
+                resolve_path("")
+            with self.assertRaisesRegexp(ResolutionError, need_project_context_to_resolve):
+                resolve_path(":")
+            with self.assertRaisesRegexp(ResolutionError, need_project_context_to_resolve):
+                resolve_path(":foo")
+            with self.assertRaisesRegexp(ResolutionError, need_project_context_to_resolve):
+                resolve_path("foo", expected="folder")
+            self.assertEqual(resolve_path(temp_proj_name + ":"),
+                             (p.get_id(), "/", None))
+            with self.assertRaisesRegexp(ResolutionError, need_project_context_to_resolve):
+                resolve_path("foo")
+            with self.assertRaisesRegexp(ResolutionError, need_project_context_to_resolve):
+                resolve_path("../foo")
+            with self.assertRaisesRegexp(ResolutionError, need_project_context_to_resolve):
+                resolve_path("../../foo")
+            with self.assertRaisesRegexp(ResolutionError, need_project_context_to_resolve):
+                resolve_path("/foo/bar")
+
+            self.assertEqual(resolve_path("file-111111111111111111111111"),
+                             (None, None, "file-111111111111111111111111"))
+            # TODO: this shouldn't be treated as a data object ID; it
+            # should be treated just like "foo" above
+            self.assertEqual(resolve_path("job-111111111111111111111111"),
+                             (None, None, "job-111111111111111111111111"))
+
+            self.assertEqual(resolve_path(temp_proj_name + ":"),
+                             (p.get_id(), "/", None))
+            self.assertEqual(resolve_path(temp_proj_name + ":foo"),
+                             (p.get_id(), "/", "foo"))
+            self.assertEqual(resolve_path(temp_proj_name + ":foo/bar"),
+                             (p.get_id(), "/foo", "bar"))
+
+            self.assertEqual(resolve_path("project-012301230123012301230123"),
+                             ("project-012301230123012301230123", "/", None))
+            self.assertEqual(resolve_path("container-012301230123012301230123"),
+                             ("container-012301230123012301230123", "/", None))
+            self.assertEqual(resolve_path("project-012301230123012301230123:foo"),
+                             ("project-012301230123012301230123", "/", "foo"))
+            self.assertEqual(resolve_path("container-012301230123012301230123:foo"),
+                             ("container-012301230123012301230123", "/", "foo"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:foo/bar"),
+                             ("project-012301230123012301230123", "/foo", "bar"))
+            self.assertEqual(resolve_path("project-012301230123012301230123:file-000011112222333344445555"),
+                             ("project-012301230123012301230123", "/", "file-000011112222333344445555"))
+
+            self.assertEqual(resolve_path("job-111122223333111122223333:foo"),
+                             ("job-111122223333111122223333", None, "foo"))
+
+            self.assertEqual(resolve_path(json.dumps({"$dnanexus_link": "file-111111111111111111111111"})),
+                             (None, None, "file-111111111111111111111111"))
+            self.assertEqual(
+                resolve_path(json.dumps({"$dnanexus_link": {"project": "project-012301230123012301230123",
+                                                            "id": "file-111111111111111111111111"}})),
+                ("project-012301230123012301230123", "/", "file-111111111111111111111111")
+            )
+
+            # TODO: test multi project. This may require us to find some
+            # way to disable or programmatically drive the interactive
+            # prompt
+
+    def test_resolve_existing_path(self):
+        self.assertEquals(resolve_existing_path(''),
+                          (dxpy.WORKSPACE_ID, "/", None))
         with self.assertRaises(ResolutionError):
             resolve_existing_path('', allow_empty_string=False)
-        proj_id, path, entity_id = resolve_existing_path(':')
-        self.assertEqual(proj_id, dxpy.WORKSPACE_ID)
+        self.assertEquals(resolve_existing_path(':'),
+                          (dxpy.WORKSPACE_ID, "/", None))
+
+        dxpy.WORKSPACE_ID = None
+        with self.assertRaises(ResolutionError):
+            resolve_existing_path("foo")
+        with self.assertRaises(ResolutionError):
+            resolve_existing_path("/foo/bar")
+
+    def test_clean_folder_path(self):
+        from dxpy.utils.resolver import clean_folder_path as clean
+        self.assertEqual(clean(""), ("/", None))
+        self.assertEqual(clean("/foo"), ("/", "foo"))
+        self.assertEqual(clean("/foo/bar/baz"), ("/foo/bar", "baz"))
+        self.assertEqual(clean("/foo/bar////baz"), ("/foo/bar", "baz"))
+        self.assertEqual(clean("/foo/bar/baz/"), ("/foo/bar/baz", None))
+        self.assertEqual(clean("/foo/bar/baz///"), ("/foo/bar/baz", None))
+        self.assertEqual(clean("/foo/bar/baz", expected="folder"), ("/foo/bar/baz", None))
+        self.assertEqual(clean("/foo/bar/baz/."), ("/foo/bar/baz", None))
+        self.assertEqual(clean("/foo/bar/baz/.."), ("/foo/bar", None))
+        self.assertEqual(clean("/foo/bar/../.."), ("/", None))
+        self.assertEqual(clean("/foo/bar/../../.."), ("/", None))
+        self.assertEqual(clean("/foo/bar/../../../"), ("/", None))
+        self.assertEqual(clean("/foo/\\/bar/\\/"), ("/foo/\\/bar", "/"))
+        self.assertEqual(clean("/foo/\\//bar/\\/"), ("/foo/\\//bar", "/"))
+        self.assertEqual(clean("/foo/bar/\\]/\\["), ("/foo/bar/\\]", "["))
+        self.assertEqual(clean("/foo/bar/baz/../quux"), ("/foo/bar", "quux"))
+        self.assertEqual(clean("/foo/bar/../baz/../quux"), ("/foo", "quux"))
+        self.assertEqual(clean("/foo/././bar/../baz/../quux"), ("/foo", "quux"))
+        self.assertEqual(clean("/foo/bar/../baz/../../quux"), ("/", "quux"))
+        self.assertEqual(clean("/foo/bar/../../baz/../../quux"), ("/", "quux"))
 
     def test_resolution_batching(self):
         from dxpy.bindings.search import resolve_data_objects
@@ -2162,12 +2505,39 @@ class TestResolver(unittest.TestCase):
         self.assertEqual(results[1][0]["id"], record_id1)
         self.assertEqual(results[2][0]["id"], record_id2)
 
+    def test_is_project_explicit(self):
+        # All files specified by path are understood as explicitly indicating a
+        # project, because (if they actually resolve to something) such paths
+        # can only ever be understood in the context of a single project.
+        self.assertTrue(is_project_explicit("./path/to/my/file"))
+        self.assertTrue(is_project_explicit("myproject:./path/to/my/file"))
+        self.assertTrue(is_project_explicit("project-012301230123012301230123:./path/to/my/file"))
+        # Paths that specify an explicit project with a colon are understood as
+        # explicitly indicating a project (even if the file is specified by ID)
+        self.assertTrue(is_project_explicit("projectname:file-012301230123012301230123"))
+        self.assertTrue(is_project_explicit("project-012301230123012301230123:file-012301230123012301230123"))
+        self.assertTrue(is_project_explicit(
+            '{"$dnanexus_link": {"project": "project-012301230123012301230123", "id": "file-012301230123012301230123"}'
+        ))
+        # A bare file ID is NOT treated as having an explicit project. Even if
+        # the user's configuration supplies a project context that contains
+        # this file, that's not clear enough.
+        self.assertFalse(is_project_explicit("file-012301230123012301230123"))
+        self.assertFalse(is_project_explicit('{"$dnanexus_link": "file-012301230123012301230123"}'))
+        # Colon without project in front of it is understood to mean the
+        # current project
+        self.assertTrue(is_project_explicit(":file-012301230123012301230123"))
+        # Every job exists in a single project so we'll treat JBORs as being
+        # identified with a single project, too
+        self.assertTrue(is_project_explicit("job-012301230123012301230123:ofield"))
+
+
 if __name__ == '__main__':
     if dxpy.AUTH_HELPER is None:
         sys.exit(1, 'Error: Need to be logged in to run these tests')
     if 'DXTEST_FULL' not in os.environ:
-        if 'DXTEST_CREATE_APPS' not in os.environ:
-            sys.stderr.write('WARNING: neither env var DXTEST_FULL nor DXTEST_CREATE_APPS are set; tests that create apps will not be run\n')
+        if 'DXTEST_ISOLATED_ENV' not in os.environ:
+            sys.stderr.write('WARNING: neither env var DXTEST_FULL nor DXTEST_ISOLATED_ENV are set; tests that create apps will not be run\n')
         if 'DXTEST_RUN_JOBS' not in os.environ:
             sys.stderr.write('WARNING: neither env var DXTEST_FULL nor DXTEST_RUN_JOBS are set; tests that run jobs will not be run\n')
     unittest.main()

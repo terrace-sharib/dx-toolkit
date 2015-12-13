@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -30,8 +30,8 @@ import os, sys, json, re
 import dxpy
 from .describe import get_ls_l_desc
 from ..exceptions import DXError
-from ..compat import str, input
-from ..cli import INTERACTIVE_CLI
+from ..compat import str, input, basestring
+from ..cli import try_call, INTERACTIVE_CLI
 
 def pick(choices, default=None, str_choices=None, prompt=None, allow_mult=False, more_choices=False):
     '''
@@ -145,6 +145,7 @@ class ResolutionError(DXError):
 data_obj_pattern = re.compile('^(record|gtable|applet|file|workflow)-[0-9A-Za-z]{24}$')
 hash_pattern = re.compile('^(record|gtable|app|applet|workflow|job|analysis|project|container|file)-[0-9A-Za-z]{24}$')
 nohash_pattern = re.compile('^(user|org|app|team)-')
+jbor_pattern = re.compile('^(job|analysis)-[0-9A-Za-z]{24}:[a-zA-Z_][0-9a-zA-Z_]*$')
 
 def is_hashid(string):
     return hash_pattern.match(string) is not None
@@ -169,6 +170,47 @@ def is_nohash_id(string):
 
 def is_glob_pattern(string):
     return (get_last_pos_of_char('*', string) >= 0) or (get_last_pos_of_char('?', string) >= 0)
+
+
+def is_jbor_str(string):
+    return jbor_pattern.match(string) is not None
+
+
+def is_project_explicit(path):
+    """
+    Returns True if the specified path explicitly specifies a project.
+    """
+    # This method encodes our rules for deciding when a path shows an explicit
+    # affinity to a particular project. This is a stronger notion than just
+    # saying that the path resolves to an object in that project.
+    #
+    # For an explanation of the rules, see the unit tests
+    # (test_dxpy.TestResolver.test_is_project_explicit).
+    #
+    # Note, this method need not validate that the path can otherwise be
+    # resolved; it can assume this as a precondition.
+    path = _maybe_convert_stringified_dxlink(path)
+    return not is_hashid(path)
+
+
+def object_exists_in_project(obj_id, proj_id):
+    '''
+    :param obj_id: object ID
+    :type obj_id: str
+    :param proj_id: project ID
+    :type proj_id: str
+
+    Returns True if the specified data object can be found in the specified
+    project.
+    '''
+    if obj_id is None:
+        raise ValueError("Expected obj_id to be a string")
+    if proj_id is None:
+        raise ValueError("Expected proj_id to be a string")
+    if not is_container_id(proj_id):
+        raise ValueError('Expected %r to be a container ID' % (proj_id,))
+    return try_call(dxpy.DXHTTPRequest, '/' + obj_id + '/describe', {'project': proj_id})['project'] == proj_id
+
 
 # Special characters in bash to be escaped: #?*: ;&`"'/!$({[<>|~
 def escaper(match):
@@ -272,6 +314,7 @@ def split_unescaped(char, string, include_empty_strings=False):
     words.reverse()
     return words
 
+
 def clean_folder_path(path, expected=None):
     '''
     :param path: A folder path to sanitize and parse
@@ -296,8 +339,7 @@ def clean_folder_path(path, expected=None):
     if expected == 'folder' or folders[-1] == '.' or folders[-1] == '..' or get_last_pos_of_char('/', path) == len(path) - 1:
         entity_name = None
     else:
-        entity_name = unescape_name_str(folders[-1])
-        folders = folders[:-1]
+        entity_name = unescape_name_str(folders.pop())
 
     sanitized_folders = []
 
@@ -310,32 +352,26 @@ def clean_folder_path(path, expected=None):
         else:
             sanitized_folders.append(unescape_folder_str(folder))
 
-    if len(sanitized_folders) == 0:
-        newpath = '/'
-    else:
-        newpath = ""
-        for folder in sanitized_folders:
-            newpath += '/' + folder
+    return ('/' + '/'.join(sanitized_folders)), entity_name
 
-    return newpath, entity_name
 
-def resolve_container_id_or_name(raw_string, is_error=False, unescape=True, multi=False):
+def resolve_container_id_or_name(raw_string, is_error=False, multi=False):
     '''
     :param raw_string: A potential project or container ID or name
     :type raw_string: string
-    :param is_error: Whether to raise an exception if the project or container ID cannot be resolved
+    :param is_error: Whether to raise an exception if the project or
+            container ID cannot be resolved
     :type is_error: boolean
-    :param unescape: Whether to unescaping the string is required (TODO: External link to section on escaping characters.)
-    :type unescape: boolean
     :returns: Project or container ID if found or else None
     :rtype: string or None
-    :raises: :exc:`ResolutionError` if *is_error* is True and the project or container could not be resolved
+    :raises: :exc:`ResolutionError` if *is_error* is True and the
+            project or container could not be resolved
 
-    Attempt to resolve *raw_string* to a project or container ID.
+    Unescapes and attempts to resolve *raw_string* to a project or
+    container ID.
 
     '''
-    if unescape:
-        string = unescape_name_str(raw_string)
+    string = unescape_name_str(raw_string)
     if is_container_id(string):
         return ([string] if multi else string)
 
@@ -366,18 +402,37 @@ def resolve_container_id_or_name(raw_string, is_error=False, unescape=True, mult
         # len(results) > 1 and multi
         return [result['id'] for result in results]
 
-def resolve_path(path, expected=None, expected_classes=None, multi_projects=False, allow_empty_string=True):
+
+def _maybe_convert_stringified_dxlink(path):
+    try:
+        possible_hash = json.loads(path)
+        if isinstance(possible_hash, dict) and '$dnanexus_link' in possible_hash:
+            if isinstance(possible_hash['$dnanexus_link'], basestring):
+                return possible_hash['$dnanexus_link']
+            elif (isinstance(possible_hash['$dnanexus_link'], dict) and
+                  isinstance(possible_hash['$dnanexus_link'].get('project', None), basestring) and
+                  isinstance(possible_hash['$dnanexus_link'].get('id', None), basestring)):
+                return possible_hash['$dnanexus_link']['project'] + ':' + possible_hash['$dnanexus_link']['id']
+    except:
+        pass
+    return path
+
+
+def resolve_path(path, expected=None, multi_projects=False, allow_empty_string=True):
     '''
     :param path: A path to a data object to attempt to resolve
     :type path: string
-    :param expected: one of the following: "folder", "entity", or None to indicate whether the expected path is a folder, a data object, or either
+    :param expected: one of the following: "folder", "entity", or None
+            to indicate whether the expected path is a folder, a data
+            object, or either
     :type expected: string or None
-    :param expected_classes: a list of DNAnexus data object classes (if any) by which the search can be filtered
-    :type expected_classes: list of strings or None
     :returns: A tuple of 3 values: container_ID, folderpath, entity_name
     :rtype: string, string, string
-    :raises: exc:`ResolutionError` if 1) a colon is provided but no project can be resolved, or 2) *expected* was set to "folder" but no project can be resolved from which to establish context
-    :param allow_empty_string: If false, a ResolutionError will be raised if *path* is an empty string. Use this when resolving the empty string could result in unexpected behavior.
+    :raises: exc:`ResolutionError` if the project cannot be resolved by
+            name or the path is malformed
+    :param allow_empty_string: If false, a ResolutionError will be
+            raised if *path* is an empty string. Use this when resolving
+            the empty string could result in unexpected behavior.
     :type allow_empty_string: boolean
 
     Attempts to resolve *path* to a project or container ID, a folder
@@ -385,7 +440,37 @@ def resolve_path(path, expected=None, expected_classes=None, multi_projects=Fals
     raise an exception if the specified folder or object does not
     exist.  This method is primarily for parsing purposes.
 
+    Returns one of the following:
+
+      (project, folder, maybe_name)
+      where
+        project is a container ID (non-null)
+        folder is a folder path
+        maybe_name is a string if the path could represent a folder or an object, or
+        maybe_name is None if the path could only represent a folder
+
+    OR
+
+      (maybe_project, None, object_id)
+      where
+        maybe_project is a container ID or None
+        object_id is a dataobject, app, or execution (specified by ID, not name)
+
+    OR
+
+      (job_id, None, output_name)
+      where
+        job_id and output_name are both non-null
+
     '''
+    # TODO: callers that intend to obtain a data object probably won't be happy
+    # with an app or execution ID. Callers should probably have to specify
+    # whether they are okay with getting an execution ID or not.
+
+    # TODO: callers that are looking for a place to write data, rather than
+    # read it, probably won't be happy with receiving an object ID, or a
+    # JBOR. Callers should probably specify whether they are looking for an
+    # "LHS" expression or not.
 
     if '_DX_FUSE' in os.environ:
         from xattr import xattr
@@ -393,26 +478,20 @@ def resolve_path(path, expected=None, expected_classes=None, multi_projects=Fals
 
     if path == '' and not allow_empty_string:
         raise ResolutionError('Cannot parse ""; expected the path to be a non-empty string')
-    try:
-        possible_hash = json.loads(path)
-        if isinstance(possible_hash, dict) and '$dnanexus_link' in possible_hash:
-            if isinstance(possible_hash['$dnanexus_link'], basestring):
-                path = possible_hash['$dnanexus_link']
-            elif isinstance(possible_hash['$dnanexus_link'], dict) and isinstance(possible_hash['$dnanexus_link'].get('project', None), basestring) and isinstance(possible_hash['$dnanexus_link'].get('id', None), basestring):
-                path = possible_hash['$dnanexus_link']['project'] + ':' + possible_hash['$dnanexus_link']['id']
-    except:
-        pass
+    path = _maybe_convert_stringified_dxlink(path)
 
     # Easy case: ":"
     if path == ':':
         if dxpy.WORKSPACE_ID is None:
-            raise ResolutionError('Cannot parse ":"; expected a project name or ID to the left of a colon or for a current project to be set')
+            raise ResolutionError("Cannot resolve \":\": expected a project name or ID "
+                                  "to the left of the colon, or for a current project to be set")
         return ([dxpy.WORKSPACE_ID] if multi_projects else dxpy.WORKSPACE_ID), '/', None
     # Second easy case: empty string
     if path == '':
         if dxpy.WORKSPACE_ID is None:
-            raise ResolutionError('Expected a project name or ID to the left of a colon or for a current project to be set')
-        return ([dxpy.WORKSPACE_ID] if multi_projects else dxpy.WORKSPACE_ID), os.environ.get('DX_CLI_WD', '/'), None
+            raise ResolutionError('Expected a project name or ID to the left of a colon, '
+                                  'or for a current project to be set')
+        return ([dxpy.WORKSPACE_ID] if multi_projects else dxpy.WORKSPACE_ID), dxpy.config.get('DX_CLI_WD', '/'), None
     # Third easy case: hash ID
     if is_container_id(path):
         return ([path] if multi_projects else path), '/', None
@@ -424,7 +503,7 @@ def resolve_path(path, expected=None, expected_classes=None, multi_projects=Fals
     project = 0
     folderpath = None
     entity_name = None
-    wd = None
+    wd = dxpy.config.get('DX_CLI_WD', u'/')
 
     # Test for multiple colons
     last_colon = get_last_pos_of_char(':', path)
@@ -453,7 +532,8 @@ def resolve_path(path, expected=None, expected_classes=None, multi_projects=Fals
         wd = '/'
         if path.startswith(':'):
             if dxpy.WORKSPACE_ID is None:
-                raise ResolutionError('Cannot parse "' + path + '" as a path; expected a project name or ID to the left of a colon or for a current project to be set')
+                raise ResolutionError('Cannot resolve "%s": expected a project name or ID to the left of the '
+                                      'colon, or for a current project to be set' % (path,))
             project = dxpy.WORKSPACE_ID
         else:
             # One nonempty string to the left of a colon
@@ -463,9 +543,9 @@ def resolve_path(path, expected=None, expected_classes=None, multi_projects=Fals
         # One nonempty string, no colon present, do NOT interpret as
         # project
         project = dxpy.WORKSPACE_ID
-        if expected == 'folder' and project is None:
-            raise ResolutionError('a project context was expected for a path, but a current project is not set, nor was one provided in the path (preceding a colon) in "' + path + '"')
-        wd = dxpy.config.get('DX_CLI_WD', u'/')
+        if project is None:
+            raise ResolutionError('Cannot resolve "%s": expected the path to be qualified with a project name or ID, '
+                                  'and a colon; or for a current project to be set' % (path,))
 
     # Determine folderpath and entity_name if necessary
     if folderpath is None:
@@ -564,8 +644,7 @@ def _check_resolution_needed(path, project, folderpath, entity_name, expected_cl
               general resolution method, the project, the folderpath, and the
               entity name
     :rtype: tuple of 4 elements
-    :raises: ResolutionError if the entity fails to be described, or if the
-             supplied project is None
+    :raises: ResolutionError if the entity fails to be described
 
     Attempts to resolve the entity to a folder or an object, and describes
     the entity iff it is a DX ID of an expected class in the list
@@ -633,10 +712,7 @@ def _check_resolution_needed(path, project, folderpath, entity_name, expected_cl
             return False, project, folderpath, [result]
         else:
             return False, project, folderpath, result
-    elif project is None:
-        raise ResolutionError('Could not resolve "' + path + '" to a project context.  Please either set a ' +
-                              'default project using dx select or cd, or add a colon (":") after your project ID ' +
-                              'or name')
+
     else:
         # Need to resolve later
         return True, project, folderpath, entity_name
@@ -895,10 +971,12 @@ def resolve_multiple_existing_paths(paths):
     to_resolve_in_batch_inputs = []  # Project, folderpath, and entity name
     for path in paths:
         project, folderpath, entity_name = resolve_path(path, expected='entity')
-        must_resolve, project, folderpath, entity_name = _check_resolution_needed(path,
-                                                                                  project,
-                                                                                  folderpath,
-                                                                                  entity_name)
+        try:
+            must_resolve, project, folderpath, entity_name = _check_resolution_needed(
+                path, project, folderpath, entity_name)
+        except:
+            must_resolve = False
+
         if must_resolve:
             if is_glob_pattern(entity_name):
                 # TODO: Must call findDataObjects because resolveDataObjects does not support glob patterns
@@ -959,7 +1037,7 @@ def resolve_existing_path(path, expected=None, ask_to_resolve=True, expected_cla
     NOTE: if expected_classes is provided and conflicts with the class
     of the hash ID, it will return None for all fields.
     '''
-    project, folderpath, entity_name = resolve_path(path, expected, allow_empty_string=allow_empty_string)
+    project, folderpath, entity_name = resolve_path(path, expected=expected, allow_empty_string=allow_empty_string)
     must_resolve, project, folderpath, entity_name = _check_resolution_needed(path,
                                                                               project,
                                                                               folderpath,

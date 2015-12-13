@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -20,8 +20,9 @@ Exceptions for the :mod:`dxpy` package.
 
 from __future__ import print_function, unicode_literals, division, absolute_import
 
-import os, sys, json, traceback, errno
+import sys, json, traceback, errno, socket
 import requests
+from requests.exceptions import HTTPError
 
 import dxpy
 
@@ -108,6 +109,12 @@ class DXFileError(DXError):
     '''Exception for :class:`dxpy.bindings.dxfile.DXFile`.'''
     pass
 
+class DXPartLengthMismatchError(DXFileError):
+    '''Exception raised by :class:`dxpy.bindings.dxfile.DXFile` on part length mismatch.'''
+
+class DXChecksumMismatchError(DXFileError):
+    '''Exception raised by :class:`dxpy.bindings.dxfile.DXFile` on checksum mismatch.'''
+
 class DXGTableError(DXError):
     '''Exception for :class:`dxpy.bindings.dxgtable.DXGTable`.'''
     pass
@@ -160,8 +167,12 @@ class DXCLIError(DXError):
     '''
     pass
 
-class ContentLengthError(requests.HTTPError):
-    '''Will be raised when actual content length received from server does not match the "Content-Length" header'''
+
+class ContentLengthError(HTTPError):
+    '''
+    Will be raised when actual content length received from server does not
+    match the "Content-Length" header
+    '''
     pass
 
 
@@ -202,12 +213,13 @@ def exit_with_exc_info(code=1, message='', print_tb=False, exception=None):
         sys.stderr.write('\n')
     sys.exit(code)
 
-network_exceptions = (requests.ConnectionError,
-                      requests.exceptions.ChunkedEncodingError,
-                      requests.exceptions.ContentDecodingError,
-                      requests.HTTPError,
-                      requests.Timeout,
-                      requests.packages.urllib3.connectionpool.HTTPException)
+network_exceptions = (requests.packages.urllib3.exceptions.ProtocolError,
+                      requests.packages.urllib3.exceptions.DecodeError,
+                      requests.packages.urllib3.exceptions.ConnectTimeoutError,
+                      requests.packages.urllib3.exceptions.ReadTimeoutError,
+                      requests.packages.urllib3.connectionpool.HTTPException,
+                      HTTPError,
+                      socket.error)
 
 default_expected_exceptions = network_exceptions + (DXAPIError,
                                                     DXCLIError,

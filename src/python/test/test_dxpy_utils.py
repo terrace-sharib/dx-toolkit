@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -20,6 +20,7 @@
 from __future__ import print_function, unicode_literals, division, absolute_import
 
 import unittest, time, json, re, os
+import dateutil.parser
 import dxpy
 from dxpy import AppError, AppInternalError, DXFile, DXRecord
 from dxpy.utils import (describe, exec_utils, genomic_utils, response_iterator, get_futures_threadpool, DXJSONEncoder,
@@ -96,13 +97,6 @@ class TestResponseIterator(unittest.TestCase):
         for i, res in enumerate(response_iterator(tasks(), get_futures_threadpool(5), max_active_tasks=2)):
             self.assertEqual(i, res)
         for i, res in enumerate(response_iterator(tasks(), get_futures_threadpool(5), max_active_tasks=6)):
-            self.assertEqual(i, res)
-
-        def tasks2():
-            for i in range(8):
-                yield task, [i], {"sleep_for": (8-i)/8.0}
-
-        for i, res in enumerate(response_iterator(tasks2(), get_futures_threadpool(5), num_retries=2, retry_after=0.1)):
             self.assertEqual(i, res)
 
 class TestDXUtils(unittest.TestCase):
@@ -223,9 +217,42 @@ class TestTimeUtils(unittest.TestCase):
         # the field when a string with no suffix is supplied.
 
         # "dx login" can supply this form
-        self.assertEqual(normalize_time_input("1414141414"), 1414141414000)   # interpreted as sec
-        # find methods can supply this form
+        self.assertEqual(normalize_time_input("1414141414", default_unit='s'), 1414141414000)   # interpreted as sec
+        # "dx find ... --created-*" can supply this form
+        self.assertEqual(normalize_time_input("1234567890"), 1234567890)  # interpreted as ms
         self.assertEqual(normalize_time_input(1414141414000), 1414141414000)  # interpreted as ms
+
+    def test_normalize_time_input(self):
+        # TODO: Add tests for negative time inputs e.g. "-12345", -12345, "-5d"
+
+        for i, o in ((12345678, 12345678),
+                     ("0", 0),
+                     ("12345678", 12345678),
+                     ("15s", 15 * 1000),
+                     ("1d", (24 * 60 * 60 * 1000)),
+                     ("0w", 0),
+                     ("2015-10-01", int(time.mktime(dateutil.parser.parse("2015-10-01").timetuple()) * 1000))):
+            self.assertEqual(normalize_time_input(i), o)
+
+        # Test default_unit='s'
+        for i, o in ((12345678, 12345678 * 1000),
+                     ("12345678", 12345678 * 1000),
+                     ("15s", 15 * 1000),
+                     ("1d", (24 * 60 * 60 * 1000)),
+                     ("0w", 0),
+                     ("2015-10-01", int(time.mktime(dateutil.parser.parse("2015-10-01").timetuple()) * 1000))):
+            self.assertEqual(normalize_time_input(i, default_unit='s'), o)
+
+        with self.assertRaises(ValueError):
+            normalize_time_input("1223*")
+        with self.assertRaises(ValueError):
+            normalize_time_input("12345", default_unit='h')
+        with self.assertRaises(ValueError):
+            normalize_time_input(12345, default_unit='h')
+        with self.assertRaises(ValueError):
+            normalize_time_input("1234.5678")
+        with self.assertRaises(ValueError):
+            normalize_time_input(1234.5678)
 
 
 class TestDXConfig(unittest.TestCase):

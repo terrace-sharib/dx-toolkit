@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -20,8 +20,6 @@ command-line client.
 '''
 
 from __future__ import print_function, unicode_literals, division, absolute_import
-
-import os, sys
 
 import dxpy
 import dxpy.utils.printing as printing
@@ -49,7 +47,7 @@ def new_workflow(args):
         folder = dxpy.config.get("DX_CLI_WD", "/")
         name = None
     else:
-        project, folder, name = dxpy.utils.resolver.resolve_path(args.output)
+        project, folder, name = try_call(dxpy.utils.resolver.resolve_path, args.output)
     if args.output_folder is not None:
         try:
             # Try to resolve to a path in the project

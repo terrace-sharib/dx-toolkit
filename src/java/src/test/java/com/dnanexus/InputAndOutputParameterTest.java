@@ -1,4 +1,4 @@
-// Copyright (C) 2014 DNAnexus, Inc.
+// Copyright (C) 2014-2015 DNAnexus, Inc.
 //
 // This file is part of dx-toolkit (DNAnexus platform client libraries).
 //
@@ -46,5 +46,27 @@ public class InputAndOutputParameterTest {
         } catch (NullPointerException e) {
             // Expected
         }
+    }
+
+    @Test
+    public void testInputParamDeserialization() {
+        InputParameter ip = DXJSON.safeTreeToValue(
+                DXJSON.getObjectBuilder().put("name", "foo").put("class", "string")
+                        .put("optional", true).put("label", "mylabel")
+                        .put("unrecognizedField", "asdf").build(), InputParameter.class);
+        Assert.assertEquals("foo", ip.getName());
+        Assert.assertEquals(IOClass.STRING, ip.getIOClass());
+        Assert.assertTrue(ip.isOptional());
+    }
+
+    @Test
+    public void testOutputParamDeserialization() {
+        OutputParameter op = DXJSON.safeTreeToValue(
+                DXJSON.getObjectBuilder().put("name", "foo").put("class", "string")
+                        .put("optional", true).put("label", "mylabel")
+                        .put("unrecognizedField", "asdf").build(), OutputParameter.class);
+        Assert.assertEquals("foo", op.getName());
+        Assert.assertEquals(IOClass.STRING, op.getIOClass());
+        Assert.assertTrue(op.isOptional());
     }
 }

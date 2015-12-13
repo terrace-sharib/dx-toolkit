@@ -510,7 +510,7 @@ def applet_describe(object_id, input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /applet-xxxx/describe API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fapplet-xxxx%2Fdescribe
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fapplet-xxxx%2Fdescribe
     """
     return DXHTTPRequest('/%s/describe' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -528,7 +528,7 @@ def applet_get(object_id, input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /applet-xxxx/get API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fapplet-xxxx%2Fget
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fapplet-xxxx%2Fget
     """
     return DXHTTPRequest('/%s/get' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -618,7 +618,7 @@ def applet_run(object_id, input_params={}, always_retry=False, **kwargs):
     """
     Invokes the /applet-xxxx/run API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fapplet-xxxx%2Frun
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fapplet-xxxx%2Frun
     """
     return DXHTTPRequest('/%s/run' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -654,7 +654,7 @@ def applet_new(input_params={}, always_retry=False, **kwargs):
     """
     Invokes the /applet/new API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fapplet%2Fnew
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fapplet%2Fnew
     """
     return DXHTTPRequest('/applet/new', input_params, always_retry=always_retry, **kwargs)
 
@@ -1390,7 +1390,7 @@ def job_add_tags(object_id, input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /job-xxxx/addTags API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fjob-xxxx%2FaddTags
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fjob-xxxx%2FaddTags
     """
     return DXHTTPRequest('/%s/addTags' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -1408,7 +1408,7 @@ def job_describe(object_id, input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /job-xxxx/describe API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fjob-xxxx%2Fdescribe
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fjob-xxxx%2Fdescribe
     """
     return DXHTTPRequest('/%s/describe' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -1426,7 +1426,7 @@ def job_get_log(object_id, input_params={}, always_retry=False, **kwargs):
     """
     Invokes the /job-xxxx/getLog API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fjob-xxxx%2FgetLog
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fjob-xxxx%2FgetLog
     """
     return DXHTTPRequest('/%s/getLog' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -1444,7 +1444,7 @@ def job_remove_tags(object_id, input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /job-xxxx/removeTags API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fjob-xxxx%2FremoveTags
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fjob-xxxx%2FremoveTags
     """
     return DXHTTPRequest('/%s/removeTags' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -1462,7 +1462,7 @@ def job_set_properties(object_id, input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /job-xxxx/setProperties API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fjob-xxxx%2FsetProperties
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fjob-xxxx%2FsetProperties
     """
     return DXHTTPRequest('/%s/setProperties' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -1480,7 +1480,7 @@ def job_terminate(object_id, input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /job-xxxx/terminate API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fjob-xxxx%2Fterminate
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fjob-xxxx%2Fterminate
     """
     return DXHTTPRequest('/%s/terminate' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -1498,7 +1498,7 @@ def job_new(input_params={}, always_retry=False, **kwargs):
     """
     Invokes the /job/new API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets and Entry Points#API-method%3A-%2Fjob%2Fnew
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Applets-and-Entry-Points#API-method%3A-%2Fjob%2Fnew
     """
     return DXHTTPRequest('/job/new', input_params, always_retry=always_retry, **kwargs)
 
@@ -1551,6 +1551,24 @@ def org_describe(object_id, input_params={}, always_retry=True, **kwargs):
     For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Organizations#API-method%3A-%2Forg-xxxx%2Fdescribe
     """
     return DXHTTPRequest('/%s/describe' % object_id, input_params, always_retry=always_retry, **kwargs)
+
+def orgFindMembers(*args, **kwargs):
+    """
+
+    .. deprecated:: 0.42.0
+       Use :func:`org_find_members()` instead.
+
+    """
+    print("dxpy.orgFindMembers is deprecated; please use org_find_members instead.", file=sys.stderr)
+    return org_find_members(*args, **kwargs)
+
+def org_find_members(object_id, input_params={}, always_retry=True, **kwargs):
+    """
+    Invokes the /org-xxxx/findMembers API method.
+
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Organizations#API-method%3A-%2Forg-xxxx%2FfindMembers
+    """
+    return DXHTTPRequest('/%s/findMembers' % object_id, input_params, always_retry=always_retry, **kwargs)
 
 def orgFindProjects(*args, **kwargs):
     """
@@ -1728,7 +1746,7 @@ def project_decrease_permissions(object_id, input_params={}, always_retry=True, 
     """
     Invokes the /project-xxxx/decreasePermissions API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Projects#API-method%3A-%2Fproject-xxxx%2FdecreasePermissions
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Project-Permissions-and-Sharing#API-method%3A-%2Fproject-xxxx%2FdecreasePermissions
     """
     return DXHTTPRequest('/%s/decreasePermissions' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -1800,7 +1818,7 @@ def project_leave(object_id, input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /project-xxxx/leave API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Projects#API-method%3A-%2Fproject-xxxx%2Fleave
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Project-Permissions-and-Sharing#API-method%3A-%2Fproject-xxxx%2Fleave
     """
     return DXHTTPRequest('/%s/leave' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -2070,7 +2088,7 @@ def record_close(object_id, input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /record-xxxx/close API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Data Object-Lifecycle#API-method%3A-%2Fclass-xxxx%2Fclose
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Data-Object-Lifecycle#API-method%3A-%2Fclass-xxxx%2Fclose
     """
     return DXHTTPRequest('/%s/close' % object_id, input_params, always_retry=always_retry, **kwargs)
 
@@ -2254,6 +2272,42 @@ def record_new(input_params={}, always_retry=False, **kwargs):
     """
     return DXHTTPRequest('/record/new', input_params, always_retry=always_retry, **kwargs)
 
+def systemDescribeDataObjects(*args, **kwargs):
+    """
+
+    .. deprecated:: 0.42.0
+       Use :func:`system_describe_data_objects()` instead.
+
+    """
+    print("dxpy.systemDescribeDataObjects is deprecated; please use system_describe_data_objects instead.", file=sys.stderr)
+    return system_describe_data_objects(*args, **kwargs)
+
+def system_describe_data_objects(input_params={}, always_retry=True, **kwargs):
+    """
+    Invokes the /system/describeDataObjects API method.
+
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/System-Methods#API-method:-/system/describeDataObjects
+    """
+    return DXHTTPRequest('/system/describeDataObjects', input_params, always_retry=always_retry, **kwargs)
+
+def systemDescribeProjects(*args, **kwargs):
+    """
+
+    .. deprecated:: 0.42.0
+       Use :func:`system_describe_projects()` instead.
+
+    """
+    print("dxpy.systemDescribeProjects is deprecated; please use system_describe_projects instead.", file=sys.stderr)
+    return system_describe_projects(*args, **kwargs)
+
+def system_describe_projects(input_params={}, always_retry=True, **kwargs):
+    """
+    Invokes the /system/describeProjects API method.
+
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/System-Methods#API-method:-/system/describeProjects
+    """
+    return DXHTTPRequest('/system/describeProjects', input_params, always_retry=always_retry, **kwargs)
+
 def systemFindAffiliates(*args, **kwargs):
     """
 
@@ -2432,6 +2486,24 @@ def system_find_project_members(input_params={}, always_retry=True, **kwargs):
     """
     return DXHTTPRequest('/system/findProjectMembers', input_params, always_retry=always_retry, **kwargs)
 
+def systemFindOrgs(*args, **kwargs):
+    """
+
+    .. deprecated:: 0.42.0
+       Use :func:`system_find_orgs()` instead.
+
+    """
+    print("dxpy.systemFindOrgs is deprecated; please use system_find_orgs instead.", file=sys.stderr)
+    return system_find_orgs(*args, **kwargs)
+
+def system_find_orgs(input_params={}, always_retry=True, **kwargs):
+    """
+    Invokes the /system/findOrgs API method.
+
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Search#API-method:-/system/findOrgs
+    """
+    return DXHTTPRequest('/system/findOrgs', input_params, always_retry=always_retry, **kwargs)
+
 def systemGlobalSearch(*args, **kwargs):
     """
 
@@ -2602,7 +2674,7 @@ def workflow_close(object_id, input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /workflow-xxxx/close API method.
 
-    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Data Object-Lifecycle#API-method%3A-%2Fclass-xxxx%2Fclose
+    For more info, see: https://wiki.dnanexus.com/API-Specification-v1.0.0/Data-Object-Lifecycle#API-method%3A-%2Fclass-xxxx%2Fclose
     """
     return DXHTTPRequest('/%s/close' % object_id, input_params, always_retry=always_retry, **kwargs)
 

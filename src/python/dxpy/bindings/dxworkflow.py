@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -28,8 +28,9 @@ from __future__ import print_function, unicode_literals, division, absolute_impo
 
 import re
 import dxpy
-from dxpy.bindings import DXDataObject, DXExecutable, DXAnalysis
-from dxpy.exceptions import DXError
+from ..bindings import DXDataObject, DXExecutable, DXAnalysis
+from ..exceptions import DXError
+from ..compat import basestring
 
 ##############
 # DXWorkflow #

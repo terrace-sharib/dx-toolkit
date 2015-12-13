@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -27,10 +27,10 @@ import concurrent.futures
 import dxpy
 from . import DXDataObject
 from ..exceptions import DXError
-from ..compat import StringIO
+from ..compat import StringIO, basestring
 from ..utils import warn
 
-DXGTABLE_HTTP_THREADS = 4
+DXGTABLE_HTTP_THREADS = 1
 
 # Number of rows to request at a time when reading.
 #

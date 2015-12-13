@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -35,6 +35,7 @@ import dxpy
 from . import DXObject, DXDataObject, DXJobFailureError, verify_string_dxid
 from ..exceptions import DXError
 from ..utils.local_exec_utils import queue_entry_point
+from ..compat import basestring
 
 #########
 # DXJob #

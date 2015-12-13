@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 DNAnexus, Inc.
+# Copyright (C) 2013-2015 DNAnexus, Inc.
 #
 # This file is part of dx-toolkit (DNAnexus platform client libraries).
 #
@@ -19,19 +19,24 @@
 from __future__ import print_function, unicode_literals, division, absolute_import
 
 import os, sys, unittest, subprocess, re, platform
+import time
+import random
+
 from contextlib import contextmanager
 
 import dxpy
 from dxpy.compat import str
 
 _run_all_tests = 'DXTEST_FULL' in os.environ
-TEST_CREATE_APPS = _run_all_tests or 'DXTEST_CREATE_APPS' in os.environ
+TEST_ISOLATED_ENV = _run_all_tests or 'DXTEST_ISOLATED_ENV' in os.environ
 TEST_ENV = _run_all_tests or 'DXTEST_ENV' in os.environ
 TEST_FUSE = _run_all_tests or 'DXTEST_FUSE' in os.environ
+TEST_GTABLE = _run_all_tests or 'DXTEST_GTABLE' in os.environ
 TEST_HTTP_PROXY = _run_all_tests or 'DXTEST_HTTP_PROXY' in os.environ
 TEST_NO_RATE_LIMITS = _run_all_tests or 'DXTEST_NO_RATE_LIMITS' in os.environ
 TEST_RUN_JOBS = _run_all_tests or 'DXTEST_RUN_JOBS' in os.environ
 TEST_TCSH = _run_all_tests or 'DXTEST_TCSH' in os.environ
+TEST_WITH_AUTHSERVER = _run_all_tests or 'DXTEST_WITH_AUTHSERVER' in os.environ
 
 TEST_DX_LOGIN = 'DXTEST_LOGIN' in os.environ
 TEST_BENCHMARKS = 'DXTEST_BENCHMARKS' in os.environ   ## Used to exclude benchmarks from normal runs
@@ -162,6 +167,90 @@ def cd(directory):
     output = check_output(['dx', 'cd', directory], shell=False)
     print(output)
     return output
+
+
+# Wait for all jobs in analysis to be created (see PTFM-14462)
+def analysis_describe_with_retry(analysis_id_or_handler):
+    if isinstance(analysis_id_or_handler, basestring):
+        handler = dxpy.get_handler(analysis_id_or_handler)
+    else:
+        handler = analysis_id_or_handler
+    # All the describe fields may not be available immediately. Wait
+    # until they have been populated.
+    for i in range(200):  # Don't wait an unbounded amount of time
+        desc = handler.describe()
+        # Sufficient to look for any field, other than 'id', that is
+        # present in all job describe hashes
+        if all('executable' in stage['execution'] for stage in desc['stages']):
+            return desc
+        time.sleep(0.5)
+    raise IOError('Timed out while waiting for ' + analysis_id_or_handler.get_id() + ' to have all jobs populated')
+
+
+def override_environment(**kwargs):
+    """Returns a copy of the current environment, with variables overridden
+    as specified in the arguments. Each key represents a variable name
+    and each value must be a string (to set the specified key to that
+    value) or None (to unset the specified key).
+    """
+    env = os.environ.copy()
+    for key in kwargs:
+        if kwargs[key] is None:
+            if key in env:
+                del env[key]
+        else:
+            env[key] = kwargs[key]
+    return env
+
+
+def generate_unique_username_email():
+    r = random.randint(0, 255)
+    username = "asset_" + str(int(time.time())) + "_" + str(r)
+    email = username + "@example.com"
+    return username, email
+
+
+# Note: clobbers the local environment! All tests that use this should
+# be marked as such with TEST_ENV
+@contextmanager
+def without_project_context():
+    """Within the scope of the block, the project context and workspace
+    configuration variables (and possibly other variables) are unset.
+
+    """
+    prev_workspace_id = os.environ.get('DX_WORKSPACE_ID', None)
+    prev_proj_context_id = os.environ.get('DX_PROJECT_CONTEXT_ID', None)
+    if prev_workspace_id is not None:
+        del os.environ['DX_WORKSPACE_ID']
+    if prev_proj_context_id is not None:
+        del os.environ['DX_PROJECT_CONTEXT_ID']
+    subprocess.check_call("dx clearenv", shell=True)
+    try:
+        yield
+    finally:
+        if prev_workspace_id:
+            os.environ['DX_WORKSPACE_ID'] = prev_workspace_id
+        if prev_proj_context_id:
+            os.environ['DX_PROJECT_CONTEXT_ID'] = prev_proj_context_id
+
+
+# Note: clobbers the local environment! All tests that use this should
+# be marked as such with TEST_ENV
+@contextmanager
+def without_auth():
+    """Within the scope of the block, the auth configuration variable (and
+    possibly other variables) are unset.
+
+    """
+    prev_security_context = os.environ.get('DX_SECURITY_CONTEXT', None)
+    if prev_security_context is not None:
+        del os.environ['DX_SECURITY_CONTEXT']
+    subprocess.check_call("dx clearenv", shell=True)
+    try:
+        yield
+    finally:
+        if prev_security_context:
+            os.environ['DX_SECURITY_CONTEXT'] = prev_security_context
 
 
 class DXTestCase(unittest.TestCase):
