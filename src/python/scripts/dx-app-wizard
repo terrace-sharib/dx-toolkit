@@ -351,6 +351,30 @@ if prompt_for_yn("Will this app need access to the parent project?", default=Fal
                'other projects, edit the ' + UNDERLINE('access.project') + ' and ' + UNDERLINE('access.allProjects') +
                ' fields of dxapp.json once we generate the app.'))
 
+#######################
+# SYSTEM REQUIREMENTS #
+#######################
+
+print('')
+print(BOLD('System Requirements'))
+from dxpy.utils.completer import InstanceTypesCompleter
+from dxpy.utils.pretty_print import format_table
+print(BOLD('Common instance types:'))
+print(format_table(InstanceTypesCompleter.preferred_instance_types.values(),
+                   column_names=InstanceTypesCompleter.instance_types.values()[0]._fields))
+print(fill(BOLD('Default instance type:') + ' The instance type you select here will apply to all entry points in your app unless you override it. See ' + BOLD('https://wiki.dnanexus.com/api-specification-v1.0.0/instance-types') + ' for more information.'))
+use_completer(InstanceTypesCompleter())
+instance_type = prompt_for_var('Choose an instance type for your app',
+                               default=InstanceTypesCompleter.default_instance_type.Name,
+                               choices=list(InstanceTypesCompleter.instance_types))
+app_json['runSpec'].setdefault('systemRequirements', {})
+app_json['runSpec']['systemRequirements'].setdefault('*', {})
+app_json['runSpec']['systemRequirements']['*']['instanceType'] = instance_type
+
+######################
+# HARDCODED DEFAULTS #
+######################
+
 # Default of no other authorizedUsers
 app_json['authorizedUsers'] = []
 
