@@ -28,6 +28,7 @@ import dxpy_testutil as testutil
 
 import dxpy
 from dxpy.scripts import dx_build_app
+from dxpy.utils.completer import InstanceTypesCompleter
 
 
 def run(command, **kwargs):
@@ -163,6 +164,10 @@ class TestDXAppWizardAndRunAppLocally(DXTestCase):
         appdir = run_dx_app_wizard()
         dxapp_json = json.load(open(os.path.join(appdir, 'dxapp.json')))
         self.assertEqual(dxapp_json.get('authorizedUsers'), [])
+        self.assertEqual(dxapp_json['runSpec']['systemRequirements']['*']['instanceType'],
+                         InstanceTypesCompleter.default_instance_type.Name)
+        self.assertEqual(dxapp_json['runSpec']['distribution'], 'Ubuntu')
+        self.assertEqual(dxapp_json['runSpec']['release'], '14.04')
 
     def test_dx_run_app_locally_interactively(self):
         appdir = create_app_dir()
