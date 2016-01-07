@@ -29,6 +29,14 @@ from dxpy.utils.printing import (fill, DELIMITER, format_find_results)
 import json
 
 
+def get_user_id(user_id_or_username):
+    if not user_id_or_username.lower().startswith("user-"):
+        user_id = "user-" + user_id_or_username.lower()
+    else:
+        user_id = user_id_or_username.lower()
+    return user_id
+
+
 def get_org_invite_args(args):
     """
     PRECONDITION:
@@ -38,7 +46,7 @@ def get_org_invite_args(args):
         - `args.username` is well-formed and valid (e.g. it does not start with
           "user-").
     """
-    org_invite_args = {"invitee": "user-" + args.username.lower()}
+    org_invite_args = {"invitee": get_user_id(args.username)}
     org_invite_args["level"] = args.level
     if "set_bill_to" in args and args.set_bill_to is True:
         # /org-x/invite is called in conjunction with /user/new.
@@ -52,8 +60,10 @@ def get_org_invite_args(args):
 
 
 def add_membership(args):
+    user_id = get_user_id(args.username)
+
     try:
-        dxpy.api.org_find_members(args.org_id, {"id": ["user-" + args.username.lower()]})["results"][0]
+        dxpy.api.org_find_members(args.org_id, {"id": [user_id]})["results"][0]
     except:
         pass
     else:
@@ -64,8 +74,7 @@ def add_membership(args):
     if args.brief:
         print("org-" + args.org_id)
     else:
-        print(fill("Invited user-{u} to {o}".format(u=args.username.lower(),
-                                                    o=args.org_id)))
+        print(fill("Invited {u} to {o}".format(u=user_id, o=args.org_id)))
 
 
 def _get_org_remove_member_args(args):

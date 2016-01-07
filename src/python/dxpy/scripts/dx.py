@@ -3790,7 +3790,7 @@ register_subparser(parser_add_stage, subparsers_action=subparsers_add, categorie
 
 parser_add_member = subparsers_add.add_parser("member", help="Grant a user membership to an org", description="Grant a user membership to an org", prog="dx add member", parents=[stdout_args, env_args])
 parser_add_member.add_argument("org_id", help="ID of the org")
-parser_add_member.add_argument("username", help="Username")
+parser_add_member.add_argument("username", help="Username or user ID")
 parser_add_member.add_argument("--level", required=True, choices=["ADMIN", "MEMBER"], help="Org membership level that will be granted to the specified user")
 parser_add_member.add_argument("--allow-billable-activities", default=False, action="store_true", help='Grant the specified user "allowBillableActivities" in the org')
 parser_add_member.add_argument("--no-app-access", default=True, action="store_false", dest="app_access", help='Disable "appAccess" for the specified user in the org')
