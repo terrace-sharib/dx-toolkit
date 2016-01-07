@@ -79,23 +79,25 @@ def add_membership(args):
 
 def _get_org_remove_member_args(args):
     remove_member_args = {
-        "user": "user-" + args.username.lower(),
+        "user": get_user_id(args.username),
         "revokeProjectPermissions": args.revoke_project_permissions,
         "revokeAppPermissions": args.revoke_app_permissions}
     return remove_member_args
 
 
 def remove_membership(args):
+    user_id = get_user_id(args.username)
+
     try:
-        dxpy.api.org_find_members(args.org_id, {"id": ["user-" + args.username.lower()]})["results"][0]
+        dxpy.api.org_find_members(args.org_id, {"id": [user_id]})["results"][0]
     except IndexError:
         raise DXCLIError("Cannot remove a user who is not a member of the org")
 
     confirmed = not args.confirm
     if not confirmed:
         # Request interactive confirmation.
-        print(fill("WARNING: About to remove user-{u} from {o}; project permissions will{rpp} be removed and app permissions will{rap} be removed".format(
-            u=args.username.lower(), o=args.org_id,
+        print(fill("WARNING: About to remove {u} from {o}; project permissions will{rpp} be removed and app permissions will{rap} be removed".format(
+            u=user_id, o=args.org_id,
             rpp="" if args.revoke_project_permissions else " not",
             rap="" if args.revoke_app_permissions else " not")))
 
@@ -108,25 +110,21 @@ def remove_membership(args):
         if args.brief:
             print(result["id"])
         else:
-            print(fill("Removed user-{u} from {o}".format(u=args.username.lower(),
-                                                          o=args.org_id)))
-            print(fill("Removed user-{u} from the following projects:".format(
-                u=args.username.lower())))
+            print(fill("Removed {u} from {o}".format(u=user_id, o=args.org_id)))
+            print(fill("Removed {u} from the following projects:".format(u=user_id)))
             if len(result["projects"].keys()) != 0:
                 for project_id in result["projects"].keys():
                     print("\t{p}".format(p=project_id))
             else:
                 print("\tNone")
-            print(fill("Removed user-{u} from the following apps:".format(
-                u=args.username.lower())))
+            print(fill("Removed {u} from the following apps:".format(u=user_id)))
             if len(result["apps"].keys()) != 0:
                 for app_id in result["apps"].keys():
                     print("\t{a}".format(a=app_id))
             else:
                 print("\tNone")
     else:
-        print(fill("Aborting removal of user-{u} from {o}".format(
-            u=args.username.lower(), o=args.org_id)))
+        print(fill("Aborting removal of {u} from {o}".format(u=user_id, o=args.org_id)))
 
 
 def _get_org_set_member_access_args(args, default_level):
