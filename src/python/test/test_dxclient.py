@@ -5048,6 +5048,61 @@ class TestDXClientMembership(DXTestCase):
             self._org_find_members(self.user_id)
 
 
+    def test_add_update_remove_membership_with_user_id(self):
+        # Similar to `test_add_update_remove_membership()` above, but this
+        # specifies user id instead of username as arg to `dx` command.
+
+        cmd = "dx add member {o} {u} --level {l} --project-access UPLOAD"
+        run(cmd.format(o=self.org_id, u=self.user_id, l="MEMBER"))
+        exp_membership = {"id": self.user_id,
+                          "level": "MEMBER",
+                          "allowBillableActivities": False,
+                          "createProjectsAndApps": False,
+                          "appAccess": True,
+                          "projectAccess": "UPLOAD"}
+        membership = self._org_find_members(self.user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx update member {o} {u} --level MEMBER --allow-billable-activities true"
+        run(cmd.format(o=self.org_id, u=self.user_id))
+        exp_membership = {"id": self.user_id,
+                          "level": "MEMBER",
+                          "allowBillableActivities": True,
+                          "createProjectsAndApps": True,
+                          "appAccess": True,
+                          "projectAccess": "UPLOAD"}
+        membership = self._org_find_members(self.user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx update member {o} {u} --level ADMIN"
+        run(cmd.format(o=self.org_id, u=self.user_id))
+        exp_membership = {"id": self.user_id,
+                          "level": "ADMIN",
+                          "allowBillableActivities": True,
+                          "createProjectsAndApps": True,
+                          "appAccess": True,
+                          "projectAccess": "ADMINISTER"}
+        membership = self._org_find_members(self.user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx update member {o} {u} --level MEMBER --allow-billable-activities true --project-access CONTRIBUTE --app-access false"
+        run(cmd.format(o=self.org_id, u=self.user_id))
+        exp_membership = {"id": self.user_id,
+                          "level": "MEMBER",
+                          "allowBillableActivities": True,
+                          "createProjectsAndApps": True,
+                          "appAccess": False,
+                          "projectAccess": "CONTRIBUTE"}
+        membership = self._org_find_members(self.user_id)
+        self.assertEqual(membership, exp_membership)
+
+        cmd = "dx remove member {o} {u} -y"
+        run(cmd.format(o=self.org_id, u=self.user_id))
+
+        with self.assertRaises(IndexError):
+            self._org_find_members(self.user_id)
+
+
 @unittest.skipUnless(testutil.TEST_HTTP_PROXY,
                      'skipping HTTP Proxy support test that needs squid3')
 class TestHTTPProxySupport(DXTestCase):
