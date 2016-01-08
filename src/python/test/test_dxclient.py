@@ -5049,8 +5049,8 @@ class TestDXClientMembership(DXTestCase):
 
 
     def test_add_update_remove_membership_with_user_id(self):
-        # Similar to `test_add_update_remove_membership()` above, but this
-        # specifies user id instead of username as arg to `dx` command.
+        # This is similar to `test_add_update_remove_membership()` above, but
+        # it specifies user id instead of username as arg to `dx` command.
 
         cmd = "dx add member {o} {u} --level {l} --project-access UPLOAD"
         run(cmd.format(o=self.org_id, u=self.user_id, l="MEMBER"))
