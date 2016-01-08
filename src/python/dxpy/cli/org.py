@@ -30,10 +30,15 @@ import json
 
 
 def get_user_id(user_id_or_username):
-    if not user_id_or_username.lower().startswith("user-"):
+    """Gets the user ID based on the value `user_id_or_username` specified on
+    the command-line, being extra lenient and lowercasing the value in all
+    cases.
+    """
+    user_id_or_username = user_id_or_username.lower()
+    if not user_id_or_username.startswith("user-"):
         user_id = "user-" + user_id_or_username.lower()
     else:
-        user_id = user_id_or_username.lower()
+        user_id = user_id_or_username
     return user_id
 
 
