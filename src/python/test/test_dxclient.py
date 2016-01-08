@@ -5047,7 +5047,6 @@ class TestDXClientMembership(DXTestCase):
         with self.assertRaises(IndexError):
             self._org_find_members(self.user_id)
 
-
     def test_add_update_remove_membership_with_user_id(self):
         # This is similar to `test_add_update_remove_membership()` above, but
         # it specifies user id instead of username as arg to `dx` command.
