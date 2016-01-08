@@ -120,16 +120,16 @@ def remove_membership(args):
             u=args.username.lower(), o=args.org_id)))
 
 
-def _get_org_set_member_access_args(args, default_level):
+def _get_org_set_member_access_args(args, current_level):
     user_id = "user-" + args.username.lower()
     org_set_member_access_input = {user_id: {}}
 
     if args.level is not None:
         org_set_member_access_input[user_id]["level"] = args.level
     else:
-        org_set_member_access_input[user_id]["level"] = default_level
+        org_set_member_access_input[user_id]["level"] = current_level
 
-    admin_to_member = args.level == "MEMBER" and default_level == "ADMIN"
+    admin_to_member = args.level == "MEMBER" and current_level == "ADMIN"
 
     if args.allow_billable_activities is not None:
         org_set_member_access_input[user_id]["allowBillableActivities"] = (True if args.allow_billable_activities == "true" else False)
