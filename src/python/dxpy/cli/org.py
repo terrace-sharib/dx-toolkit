@@ -128,7 +128,7 @@ def remove_membership(args):
 
 
 def _get_org_set_member_access_args(args, default_level):
-    user_id = "user-" + args.username.lower()
+    user_id = get_user_id(args.username)
     org_set_member_access_input = {user_id: {}}
     if args.level is not None:
         org_set_member_access_input[user_id]["level"] = args.level
@@ -145,8 +145,10 @@ def _get_org_set_member_access_args(args, default_level):
 
 
 def update_membership(args):
+    user_id = get_user_id(args.username)
+
     try:
-        member_access = dxpy.api.org_find_members(args.org_id, {"id": ["user-" + args.username.lower()]})["results"][0]
+        member_access = dxpy.api.org_find_members(args.org_id, {"id": [user_id]})["results"][0]
     except IndexError:
         raise DXCLIError("Cannot update a user who is not a member of the org")
 
@@ -158,8 +160,7 @@ def update_membership(args):
     if args.brief:
         print(result["id"])
     else:
-        print(fill("Updated membership of user-{u} in {o}".format(
-            u=args.username.lower(), o=args.org_id)))
+        print(fill("Updated membership of {u} in {o}".format(u=user_id, o=args.org_id)))
 
 
 def _get_find_orgs_args(args):
