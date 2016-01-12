@@ -196,6 +196,9 @@ namespace dx {
   JSON containerRenameFolder(const std::string &object_id, const std::string &input_params="{}", const bool safe_to_retry=false);
   JSON containerRenameFolder(const std::string &object_id, const dx::JSON &input_params, const bool safe_to_retry=false);
 
+  JSON fakeError(const std::string &input_params="{}", const bool safe_to_retry=true);
+  JSON fakeError(const dx::JSON &input_params, const bool safe_to_retry=true);
+
   JSON fileAddTags(const std::string &object_id, const std::string &input_params="{}", const bool safe_to_retry=true);
   JSON fileAddTags(const std::string &object_id, const dx::JSON &input_params, const bool safe_to_retry=true);
 

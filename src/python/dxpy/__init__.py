@@ -135,6 +135,7 @@ from requests.auth import AuthBase
 from requests.packages import urllib3
 from requests.packages.urllib3.packages.ssl_match_hostname import match_hostname
 from .compat import USING_PYTHON2, expanduser
+from httplib import BadStatusLine
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -187,7 +188,7 @@ _default_headers['User-Agent'] = USER_AGENT
 _default_timeout = urllib3.util.timeout.Timeout(connect=DEFAULT_TIMEOUT, read=DEFAULT_TIMEOUT)
 _pool_manager = None
 _RequestForAuth = namedtuple('_RequestForAuth', 'method url headers')
-_expected_exceptions = exceptions.network_exceptions + (exceptions.DXAPIError, )
+_expected_exceptions = exceptions.network_exceptions + (exceptions.DXAPIError, ) + (BadStatusLine, ) + (ValueError, )
 
 def _get_pool_manager(verify, cert_file, key_file):
     global _pool_manager
@@ -394,6 +395,8 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
             if _DEBUG > 0:
                 time_started = time.time()
             _method, _url, _headers = _process_method_url_headers(method, url, headers)
+
+            # throws BadStatusLine if the server returns nothing
             response = _get_pool_manager(**pool_args).request(_method, _url, headers=_headers, body=data,
                                                               timeout=timeout, retries=False, **kwargs)
 
@@ -411,6 +414,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
             if response.status // 100 != 2:
                 # response.headers key lookup is case-insensitive
                 if response.headers.get('content-type', '').startswith('application/json'):
+                    # The JSON might not be parsable, causing a ValueError exception
                     content = json.loads(response.data.decode('utf-8'))
                     try:
                         error_class = getattr(exceptions, content["error"]["type"], exceptions.DXAPIError)
@@ -436,6 +440,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                     content = content.decode('utf-8')
                     if response.headers.get('content-type', '').startswith('application/json'):
                         try:
+                            # The JSON might not be parsable, causing a ValueError exception
                             content = json.loads(content)
                             if _DEBUG > 0:
                                 t = int((time.time() - time_started) * 1000)
@@ -456,7 +461,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                             # the client sees unparseable JSON, and we
                             # should be able to recover.
                             streaming_response_truncated = 'content-length' not in response.headers
-                            raise exceptions.HTTPError("Invalid JSON received from server")
+                            raise ValueError("Invalid JSON received from server")
                 return content
             raise AssertionError('Should never reach this line: expected a result to have been returned by now')
         except Exception as e:
@@ -486,8 +491,14 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                 # iteration of the loop, try_index is equal to the number of
                 # tries that have failed so far, minus one. Test whether we
                 # have exhausted all retries.
+                #
+                # BadStatusLine --- server did not return anything
+                # ValueError ---    server returned JSON that didn't parse properly
                 if try_index + 1 < total_allowed_tries:
-                    if response is None or isinstance(e, exceptions.ContentLengthError) or \
+                    if response is None or \
+                       isinstance(e, exceptions.ContentLengthError) or \
+                       isinstance(e, BadStatusLine) or \
+                       isinstance(e, ValueError) or \
                        streaming_response_truncated:
                         ok_to_retry = always_retry or (method == 'GET') or _is_retryable_exception(e)
                     else:

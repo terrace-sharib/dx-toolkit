@@ -396,6 +396,15 @@
         }
     ],
     [
+        "/system/fakeError",
+        "fakeError(req)",
+        {
+            "objectMethod": false,
+            "retryable": true,
+            "wikiLink": ""
+        }
+    ],
+    [
         "/file-xxxx/addTags",
         "fileAddTags(req, objectId)",
         {

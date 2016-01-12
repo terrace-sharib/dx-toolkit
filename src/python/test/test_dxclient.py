@@ -6860,6 +6860,29 @@ class TestDXCp(DXTestCase):
         rm_project(proj_id)
 
 
+class TestDXErrorHandling(DXTestCase):
+    def test_fake_errors(self):
+        x = dxpy.api.fake_error({'errorType': 'Valid JSON'});
+        errorOccured = False
+        try:
+            dxpy.api.fake_error({'errorType': 'Invalid JSON'});
+        except:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            assert(exc_type == ValueError)
+            errorOccured = True
+            pass
+        assert(errorOccured)
+
+        errorOccured = False
+        try:
+            dxpy.api.fake_error({'errorType': 'Error not decodeable'});
+        except:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            assert(exc_type == ValueError)
+            errorOccured = True
+            pass
+        assert(errorOccured)
+
 if __name__ == '__main__':
     if 'DXTEST_FULL' not in os.environ:
         sys.stderr.write('WARNING: env var DXTEST_FULL is not set; tests that create apps or run jobs will not be run\n')

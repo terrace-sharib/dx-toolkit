@@ -818,6 +818,22 @@ def container_rename_folder(object_id, input_params={}, always_retry=False, **kw
     """
     return DXHTTPRequest('/%s/renameFolder' % object_id, input_params, always_retry=always_retry, **kwargs)
 
+def fakeError(*args, **kwargs):
+    """
+
+    .. deprecated:: 0.42.0
+       Use :func:`fake_error()` instead.
+
+    """
+    print("dxpy.fakeError is deprecated; please use fake_error instead.", file=sys.stderr)
+    return fake_error(*args, **kwargs)
+
+def fake_error(input_params={}, always_retry=True, **kwargs):
+    """
+    Invokes the /system/fakeError API method.
+    """
+    return DXHTTPRequest('/system/fakeError', input_params, always_retry=always_retry, **kwargs)
+
 def fileAddTags(*args, **kwargs):
     """
 
