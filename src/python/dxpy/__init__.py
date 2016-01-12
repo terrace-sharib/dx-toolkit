@@ -178,6 +178,13 @@ DEFAULT_RETRY_AFTER_503_INTERVAL = 60
 _DEBUG = 0  # debug verbosity level
 _UPGRADE_NOTIFY = True
 
+class BadJSONInReply(ValueError):
+    '''Special exception describing an error case where the server returns
+    a bad JSON. Common reasons for this are the network connection
+    breaking, or overload on the server.
+    '''
+    pass
+
 USER_AGENT = "{name}/{version} ({platform})".format(name=__name__,
                                                     version=TOOLKIT_VERSION,
                                                     platform=platform.platform())
@@ -188,7 +195,7 @@ _default_headers['User-Agent'] = USER_AGENT
 _default_timeout = urllib3.util.timeout.Timeout(connect=DEFAULT_TIMEOUT, read=DEFAULT_TIMEOUT)
 _pool_manager = None
 _RequestForAuth = namedtuple('_RequestForAuth', 'method url headers')
-_expected_exceptions = exceptions.network_exceptions + (exceptions.DXAPIError, ) + (BadStatusLine, ) + (ValueError, )
+_expected_exceptions = exceptions.network_exceptions + (exceptions.DXAPIError, ) + (BadStatusLine, ) + (BadJSONInReply, )
 
 def _get_pool_manager(verify, cert_file, key_file):
     global _pool_manager
@@ -389,7 +396,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
 
     try_index = 0
     while True:
-        success, streaming_response_truncated, time_started = True, False, None
+        success, time_started = True, None
         response = None
         try:
             if _DEBUG > 0:
@@ -414,8 +421,12 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
             if response.status // 100 != 2:
                 # response.headers key lookup is case-insensitive
                 if response.headers.get('content-type', '').startswith('application/json'):
-                    # The JSON might not be parsable, causing a ValueError exception
-                    content = json.loads(response.data.decode('utf-8'))
+                    content = None
+                    try:
+                        content = json.loads(response.data.decode('utf-8'))
+                    except ValueError:
+                        # The JSON is not be parsable, but we should be able to retry.
+                        raise BadJSONInReply("Invalid JSON received from server", response.status)
                     try:
                         error_class = getattr(exceptions, content["error"]["type"], exceptions.DXAPIError)
                     except (KeyError, AttributeError, TypeError):
@@ -440,28 +451,21 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                     content = content.decode('utf-8')
                     if response.headers.get('content-type', '').startswith('application/json'):
                         try:
-                            # The JSON might not be parsable, causing a ValueError exception
                             content = json.loads(content)
-                            if _DEBUG > 0:
-                                t = int((time.time() - time_started) * 1000)
-                            if _DEBUG >= 3:
-                                print(method, url, "<=", response.status, "(%dms)" % t,
-                                      "\n" + json.dumps(content, indent=2), file=sys.stderr)
-                            elif _DEBUG == 2:
-                                print(method, url, "<=", response.status, "(%dms)" % t, json.dumps(content),
-                                      file=sys.stderr)
-                            elif _DEBUG > 0:
-                                print(method, url, "<=", response.status, "(%dms)" % t, Repr().repr(content),
-                                      file=sys.stderr)
                         except ValueError:
-                            # If a streaming API call (no content-length
-                            # set) encounters an error it may just halt the
-                            # response because it has no other way to
-                            # indicate an error. Under these circumstances
-                            # the client sees unparseable JSON, and we
-                            # should be able to recover.
-                            streaming_response_truncated = 'content-length' not in response.headers
-                            raise ValueError("Invalid JSON received from server")
+                            # The JSON is not be parsable, but we should be able to retry.
+                            raise BadJSONInReply("Invalid JSON received from server", response.status)
+                        if _DEBUG > 0:
+                            t = int((time.time() - time_started) * 1000)
+                        if _DEBUG >= 3:
+                            print(method, url, "<=", response.status, "(%dms)" % t,
+                                  "\n" + json.dumps(content, indent=2), file=sys.stderr)
+                        elif _DEBUG == 2:
+                            print(method, url, "<=", response.status, "(%dms)" % t, json.dumps(content),
+                                  file=sys.stderr)
+                        elif _DEBUG > 0:
+                            print(method, url, "<=", response.status, "(%dms)" % t, Repr().repr(content),
+                                  file=sys.stderr)
                 return content
             raise AssertionError('Should never reach this line: expected a result to have been returned by now')
         except Exception as e:
@@ -492,14 +496,13 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                 # tries that have failed so far, minus one. Test whether we
                 # have exhausted all retries.
                 #
-                # BadStatusLine --- server did not return anything
-                # ValueError ---    server returned JSON that didn't parse properly
+                # BadStatusLine ---  server did not return anything
+                # BadJSONInReply --- server returned JSON that didn't parse properly
                 if try_index + 1 < total_allowed_tries:
                     if response is None or \
                        isinstance(e, exceptions.ContentLengthError) or \
                        isinstance(e, BadStatusLine) or \
-                       isinstance(e, ValueError) or \
-                       streaming_response_truncated:
+                       isinstance(e, BadJSONInReply):
                         ok_to_retry = always_retry or (method == 'GET') or _is_retryable_exception(e)
                     else:
                         ok_to_retry = 500 <= response.status < 600

@@ -2545,6 +2545,33 @@ class TestResolver(testutil.DXTestCase):
         # identified with a single project, too
         self.assertTrue(is_project_explicit("job-012301230123012301230123:ofield"))
 
+class TestDXErrorHandling(testutil.DXTestCase):
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_fake_errors(self):
+        print("This is a slow test, it checks retries for bad respones")
+        dxpy.DXHTTPRequest('/system/fakeError', {'errorType': 'Valid JSON'}, always_retry=True)
+        print(".")
+
+        # Minimal latency with with retires, in seconds
+        minSecWithRetries = 3
+        startTime = time.time()
+        with self.assertRaises(ValueError):
+            dxpy.DXHTTPRequest('/system/fakeError', {'errorType': 'Invalid JSON'}, always_retry=True)
+        endTime = time.time();
+        self.assertTrue(endTime - startTime > minSecWithRetries)
+        print(".")
+
+        startTime = time.time()
+        with self.assertRaises(ValueError):
+            dxpy.DXHTTPRequest('/system/fakeError', {'errorType': 'Error not decodeable'}, always_retry=True)
+        endTime = time.time();
+        self.assertTrue(endTime - startTime > minSecWithRetries)
+        print(".")
 
 if __name__ == '__main__':
     if dxpy.AUTH_HELPER is None:

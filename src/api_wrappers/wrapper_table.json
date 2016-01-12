@@ -396,15 +396,6 @@
         }
     ],
     [
-        "/system/fakeError",
-        "fakeError(req)",
-        {
-            "objectMethod": false,
-            "retryable": true,
-            "wikiLink": "Unpublished API"
-        }
-    ],
-    [
         "/file-xxxx/addTags",
         "fileAddTags(req, objectId)",
         {
