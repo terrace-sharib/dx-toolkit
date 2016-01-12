@@ -2203,6 +2203,27 @@ class TestHTTPResponses(unittest.TestCase):
             with self.assertRaisesRegexp((SSLError, IOError), "file"):
                 dxpy.DXHTTPRequest("/system/whoami", {}, cert_file="nonexistent")
 
+    def test_fake_errors(self):
+        dxpy.DXHTTPRequest('/system/fakeError', {'errorType': 'Valid JSON'}, always_retry=True)
+
+        # Minimal latency with retries, in seconds. This makes sure we actually did a retry.
+        min_sec_with_retries = 1
+        max_num_retries = 2
+        start_time = time.time()
+        with self.assertRaises(ValueError):
+            dxpy.DXHTTPRequest('/system/fakeError', {'errorType': 'Invalid JSON'},
+                               max_retries=max_num_retries, always_retry=True)
+        end_time = time.time()
+        self.assertGreater(end_time - start_time, min_sec_with_retries)
+
+        start_time = time.time()
+        with self.assertRaises(ValueError):
+            dxpy.DXHTTPRequest('/system/fakeError', {'errorType': 'Error not decodeable'},
+                               max_retries=max_num_retries, always_retry=True)
+        end_time = time.time()
+        self.assertGreater(end_time - start_time, min_sec_with_retries)
+
+
 class TestDataobjectFunctions(unittest.TestCase):
     def setUp(self):
         setUpTempProjects(self)
@@ -2545,34 +2566,6 @@ class TestResolver(testutil.DXTestCase):
         # identified with a single project, too
         self.assertTrue(is_project_explicit("job-012301230123012301230123:ofield"))
 
-
-class TestDXErrorHandling(testutil.DXTestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-    def test_fake_errors(self):
-        print("This is a slow test, it checks retries for bad respones")
-        dxpy.DXHTTPRequest('/system/fakeError', {'errorType': 'Valid JSON'}, always_retry=True)
-        print(".")
-
-        # Minimal latency with with retires, in seconds
-        minSecWithRetries = 3
-        startTime = time.time()
-        with self.assertRaises(ValueError):
-            dxpy.DXHTTPRequest('/system/fakeError', {'errorType': 'Invalid JSON'}, always_retry=True)
-        endTime = time.time()
-        self.assertTrue(endTime - startTime > minSecWithRetries)
-        print(".")
-
-        startTime = time.time()
-        with self.assertRaises(ValueError):
-            dxpy.DXHTTPRequest('/system/fakeError', {'errorType': 'Error not decodeable'}, always_retry=True)
-        endTime = time.time()
-        self.assertTrue(endTime - startTime > minSecWithRetries)
-        print(".")
 
 if __name__ == '__main__':
     if dxpy.AUTH_HELPER is None:

@@ -196,8 +196,7 @@ _default_headers['User-Agent'] = USER_AGENT
 _default_timeout = urllib3.util.timeout.Timeout(connect=DEFAULT_TIMEOUT, read=DEFAULT_TIMEOUT)
 _pool_manager = None
 _RequestForAuth = namedtuple('_RequestForAuth', 'method url headers')
-_expected_exceptions = exceptions.network_exceptions + (exceptions.DXAPIError, ) + \
-                       (BadStatusLine, ) + (BadJSONInReply, )
+_expected_exceptions = exceptions.network_exceptions + (exceptions.DXAPIError, BadStatusLine, BadJSONInReply, )
 
 def _get_pool_manager(verify, cert_file, key_file):
     global _pool_manager
