@@ -6862,7 +6862,7 @@ class TestDXCp(DXTestCase):
 
 class TestDXErrorHandling(DXTestCase):
     def test_fake_errors(self):
-        x = dxpy.api.fake_error({'errorType': 'Valid JSON'});
+        dxpy.api.fake_error({'errorType': 'Valid JSON'});
         errorOccured = False
         try:
             dxpy.api.fake_error({'errorType': 'Invalid JSON'});
