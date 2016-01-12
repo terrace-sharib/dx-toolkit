@@ -8085,6 +8085,8 @@ public final class DXAPI {
     /**
      * Invokes the fakeError method with an empty input, deserializing to an object of the specified class.
      *
+     * <p>For more information about this method, see the <a href="Unpublished API">API specification</a>.
+     *
      * @param outputClass class to deserialize the server reponse to
      *
      * @return Server response parsed from JSON
@@ -8101,6 +8103,8 @@ public final class DXAPI {
     }
     /**
      * Invokes the fakeError method with an empty input using the specified environment, deserializing to an object of the specified class.
+     *
+     * <p>For more information about this method, see the <a href="Unpublished API">API specification</a>.
      *
      * @param outputClass class to deserialize the server reponse to
      * @param env environment object specifying the auth token and remote server and protocol
@@ -8119,6 +8123,8 @@ public final class DXAPI {
     }
     /**
      * Invokes the fakeError method with the specified input, deserializing to an object of the specified class.
+     *
+     * <p>For more information about this method, see the <a href="Unpublished API">API specification</a>.
      *
      * @param inputObject input object (to be JSON serialized to an input hash)
      * @param outputClass class to deserialize the server reponse to
@@ -8139,6 +8145,8 @@ public final class DXAPI {
     }
     /**
      * Invokes the fakeError method with the specified input using the specified environment, deserializing to an object of the specified class.
+     *
+     * <p>For more information about this method, see the <a href="Unpublished API">API specification</a>.
      *
      * @param inputObject input object (to be JSON serialized to an input hash)
      * @param outputClass class to deserialize the server reponse to
@@ -8162,6 +8170,8 @@ public final class DXAPI {
     /**
      * Invokes the fakeError method.
      *
+     * <p>For more information about this method, see the <a href="Unpublished API">API specification</a>.
+     *
      * @return Server response parsed from JSON
      *
      * @throws DXAPIException
@@ -8179,6 +8189,8 @@ public final class DXAPI {
     }
     /**
      * Invokes the fakeError method with the specified input parameters.
+     *
+     * <p>For more information about this method, see the <a href="Unpublished API">API specification</a>.
      *
      * @param inputParams input parameters to the API call
      *
@@ -8200,6 +8212,8 @@ public final class DXAPI {
     /**
      * Invokes the fakeError method with the specified environment.
      *
+     * <p>For more information about this method, see the <a href="Unpublished API">API specification</a>.
+     *
      * @param env environment object specifying the auth token and remote server and protocol
      *
      * @return Server response parsed from JSON
@@ -8219,6 +8233,8 @@ public final class DXAPI {
     }
     /**
      * Invokes the fakeError method with the specified environment and input parameters.
+     *
+     * <p>For more information about this method, see the <a href="Unpublished API">API specification</a>.
      *
      * @param inputParams input parameters to the API call
      * @param env environment object specifying the auth token and remote server and protocol

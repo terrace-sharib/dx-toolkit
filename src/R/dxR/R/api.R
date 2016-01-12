@@ -1614,7 +1614,7 @@ containerRenameFolder <- function(objectID,
 ##' response is returned (using \code{RJSONIO::fromJSON}).
 ##' @export
 ##' @seealso \code{\link{dxHTTPRequest}}
-##' @references API spec documentation: \url{}
+##' @references API spec documentation: \url{Unpublished\%20API}
 fakeError <- function(inputParams=emptyNamedList,
                       jsonifyData=TRUE,
                       alwaysRetry=TRUE) {

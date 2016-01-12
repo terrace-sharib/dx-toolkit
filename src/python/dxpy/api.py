@@ -831,6 +831,8 @@ def fakeError(*args, **kwargs):
 def fake_error(input_params={}, always_retry=True, **kwargs):
     """
     Invokes the /system/fakeError API method.
+
+    For more info, see: Unpublished API
     """
     return DXHTTPRequest('/system/fakeError', input_params, always_retry=always_retry, **kwargs)
 
