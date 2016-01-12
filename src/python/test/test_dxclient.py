@@ -6865,7 +6865,7 @@ class TestDXErrorHandling(DXTestCase):
         dxpy.api.fake_error({'errorType': 'Valid JSON'});
         errorOccured = False
         try:
-            dxpy.api.fake_error({'errorType': 'Invalid JSON'});
+            dxpy.api.fake_error({'errorType': 'Invalid JSON'})
         except:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             assert(exc_type == ValueError)
@@ -6875,7 +6875,7 @@ class TestDXErrorHandling(DXTestCase):
 
         errorOccured = False
         try:
-            dxpy.api.fake_error({'errorType': 'Error not decodeable'});
+            dxpy.api.fake_error({'errorType': 'Error not decodeable'})
         except:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             assert(exc_type == ValueError)
