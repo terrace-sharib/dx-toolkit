@@ -196,7 +196,7 @@ _default_headers['User-Agent'] = USER_AGENT
 _default_timeout = urllib3.util.timeout.Timeout(connect=DEFAULT_TIMEOUT, read=DEFAULT_TIMEOUT)
 _pool_manager = None
 _RequestForAuth = namedtuple('_RequestForAuth', 'method url headers')
-_expected_exceptions = exceptions.network_exceptions + (exceptions.DXAPIError, BadStatusLine, BadJSONInReply, )
+_expected_exceptions = exceptions.network_exceptions + (exceptions.DXAPIError, BadStatusLine, BadJSONInReply)
 
 def _get_pool_manager(verify, cert_file, key_file):
     global _pool_manager
@@ -424,9 +424,13 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                 if response.headers.get('content-type', '').startswith('application/json'):
                     content = None
                     try:
-                        content = json.loads(response.data.decode('utf-8'))
+                        content = response.data.decode('utf-8')
+                    except:
+                        raise BadJSONInReply("Could not decode response", response.status)
+                    try:
+                        content = json.loads(content)
                     except ValueError:
-                        # The JSON is not be parsable, but we should be able to retry.
+                        # The JSON is not parsable, but we should be able to retry.
                         raise BadJSONInReply("Invalid JSON received from server", response.status)
                     try:
                         error_class = getattr(exceptions, content["error"]["type"], exceptions.DXAPIError)
@@ -454,7 +458,7 @@ def DXHTTPRequest(resource, data, method='POST', headers=None, auth=True,
                         try:
                             content = json.loads(content)
                         except ValueError:
-                            # The JSON is not be parsable, but we should be able to retry.
+                            # The JSON is not parsable, but we should be able to retry.
                             raise BadJSONInReply("Invalid JSON received from server", response.status)
                         if _DEBUG > 0:
                             t = int((time.time() - time_started) * 1000)
